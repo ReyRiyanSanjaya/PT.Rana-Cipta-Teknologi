@@ -1,0 +1,612 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
+import 'package:rana_merchant/providers/subscription_provider.dart';
+
+class SubscriptionScreen extends StatefulWidget {
+  const SubscriptionScreen({super.key});
+
+  @override
+  State<SubscriptionScreen> createState() => _SubscriptionScreenState();
+}
+
+class _SubscriptionScreenState extends State<SubscriptionScreen> {
+  XFile? _imageFile;
+  final _picker = ImagePicker();
+
+  Future<void> _pickImage() async {
+    final picked = await _picker.pickImage(source: ImageSource.gallery);
+    if (picked != null) setState(() => _imageFile = picked);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      final sub = Provider.of<SubscriptionProvider>(context, listen: false);
+      sub.fetchPackages();
+      sub.fetchSubscriptionBanks();
+    });
+  }
+
+  String _formatPrice(dynamic price) {
+    return "Rp ${price.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}";
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sub = Provider.of<SubscriptionProvider>(context);
+
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      appBar: AppBar(
+        title: Text('Berlangganan Rana',
+            style: GoogleFonts.poppins(
+                color: Theme.of(context).colorScheme.onPrimary)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Theme.of(context).colorScheme.primary.withOpacity(0.9),
+                Theme.of(context).colorScheme.primary.withOpacity(0.8),
+              ],
+            ),
+          ),
+        ),
+        iconTheme:
+            IconThemeData(color: Theme.of(context).colorScheme.onPrimary),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            // Show subscription status info if available
+            if (sub.daysRemaining != null) ...[
+              _buildSubscriptionInfo(sub),
+              const SizedBox(height: 24),
+            ],
+
+            if (sub.isLoading)
+              const Center(child: CircularProgressIndicator())
+            else if (sub.packages.isEmpty)
+              Center(
+                  child: Text("Belum ada paket tersedia",
+                      style: GoogleFonts.poppins()))
+            else
+              ...sub.packages
+                  .map((pkg) => _buildPackageCard(pkg, sub))
+                  .toList(),
+
+            const SizedBox(height: 32),
+
+            // Status Handling
+            if (sub.status == SubscriptionStatus.active)
+              _buildActiveState(sub)
+            else if (sub.status == SubscriptionStatus.pending)
+              _buildPendingState()
+            else
+              _buildPaymentSection(context, sub),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubscriptionInfo(SubscriptionProvider sub) {
+    final isActive = sub.status == SubscriptionStatus.active;
+    final isTrial = sub.status == SubscriptionStatus.trial;
+    final primary = Theme.of(context).colorScheme.primary;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: primary.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+            color: isActive
+                ? primary.withOpacity(0.3)
+                : (isTrial
+                    ? primary.withOpacity(0.3)
+                    : primary.withOpacity(0.3))),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isActive ? Icons.verified : (isTrial ? Icons.timer : Icons.warning),
+            color: primary,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isActive
+                      ? 'Premium Active'
+                      : (isTrial ? 'Trial Period' : 'Status'),
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  '${sub.daysRemaining} hari tersisa',
+                  style: GoogleFonts.poppins(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withOpacity(0.7),
+                      fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPackageCard(dynamic pkg, SubscriptionProvider sub) {
+    final isSelected = sub.selectedPackage?['id'] == pkg['id'];
+    final benefits = (pkg['benefits'] as List<dynamic>?) ?? [];
+    final price = pkg['price'];
+    final durationDays = pkg['durationDays'] ?? 30;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return GestureDetector(
+      onTap: () => sub.selectPackage(Map<String, dynamic>.from(pkg)),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: isSelected
+              ? LinearGradient(colors: [
+                  colorScheme.primary,
+                  colorScheme.primary.withOpacity(0.8)
+                ])
+              : LinearGradient(
+                  colors: [
+                    colorScheme.surface.withOpacity(0.98),
+                    colorScheme.surface.withOpacity(0.94)
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: isSelected
+                  ? colorScheme.primary.withOpacity(0.3)
+                  : colorScheme.onSurface.withOpacity(0.05),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            )
+          ],
+          border: isSelected
+              ? Border.all(color: Colors.white, width: 2)
+              : Border.all(
+                  color: colorScheme.outline.withOpacity(0.18), width: 1.5),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      pkg['name'] ?? 'Paket',
+                      style: GoogleFonts.poppins(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: isSelected
+                              ? Colors.white
+                              : colorScheme.onSurface),
+                    ),
+                    Text(
+                      '$durationDays hari',
+                      style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: isSelected
+                              ? Colors.white70
+                              : colorScheme.onSurface.withOpacity(0.7)),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? Colors.white.withOpacity(0.2)
+                        : colorScheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    _formatPrice(price),
+                    style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: isSelected ? Colors.white : colorScheme.primary),
+                  ),
+                ),
+              ],
+            ),
+            if (benefits.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Divider(
+                  color: isSelected
+                      ? Colors.white24
+                      : colorScheme.outline.withOpacity(0.2)),
+              const SizedBox(height: 8),
+              ...benefits
+                  .take(5)
+                  .map((b) => _buildBenefitRow('✓ $b', isSelected)),
+            ],
+            if (isSelected) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '✓ Dipilih',
+                  style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.primary),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBenefitRow(String text, bool isSelected) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text(text,
+          style: GoogleFonts.poppins(
+              color: isSelected
+                  ? Colors.white
+                  : Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+              fontSize: 14)),
+    );
+  }
+
+  Widget _buildActiveState(SubscriptionProvider sub) {
+    return Column(
+      children: [
+        Icon(Icons.check_circle,
+            size: 64, color: Theme.of(context).colorScheme.primary),
+        const SizedBox(height: 16),
+        Text('Akun Anda Premium!',
+            style:
+                GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        Text('Terima kasih telah berlangganan.',
+            style: GoogleFonts.poppins(
+                color:
+                    Theme.of(context).colorScheme.onSurface.withOpacity(0.6))),
+        if (sub.expiryDate != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Berakhir: ${sub.expiryDate!.day}/${sub.expiryDate!.month}/${sub.expiryDate!.year}',
+            style: GoogleFonts.poppins(
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                fontSize: 12),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildPendingState() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        children: [
+          Icon(Icons.av_timer,
+              size: 48, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(height: 16),
+          Text('Menunggu Verifikasi',
+              style: GoogleFonts.poppins(
+                  fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text(
+              'Admin sedang memverifikasi pembayaran Anda. Mohon tunggu 1x24 jam.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withOpacity(0.7))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentSection(BuildContext context, SubscriptionProvider sub) {
+    final hasSelectedPackage = sub.selectedPackage != null;
+    final banks = sub.subscriptionBanks;
+    final hasSelectedBank = sub.selectedBank != null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Show selected package summary
+        if (hasSelectedPackage) ...[
+          Container(
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE07A5F).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border:
+                  Border.all(color: const Color(0xFFE07A5F).withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Color(0xFFE07A5F)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        sub.selectedPackage!['name'],
+                        style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        '${_formatPrice(sub.selectedPackage!['price'])} / ${sub.selectedPackage!['durationDays']} hari',
+                        style: GoogleFonts.poppins(
+                            color: Colors.grey[700], fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ] else ...[
+          Container(
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE07A5F).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline, color: Color(0xFFE07A5F)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Pilih paket di atas terlebih dahulu',
+                    style: GoogleFonts.poppins(color: const Color(0xFFE07A5F)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+
+        Text('Transfer Pembayaran',
+            style:
+                GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(12)),
+          child: banks.isEmpty
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Rekening tujuan akan diinformasikan oleh admin.',
+                      style: GoogleFonts.poppins(color: Colors.grey[700]),
+                    ),
+                  ],
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ...List.generate(banks.length, (index) {
+                      final b = banks[index] as Map<String, dynamic>;
+                      final bankName = (b['bankName'] ?? '').toString();
+                      final accountNumber =
+                          (b['accountNumber'] ?? '').toString();
+                      final accountName = (b['accountName'] ?? '').toString();
+                      final label = (b['label'] ?? '').toString();
+                      final isDefault = b['isDefault'] == true;
+                      return InkWell(
+                        onTap: () => sub.selectBankIndex(index),
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.only(bottom: 12),
+                          decoration: const BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(
+                                  color: Color(0xFFE0E0E0), width: 0.5),
+                            ),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Radio<int>(
+                                value: index,
+                                groupValue: sub.selectedBankIndex,
+                                onChanged: (_) => sub.selectBankIndex(index),
+                                activeColor: const Color(0xFFE07A5F),
+                              ),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          bankName.isEmpty
+                                              ? 'Rekening'
+                                              : bankName,
+                                          style: GoogleFonts.poppins(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                        if (isDefault) ...[
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFE07A5F)
+                                                  .withOpacity(0.1),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            child: Text(
+                                              'Utama',
+                                              style: GoogleFonts.poppins(
+                                                  fontSize: 10,
+                                                  color:
+                                                      const Color(0xFFE07A5F),
+                                                  fontWeight: FontWeight.w600),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                    if (accountNumber.isNotEmpty)
+                                      Text(accountNumber,
+                                          style: GoogleFonts.poppins(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold)),
+                                    if (accountName.isNotEmpty)
+                                      Text('a.n. $accountName',
+                                          style: GoogleFonts.poppins(
+                                              color: Colors.grey)),
+                                    if (label.isNotEmpty)
+                                      Padding(
+                                        padding:
+                                            const EdgeInsets.only(top: 4.0),
+                                        child: Text(
+                                          label,
+                                          style: GoogleFonts.poppins(
+                                              fontSize: 12,
+                                              color: Colors.grey[700]),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+        ),
+        const SizedBox(height: 24),
+
+        // Image Picker UI
+        Text('Bukti Transfer',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: hasSelectedPackage ? _pickImage : null,
+          child: Container(
+            height: 150,
+            width: double.infinity,
+            decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(12),
+                color: hasSelectedPackage
+                    ? Colors.grey.shade50
+                    : Colors.grey.shade200),
+            child: _imageFile == null
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                        Icon(Icons.cloud_upload,
+                            color: hasSelectedPackage
+                                ? Colors.grey
+                                : Colors.grey[400],
+                            size: 40),
+                        Text(
+                            hasSelectedPackage
+                                ? 'Tap untuk upload bukti'
+                                : 'Pilih paket dulu',
+                            style: TextStyle(
+                                color: hasSelectedPackage
+                                    ? Colors.grey
+                                    : Colors.grey[400]))
+                      ])
+                : ClipRRect(
+                    borderRadius: BorderRadius.circular(11),
+                    child: kIsWeb
+                        ? Image.network(_imageFile!.path, fit: BoxFit.cover)
+                        : Image.file(File(_imageFile!.path),
+                            fit: BoxFit.cover)),
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        FilledButton(
+          onPressed: (_imageFile == null ||
+                  !hasSelectedPackage ||
+                  !hasSelectedBank)
+              ? null
+              : () async {
+                  try {
+                    await sub.requestUpgrade(_imageFile!);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('Bukti terkirim! Menunggu verifikasi.'),
+                          backgroundColor: Color(0xFFE07A5F)));
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text('Gagal: $e'),
+                          backgroundColor: const Color(0xFFE07A5F)));
+                    }
+                  }
+                },
+          style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              backgroundColor: (_imageFile == null || !hasSelectedPackage)
+                  ? Colors.grey
+                  : const Color(0xFFE07A5F)),
+          child: sub.isLoading
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 2))
+              : Text('Kirim Bukti Transfer',
+                  style: GoogleFonts.poppins(
+                      fontSize: 16, fontWeight: FontWeight.bold)),
+        ),
+      ],
+    );
+  }
+}

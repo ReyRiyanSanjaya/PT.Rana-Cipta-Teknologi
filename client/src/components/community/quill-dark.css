@@ -1,0 +1,122 @@
+/* Custom Dark Theme for Quill Editor */
+.ql-toolbar.ql-snow {
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 0.75rem 0.75rem 0 0;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.ql-container.ql-snow {
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-top: none !important;
+    border-radius: 0 0 0.75rem 0.75rem;
+    font-size: 1rem;
+    font-family: inherit;
+    color: #cbd5e1; /* slate-300 */
+    min-height: 200px;
+}
+
+/* Toolbar Icons */
+.ql-snow .ql-stroke {
+    stroke: #94a3b8 !important; /* slate-400 */
+}
+
+.ql-snow .ql-fill {
+    fill: #94a3b8 !important; /* slate-400 */
+}
+
+.ql-snow .ql-picker {
+    color: #94a3b8 !important;
+}
+
+/* Hover States */
+.ql-snow .ql-picker-label:hover,
+.ql-snow .ql-picker-item:hover {
+    color: #fff !important;
+}
+
+.ql-snow .ql-picker-label:hover .ql-stroke,
+.ql-snow button:hover .ql-stroke {
+    stroke: #fff !important;
+}
+
+.ql-snow .ql-picker-label:hover .ql-fill,
+.ql-snow button:hover .ql-fill {
+    fill: #fff !important;
+}
+
+/* Active States */
+.ql-snow .ql-picker-label.ql-active,
+.ql-snow .ql-picker-item.ql-selected {
+    color: #818cf8 !important; /* indigo-400 */
+}
+
+.ql-snow .ql-picker-label.ql-active .ql-stroke,
+.ql-snow button.ql-active .ql-stroke {
+    stroke: #818cf8 !important; /* indigo-400 */
+}
+
+.ql-snow .ql-picker-label.ql-active .ql-fill,
+.ql-snow button.ql-active .ql-fill {
+    fill: #818cf8 !important; /* indigo-400 */
+}
+
+/* Dropdowns */
+.ql-snow .ql-picker-options {
+    background-color: #0f172a !important; /* slate-900 */
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Editor Content */
+.ql-editor.ql-blank::before {
+    color: #64748b !important; /* slate-500 */
+    font-style: normal;
+}
+
+.ql-editor {
+    min-height: 200px;
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+/* Headings */
+.ql-editor h1, .ql-editor h2, .ql-editor h3 {
+    color: #fff;
+    font-weight: 700;
+    margin-bottom: 0.5em;
+}
+
+/* Blockquotes */
+.ql-editor blockquote {
+    border-left: 4px solid #6366f1 !important; /* indigo-500 */
+    color: #94a3b8 !important; /* slate-400 */
+    padding-left: 1rem;
+    margin-left: 0;
+    font-style: italic;
+}
+
+/* Code Blocks */
+.ql-editor pre.ql-syntax {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    color: #e2e8f0 !important; /* slate-200 */
+    border-radius: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Links */
+.ql-editor a {
+    color: #818cf8 !important; /* indigo-400 */
+    text-decoration: none;
+}
+.ql-editor a:hover {
+    text-decoration: underline;
+}
+
+/* Images */
+.ql-editor img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.75rem; /* rounded-xl */
+    margin: 1rem 0;
+    display: block;
+}

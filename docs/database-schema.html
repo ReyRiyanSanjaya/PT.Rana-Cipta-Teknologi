@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Schema - Dokumentasi Rana Market</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+</head>
+<body>
+    <nav class="sidebar">
+        <a href="index.html" class="brand">Rana Market 🐸</a>
+        <ul class="nav-links">
+            <li class="nav-item"><a href="index.html" class="nav-link">🏠 Pengantar</a></li>
+            <li class="nav-item"><a href="installation.html" class="nav-link">🛠️ Instalasi Lokal</a></li>
+            <li class="nav-item"><a href="architecture.html" class="nav-link">🏗️ Arsitektur Sistem</a></li>
+            <li class="nav-item"><a href="database-schema.html" class="nav-link active">💾 Database Schema</a></li>
+            <li class="nav-item"><a href="security.html" class="nav-link">🔒 Keamanan</a></li>
+            <li class="nav-item"><a href="server-deployment.html" class="nav-link">🖥️ Server Deployment</a></li>
+            <li class="nav-item"><a href="mobile-deployment.html" class="nav-link">📱 Mobile Deployment</a></li>
+            <li class="nav-item"><a href="api-integration.html" class="nav-link">🔌 Integrasi API</a></li>
+            <li class="nav-item"><a href="cicd.html" class="nav-link">🚀 CI/CD Pipeline</a></li>
+            <li class="nav-item"><a href="tools.html" class="nav-link">🛠️ Tools & Utils</a></li>
+            <li class="nav-item"><a href="user-manual.html" class="nav-link">📖 Panduan Admin</a></li>
+            <li class="nav-item"><a href="maintenance.html" class="nav-link">🛠️ Maintenance & Ops</a></li>
+            <li class="nav-item"><a href="troubleshooting.html" class="nav-link">❓ Troubleshooting</a></li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <h1>Struktur Database (Schema)</h1>
+        <p>Rana Market menggunakan PostgreSQL dengan Prisma ORM untuk mengelola data relasional yang kompleks dalam model Multi-Tenant SaaS.</p>
+
+        <div class="alert alert-info">
+            <strong>Versi Dokumen:</strong> 1.2.0<br>
+            <strong>Terakhir Diupdate:</strong> 2026-03-31
+        </div>
+
+        <h2>1. Core Tenancy & IAM</h2>
+        <p>Sistem ini dirancang untuk mengisolasi data antar penyewa (Tenant) secara logis.</p>
+        <div class="code-block">
+            <pre><code class="language-prisma">
+model Tenant {
+  id                 String             @id @default(uuid())
+  name               String
+  plan               SubscriptionPlan   @default(FREE)
+  subscriptionStatus SubscriptionStatus @default(TRIAL)
+  subscriptionEndsAt DateTime?
+  // Relations: users, stores, products, transactions, etc.
+}
+
+model User {
+  id           String   @id @default(uuid())
+  tenantId     String
+  storeId      String?
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(CASHIER)
+  // Owner, Admin, StoreManager, Cashier, SuperAdmin, Distributor
+}
+
+enum SubscriptionPlan { FREE, BASIC, PREMIUM, ENTERPRISE }
+            </code></pre>
+        </div>
+
+        <h2>2. Business Data & POS</h2>
+        <p>Data operasional toko, produk, dan transaksi penjualan harian.</p>
+        <div class="code-block">
+            <pre><code class="language-prisma">
+model Store {
+  id           String   @id @default(uuid())
+  tenantId     String
+  name         String
+  waNumber     String?  @unique
+  balance      Float    @default(0) // Saldo Digital Wallet
+  latitude     Float?
+  longitude    Float?
+}
+
+model Product {
+  id           String   @id @default(uuid())
+  tenantId     String
+  storeId      String?
+  name         String
+  sku          String?
+  basePrice    Float
+  sellingPrice Float
+  stock        Int      @default(0)
+}
+
+model Transaction {
+  id            String            @id @default(uuid())
+  tenantId      String
+  storeId       String
+  totalAmount   Float             @default(0)
+  paymentMethod String            @default("CASH")
+  orderStatus   TransactionStatus @default(COMPLETED)
+  occurredAt    DateTime          @default(now())
+}
+            </code></pre>
+        </div>
+
+        <h2>3. B2B Wholesale (Kulakan)</h2>
+        <p>Fitur untuk menghubungkan Merchant dengan Supplier/Distributor.</p>
+        <div class="code-block">
+            <pre><code class="language-prisma">
+model Distributor {
+  id             String         @id @default(uuid())
+  userId         String         @unique
+  companyName    String
+  approvalStatus ApprovalStatus @default(PENDING)
+  balance        Float          @default(0)
+  wholesaleProducts WholesaleProduct[]
+}
+
+model WholesaleProduct {
+  id                  String   @id @default(uuid())
+  distributorId       String
+  name                String
+  pricingTiers        Json // Skema harga grosir bertingkat
+  moq                 Int      @default(1)
+  stockQuantity       Int      @default(0)
+}
+
+model WholesaleOrder {
+  id              String               @id @default(uuid())
+  tenantId        String
+  distributorId   String
+  orderNumber     String               @unique
+  totalAmount     Float
+  status          WholesaleOrderStatus @default(PENDING)
+}
+            </code></pre>
+        </div>
+
+        <h2>4. Cash & Finance</h2>
+        <p>Manajemen keuangan, hutang, dan dompet digital toko.</p>
+        <div class="code-block">
+            <pre><code class="language-prisma">
+model CashflowLog {
+  id          String   @id @default(uuid())
+  storeId     String
+  type        String?  // IN, OUT
+  category    String?  // SALES, EXPENSE, WITHDRAWAL, etc.
+  amount      Float
+  occurredAt  DateTime @default(now())
+}
+
+model Withdrawal {
+  id            String           @id @default(uuid())
+  storeId       String
+  amount        Float
+  status        WithdrawalStatus @default(PENDING)
+  bankName      String
+  accountNumber String
+}
+
+model DebtRecord {
+  id          String     @id @default(uuid())
+  customerId  String
+  amount      Float
+  status      DebtStatus @default(UNPAID)
+}
+            </code></pre>
+        </div>
+
+        <h2>5. PPOB & Digital Products</h2>
+        <p>Transaksi produk digital melalui integrasi Digiflazz.</p>
+        <div class="code-block">
+            <pre><code class="language-prisma">
+model PpobTransaction {
+  id           String     @id @default(uuid())
+  storeId      String
+  refId        String     // ID Referensi dari Digiflazz
+  productCode  String
+  customerNo   String     // Nomor HP atau ID Pelanggan
+  amount       Float      // Harga modal
+  sellingPrice Float      // Harga jual ke pelanggan
+  status       PpobStatus @default(PENDING)
+}
+            </code></pre>
+        </div>
+
+        <h2>6. Driver & Ride-Hailing</h2>
+        <p>Manajemen kurir dan layanan pengantaran makanan/barang.</p>
+        <div class="code-block">
+            <pre><code class="language-prisma">
+model Driver {
+  id           String       @id @default(uuid())
+  name         String
+  phone        String       @unique
+  vehiclePlate String
+  status       DriverStatus @default(OFFLINE)
+  balance      Float        @default(0)
+  latitude     Float?
+  longitude    Float?
+}
+
+model ServiceRequest {
+  id         String        @id @default(uuid())
+  type       ServiceType   // RIDE, SEND, FOOD
+  driverId   String?
+  status     ServiceStatus @default(SEARCHING)
+  price      Float
+  originAddress String
+  destAddress   String
+}
+            </code></pre>
+        </div>
+
+        <h2>7. Community & Content</h2>
+        <p>Fitur interaksi antar pengguna dan pengelolaan konten blog/pengumuman.</p>
+        <div class="code-block">
+            <pre><code class="language-prisma">
+model CommunityPost {
+  id        Int      @id @default(autoincrement())
+  topicId   Int
+  authorId  String
+  title     String?
+  content   String
+  likes     Int      @default(0)
+}
+
+model BlogPost {
+  id          String    @id @default(uuid())
+  title       String
+  slug        String    @unique
+  content     String
+  status      String    @default("DRAFT")
+}
+            </code></pre>
+        </div>
+
+        <h2>Penjelasan Teknis Tambahan</h2>
+        <ul>
+            <li><strong>UUID:</strong> Sebagian besar tabel menggunakan UUID sebagai Primary Key untuk keamanan dan kemudahan sinkronisasi offline.</li>
+            <li><strong>JSONB:</strong> Digunakan untuk menyimpan data dinamis seperti <code>pricingTiers</code> (harga grosir) dan <code>paymentDetails</code>.</li>
+            <li><strong>Enums:</strong> Digunakan secara luas untuk menjaga konsistensi status (Order, Subscription, Request).</li>
+            <li><strong>Indexes:</strong> Indeks dibuat secara otomatis oleh Prisma pada kolom <code>id</code>, <code>unique</code>, dan relasi kunci asing untuk optimasi query.</li>
+        </ul>
+
+        <footer>
+            &copy; 2026 Rana Market Team. All rights reserved.
+        </footer>
+    </main>
+
+    <script src="js/main.js"></script>
+</body>
+</html>

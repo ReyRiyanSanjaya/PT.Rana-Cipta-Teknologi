@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instalasi Lokal - Dokumentasi Rana Market</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <a href="index.html" class="brand">Rana Market 🐸</a>
+        <ul class="nav-links">
+            <li class="nav-item"><a href="index.html" class="nav-link">🏠 Pengantar</a></li>
+            <li class="nav-item"><a href="installation.html" class="nav-link active">🛠️ Instalasi Lokal</a></li>
+            <li class="nav-item"><a href="architecture.html" class="nav-link">🏗️ Arsitektur Sistem</a></li>
+            <li class="nav-item"><a href="database-schema.html" class="nav-link">💾 Database Schema</a></li>
+            <li class="nav-item"><a href="security.html" class="nav-link">🔒 Keamanan</a></li>
+            <li class="nav-item"><a href="server-deployment.html" class="nav-link">🖥️ Server Deployment</a></li>
+            <li class="nav-item"><a href="mobile-deployment.html" class="nav-link">📱 Mobile Deployment</a></li>
+            <li class="nav-item"><a href="api-integration.html" class="nav-link">🔌 Integrasi API</a></li>
+            <li class="nav-item"><a href="cicd.html" class="nav-link">🚀 CI/CD Pipeline</a></li>
+            <li class="nav-item"><a href="tools.html" class="nav-link">🛠️ Tools &amp; Utils</a></li>
+            <li class="nav-item"><a href="user-manual.html" class="nav-link">📖 Panduan Admin</a></li>
+            <li class="nav-item"><a href="maintenance.html" class="nav-link">🛠️ Maintenance &amp; Ops</a></li>
+            <li class="nav-item"><a href="troubleshooting.html" class="nav-link">❓ Troubleshooting</a></li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <h1>Panduan Instalasi Lokal</h1>
+        <p>Panduan lengkap untuk menjalankan seluruh ekosistem <strong>Rana Market</strong> di komputer lokal Anda, mulai dari backend hingga 3 dashboard web dan 3 aplikasi mobile.</p>
+
+        <div class="alert alert-info">
+            <strong>Versi Dokumen:</strong> 3.0.0 &nbsp;|&nbsp;
+            <strong>Terakhir Diupdate:</strong> 2026-04-07 &nbsp;|&nbsp;
+            <strong>Stack:</strong> Node.js 20 · PostgreSQL 14+ · Flutter 3.10+ · React + Vite
+        </div>
+
+        <!-- ============================
+             PRASYARAT
+        ============================= -->
+        <h2>1. Prasyarat Sistem</h2>
+        <p>Pastikan semua perangkat lunak berikut sudah terinstall sebelum memulai:</p>
+        <table>
+            <thead>
+                <tr><th>Software</th><th>Versi Minimum</th><th>Download</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Node.js</strong></td>
+                    <td>v18.x atau v20.x LTS</td>
+                    <td><a href="https://nodejs.org" target="_blank">nodejs.org</a></td>
+                </tr>
+                <tr>
+                    <td><strong>PostgreSQL</strong></td>
+                    <td>v14+</td>
+                    <td><a href="https://www.postgresql.org/download/windows/" target="_blank">postgresql.org</a></td>
+                </tr>
+                <tr>
+                    <td><strong>Flutter SDK</strong></td>
+                    <td>v3.10+</td>
+                    <td><a href="https://flutter.dev/docs/get-started/install/windows" target="_blank">flutter.dev</a></td>
+                </tr>
+                <tr>
+                    <td><strong>Git</strong></td>
+                    <td>Terbaru</td>
+                    <td><a href="https://git-scm.com/download/win" target="_blank">git-scm.com</a></td>
+                </tr>
+                <tr>
+                    <td><strong>Android Studio</strong></td>
+                    <td>Terbaru</td>
+                    <td><a href="https://developer.android.com/studio" target="_blank">developer.android.com</a></td>
+                </tr>
+            </tbody>
+        </table>
+        <p>Verifikasi instalasi dengan membuka <strong>CMD</strong> dan jalankan:</p>
+        <pre><code>node --version
+flutter --version
+git --version</code></pre>
+
+        <hr>
+
+        <!-- ============================
+             PERSIAPAN SEBELUM INSTALL
+        ============================= -->
+        <h2>2. Persiapan Sebelum Instalasi</h2>
+        <p>Dua langkah ini <strong>WAJIB</strong> dilakukan secara manual sebelum menjalankan installer otomatis:</p>
+
+        <h3>A. Buat Database PostgreSQL</h3>
+        <p>Buka <strong>pgAdmin</strong> atau <strong>SQL Shell (psql)</strong>, lalu jalankan:</p>
+        <pre><code>CREATE DATABASE rana_pos;</code></pre>
+        <p>Atau dari CMD/psql:</p>
+        <pre><code>psql -U postgres -c "CREATE DATABASE rana_pos;"</code></pre>
+
+        <h3>B. Konfigurasi File server/.env</h3>
+        <p>Buka file <code>server\.env</code> di text editor dan sesuaikan password PostgreSQL Anda:</p>
+        <pre><code>PORT=4000
+DATABASE_URL="postgresql://postgres:PASSWORD_ANDA@localhost:5432/rana_pos?schema=public"
+JWT_SECRET="ganti_dengan_string_acak_panjang_minimal_32_karakter"
+NODE_ENV=development</code></pre>
+
+        <div class="alert alert-warning">
+            ⚠️ <strong>Ganti <code>PASSWORD_ANDA</code></strong> dengan password akun <code>postgres</code> yang Anda set saat instalasi PostgreSQL. Pastikan tidak ada teks tambahan seperti <code>PASSWORD_</code> di depan password sebenarnya.<br><br>
+            ✅ Contoh benar: <code>DATABASE_URL="postgresql://postgres:simpledark67@localhost:5432/rana_pos?schema=public"</code><br>
+            ❌ Contoh salah: <code>DATABASE_URL="postgresql://postgres:PASSWORD_simpledark67@localhost:5432/rana_pos?schema=public"</code>
+        </div>
+
+        <hr>
+
+        <!-- ============================
+             INSTALASI OTOMATIS
+        ============================= -->
+        <h2>3. Instalasi Otomatis — Install manual awal.bat ⭐</h2>
+        <p>Setelah prasyarat siap, jalankan file berikut dari root folder proyek:</p>
+
+        <div class="tool-card">
+            <h3>📁 Install manual awal.bat</h3>
+            <p><strong>Double-click</strong> file <code>Install manual awal.bat</code> di root folder. Script ini akan melakukan SEMUA langkah secara otomatis:</p>
+            <ol>
+                <li>✅ Verifikasi Node.js dan Flutter tersedia di sistem</li>
+                <li>✅ Cek keberadaan file <code>server/.env</code></li>
+                <li>✅ <code>npm install</code> di semua 4 proyek Node.js (server, client, admin_client, distributor_client)</li>
+                <li>✅ <code>flutter pub get</code> di semua 3 aplikasi mobile (mobile, mobile_buyer, mobile_driver)</li>
+                <li>✅ <code>npx prisma db push</code> — sinkronisasi skema ke PostgreSQL</li>
+                <li>✅ <code>npx prisma generate</code> — generate Prisma Client</li>
+                <li>✅ <code>node prisma/seed.js</code> — isi akun demo dan produk contoh</li>
+                <li>✅ <code>npm run seed:menus</code> — isi menu navigasi dashboard</li>
+                <li>✅ <code>npm run seed:ppob</code> — isi data produk PPOB</li>
+            </ol>
+            <p>Estimasi waktu: <strong>5–15 menit</strong> (tergantung kecepatan internet untuk download dependencies).</p>
+        </div>
+
+        <div class="alert alert-success">
+            ✅ <strong>Akun Demo Setelah Instalasi:</strong><br><br>
+            <table>
+                <thead><tr><th>Peran</th><th>Email</th><th>Password</th><th>Akses</th></tr></thead>
+                <tbody>
+                    <tr><td>Merchant</td><td><code>merchant@rana.com</code></td><td><code>password123</code></td><td>Dashboard Merchant (port 5173)</td></tr>
+                    <tr><td>Super Admin</td><td><code>super@rana.com</code></td><td><code>password123</code></td><td>Admin Panel (port 5174)</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <hr>
+
+        <!-- ============================
+             MENJALANKAN APLIKASI
+        ============================= -->
+        <h2>4. Menjalankan Aplikasi</h2>
+        <p>Setelah instalasi selesai, gunakan file-file berikut untuk menjalankan layanan:</p>
+
+        <div class="tool-card">
+            <h3>🚀 start_all.bat — Jalankan Semua Sekaligus (Direkomendasikan)</h3>
+            <p>Double-click <code>start_all.bat</code> untuk membuka 4 jendela terminal sekaligus:</p>
+            <table>
+                <thead><tr><th>Jendela</th><th>Layanan</th><th>URL</th></tr></thead>
+                <tbody>
+                    <tr><td>1</td><td>Backend API Server</td><td><code>http://localhost:4000</code></td></tr>
+                    <tr><td>2</td><td>Dashboard Merchant</td><td><code>http://localhost:5173</code></td></tr>
+                    <tr><td>3</td><td>Dashboard Admin</td><td><code>http://localhost:5174</code></td></tr>
+                    <tr><td>4</td><td>Dashboard Distributor</td><td><code>http://localhost:5175</code></td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="tool-card">
+            <h3>⚡ start_server.bat — Hanya Backend API</h3>
+            <p>Double-click <code>start_server.bat</code> jika hanya ingin menjalankan backend server (untuk testing API atau menjalankan mobile app saja).</p>
+            <p>Server berjalan di: <code>http://localhost:4000</code></p>
+        </div>
+
+        <hr>
+
+        <!-- ============================
+             APLIKASI MOBILE
+        ============================= -->
+        <h2>5. Menjalankan Aplikasi Mobile (Flutter)</h2>
+        <p>Pastikan backend server sudah berjalan sebelum menjalankan aplikasi mobile.</p>
+
+        <h3>Konfigurasi Endpoint API</h3>
+        <p>Edit file <code>lib/config/api_config.dart</code> di setiap folder mobile sesuai cara penggunaan:</p>
+
+        <p><strong>Opsi A — Emulator Android (Android Studio):</strong> Tidak perlu konfigurasi. App otomatis menggunakan <code>http://10.0.2.2:4000</code>.</p>
+
+        <p><strong>Opsi B — HP Fisik (WiFi yang sama):</strong></p>
+        <ol>
+            <li>Cek IP laptop: Buka CMD → ketik <code>ipconfig</code> → cari <strong>IPv4 Address</strong></li>
+            <li>Edit di setiap folder mobile:</li>
+        </ol>
+        <pre><code>// lib/config/api_config.dart
+static const String _localIp = '192.168.1.8'; // IP Laptop Anda</code></pre>
+        <div class="alert alert-warning">⚠️ Tambahkan Inbound Rule di Windows Firewall untuk port 4000 jika menggunakan HP fisik.</div>
+
+        <div class="tool-card">
+            <h3>📱 Menjalankan Setiap App</h3>
+            <pre><code># Rana Seller (Kasir Merchant)
+cd mobile
+flutter run
+
+# Rana Buyer (Marketplace Pembeli)
+cd mobile_buyer
+flutter run
+
+# Rana Driver (Kurir)
+cd mobile_driver
+flutter run</code></pre>
+        </div>
+
+        <hr>
+
+        <!-- ============================
+             SEMUA SHORTCUT .BAT
+        ============================= -->
+        <h2>6. Referensi Lengkap File Shortcut (.bat)</h2>
+        <p>Semua file shortcut tersedia di root folder proyek. Double-click untuk menjalankan.</p>
+
+        <table>
+            <thead>
+                <tr><th>File</th><th>Fungsi</th><th>Kapan Digunakan</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>Install manual awal.bat</code> ⭐</td>
+                    <td>Setup lengkap: install semua dependensi + prisma + seeding</td>
+                    <td><strong>Pertama kali setup</strong> di komputer baru</td>
+                </tr>
+                <tr>
+                    <td><code>start_all.bat</code></td>
+                    <td>Jalankan server + 3 dashboard web di terminal terpisah</td>
+                    <td>Setiap kali mau mulai development</td>
+                </tr>
+                <tr>
+                    <td><code>start_server.bat</code></td>
+                    <td>Jalankan hanya backend API di port 4000</td>
+                    <td>Testing API atau hanya jalankan mobile app</td>
+                </tr>
+                <tr>
+                    <td><code>seed_db.bat</code></td>
+                    <td>Isi ulang data demo ke database (akun + menu + PPOB)</td>
+                    <td>Jika perlu reset data demo tanpa reinstall semua</td>
+                </tr>
+                <tr>
+                    <td><code>update_db.bat</code></td>
+                    <td>Sinkronisasi skema Prisma ke database + generate client</td>
+                    <td>Setiap kali ada perubahan di <code>schema.prisma</code></td>
+                </tr>
+                <tr>
+                    <td><code>build_apk.bat</code></td>
+                    <td>Build APK Release (Merchant atau Buyer, pilih interaktif)</td>
+                    <td>Saat ingin deploy APK ke HP tanpa Android Studio</td>
+                </tr>
+                <tr>
+                    <td><code>run_test.bat</code></td>
+                    <td>Jalankan unit test di sisi server Node.js</td>
+                    <td>Sebelum commit perubahan besar</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <hr>
+
+        <!-- ============================
+             ALUR KERJA HARIAN
+        ============================= -->
+        <h2>7. Alur Kerja Harian (Setelah Instalasi)</h2>
+
+        <div class="alert alert-info">
+            📋 <strong>Setup pertama kali (sekali saja):</strong>
+            <ol>
+                <li>Edit <code>server/.env</code> → sesuaikan password PostgreSQL</li>
+                <li>Buat database: <code>CREATE DATABASE rana_pos;</code> di pgAdmin</li>
+                <li>Double-click <code>Install manual awal.bat</code> → tunggu selesai</li>
+            </ol>
+        </div>
+
+        <div class="alert alert-success">
+            🔁 <strong>Setiap hari mau development:</strong>
+            <ol>
+                <li>Double-click <code>start_all.bat</code> → buka semua layanan</li>
+                <li>Buka browser di <code>http://localhost:5173</code> (Dashboard Merchant)</li>
+                <li>Atau jalankan <code>flutter run</code> di folder aplikasi mobile yang ingin dikerjakan</li>
+            </ol>
+        </div>
+
+        <div class="alert alert-warning">
+            🔄 <strong>Setelah pull perubahan dari Git (jika ada update <code>schema.prisma</code>):</strong>
+            <ol>
+                <li>Double-click <code>update_db.bat</code> → sinkronisasi schema</li>
+                <li>Restart server</li>
+            </ol>
+        </div>
+
+        <hr>
+
+        <!-- ============================
+             TROUBLESHOOTING
+        ============================= -->
+        <h2>8. Troubleshooting</h2>
+
+        <h3>❌ Error: "Cannot find module 'mongoose'"</h3>
+        <p><strong>Penyebab:</strong> File <code>server/src/models/contact.js</code> mengandung kode Mongoose (untuk MongoDB) yang tersisa dari versi lama. Proyek ini 100% menggunakan PostgreSQL + Prisma.</p>
+        <p><strong>Solusi:</strong> <strong>Jangan</strong> install mongoose. Kode sudah diperbaiki. Jalankan:</p>
+        <pre><code>cd server
+npx prisma db push
+npx prisma generate</code></pre>
+        <div class="alert alert-warning">⚠️ Jangan jalankan <code>npm install mongoose</code> — itu bukan solusinya.</div>
+
+        <h3>❌ Error: "Authentication failed" (P1000) — Database</h3>
+        <p><strong>Penyebab:</strong> Password di <code>server/.env</code> salah atau ada prefix <code>PASSWORD_</code> yang tersisa.</p>
+        <pre><code># ❌ SALAH
+DATABASE_URL="postgresql://postgres:PASSWORD_simpledark67@..."
+
+# ✅ BENAR
+DATABASE_URL="postgresql://postgres:simpledark67@..."</code></pre>
+
+        <h3>❌ Error: "npx cannot be loaded" / "running scripts is disabled" (PowerShell)</h3>
+        <p><strong>Penyebab:</strong> Windows PowerShell memblokir eksekusi script npm/npx karena Execution Policy = <code>Restricted</code>.</p>
+        <p><strong>Solusi — Pilih salah satu:</strong></p>
+        <p><strong>Opsi A (Termudah):</strong> Gunakan <strong>CMD</strong> bukan PowerShell.</p>
+        <pre><code>Win + R → ketik "cmd" → Enter
+cd C:\Riyan\projek\rana-main\server
+npx prisma db push</code></pre>
+        <p><strong>Opsi B (Permanen):</strong> Buka PowerShell sebagai Administrator, jalankan:</p>
+        <pre><code>Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser</code></pre>
+        <p>Ketik <code>Y</code> lalu Enter. Tutup dan buka kembali terminal.</p>
+        <div class="alert alert-info">💡 <code>RemoteSigned</code> aman — script lokal (npm, npx) bisa berjalan bebas, script dari internet tetap butuh verifikasi.</div>
+        <p><strong>Opsi C (Sekali pakai):</strong></p>
+        <pre><code>powershell -ExecutionPolicy Bypass -Command "npx prisma db push"</code></pre>
+
+        <h3>❌ Error: "Can't reach database server at localhost"</h3>
+        <p><strong>Solusi:</strong></p>
+        <ul>
+            <li>Tekan <kbd>Win + R</kbd> → ketik <code>services.msc</code> → cari <strong>postgresql-x64-XX</strong> → klik Start</li>
+            <li>Atau buka pgAdmin dan pastikan server PostgreSQL terhubung</li>
+        </ul>
+
+        <h3>❌ Error: "The table does not exist" saat jalankan server</h3>
+        <p><strong>Solusi:</strong> Schema belum disinkronkan. Double-click <code>update_db.bat</code> atau jalankan:</p>
+        <pre><code>cd server
+npx prisma db push</code></pre>
+
+        <h3>❌ Error: "Port 4000 is already in use"</h3>
+        <p><strong>Solusi:</strong> Ubah <code>PORT=4001</code> di <code>server/.env</code>, lalu update juga file <code>api_config.dart</code> di semua folder mobile.</p>
+
+        <h3>❌ Aplikasi Mobile: Network Error / Connection Refused</h3>
+        <ul>
+            <li>Pastikan server berjalan: akses <code>http://localhost:4000</code> di browser laptop → harus ada response JSON</li>
+            <li>Jika HP fisik: pastikan IP di <code>api_config.dart</code> sudah benar</li>
+            <li>Tambahkan Inbound Rule di Windows Firewall untuk port 4000</li>
+            <li>Coba akses dari browser HP: <code>http://192.168.x.x:4000</code></li>
+        </ul>
+
+        <h3>❌ flutter pub get Gagal</h3>
+        <p><strong>Solusi:</strong> Jalankan <code>flutter doctor</code> untuk diagnosa. Pastikan Android SDK dan variabel PATH Flutter sudah dikonfigurasi dengan benar.</p>
+
+        <h3>❌ Install manual awal.bat tidak berjalan / langsung tutup</h3>
+        <p><strong>Penyebab:</strong> Script dijalankan dari lokasi yang bukan root folder proyek, atau ada error di awal yang menyebabkan exit.</p>
+        <p><strong>Solusi:</strong> Klik kanan file → <strong>Run as administrator</strong>. Atau buka CMD, navigasi ke folder proyek, lalu jalankan manual:</p>
+        <pre><code>cd C:\Riyan\projek\rana-main
+"Install manual awal.bat"</code></pre>
+
+        <footer>
+            &copy; 2026 Rana Market Team. All rights reserved.
+        </footer>
+    </main>
+    <script src="js/main.js"></script>
+</body>
+</html>

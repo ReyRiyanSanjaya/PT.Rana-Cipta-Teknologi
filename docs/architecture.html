@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arsitektur Sistem - Dokumentasi Rana Market</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <a href="index.html" class="brand">Rana Market 🐸</a>
+        <ul class="nav-links">
+            <li class="nav-item"><a href="index.html" class="nav-link">🏠 Pengantar</a></li>
+            <li class="nav-item"><a href="installation.html" class="nav-link">🛠️ Instalasi Lokal</a></li>
+            <li class="nav-item"><a href="architecture.html" class="nav-link active">🏗️ Arsitektur Sistem</a></li>
+            <li class="nav-item"><a href="database-schema.html" class="nav-link">💾 Database Schema</a></li>
+            <li class="nav-item"><a href="security.html" class="nav-link">🔒 Keamanan</a></li>
+            <li class="nav-item"><a href="server-deployment.html" class="nav-link">🖥️ Server Deployment</a></li>
+            <li class="nav-item"><a href="mobile-deployment.html" class="nav-link">📱 Mobile Deployment</a></li>
+            <li class="nav-item"><a href="api-integration.html" class="nav-link">🔌 Integrasi API</a></li>
+            <li class="nav-item"><a href="cicd.html" class="nav-link">🚀 CI/CD Pipeline</a></li>
+            <li class="nav-item"><a href="tools.html" class="nav-link">🛠️ Tools & Utils</a></li>
+            <li class="nav-item"><a href="user-manual.html" class="nav-link">📖 Panduan Admin</a></li>
+            <li class="nav-item"><a href="maintenance.html" class="nav-link">🛠️ Maintenance & Ops</a></li>
+            <li class="nav-item"><a href="troubleshooting.html" class="nav-link">❓ Troubleshooting</a></li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <h1>Arsitektur Sistem Rana Market</h1>
+        <p>Rana Market dibangun dengan arsitektur <strong>Multi-Tenant SaaS (Software as a Service)</strong> yang mendukung ekosistem hybrid antara Point of Sales (POS) offline-first dan Marketplace online.</p>
+
+        <div class="alert alert-info">
+            <strong>Versi Dokumen:</strong> 1.2.0<br>
+            <strong>Terakhir Diupdate:</strong> 2026-03-31
+        </div>
+
+        <h2>1. Gambaran Umum Arsitektur</h2>
+        <p>Sistem ini memisahkan tanggung jawab antara penyimpanan data terpusat (Cloud) dan operasional harian di lapangan (Edge/Mobile). Arsitektur ini dirancang untuk skalabilitas tinggi dan keandalan operasional UMKM.</p>
+        
+        <div class="tool-card">
+            <h3>Konsep Utama:</h3>
+            <ul>
+                <li><strong>Multi-Tenancy:</strong> Setiap bisnis (Tenant) memiliki data yang terisolasi secara logis menggunakan <code>tenantId</code> di setiap tabel database.</li>
+                <li><strong>Offline-First POS:</strong> Aplikasi kasir dapat bekerja tanpa internet dan akan melakukan sinkronisasi otomatis saat koneksi tersedia.</li>
+                <li><strong>Hybrid Ecosystem:</strong> Integrasi antara manajemen stok internal (POS) dengan etalase publik (Marketplace).</li>
+            </ul>
+        </div>
+
+        <h2>2. Komponen Sistem (Sub-Proyek)</h2>
+        <p>Ekosistem Rana Market terdiri dari 7 komponen utama yang saling terhubung:</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Komponen</th>
+                    <th>Platform</th>
+                    <th>Fungsi Utama</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Server API</strong></td>
+                    <td>Node.js/Express</td>
+                    <td>Pusat logika bisnis, autentikasi, sinkronisasi data, dan integrasi pihak ketiga.</td>
+                </tr>
+                <tr>
+                    <td><strong>Admin Dashboard</strong></td>
+                    <td>Web (React)</td>
+                    <td>Panel kontrol untuk Super Admin mengelola seluruh tenant, user, dan sistem global.</td>
+                </tr>
+                <tr>
+                    <td><strong>Merchant Dashboard</strong></td>
+                    <td>Web (React)</td>
+                    <td>Panel manajemen toko untuk pemilik (Laporan, Stok, Pengaturan Toko).</td>
+                </tr>
+                <tr>
+                    <td><strong>Distributor Portal</strong></td>
+                    <td>Web (React/TS)</td>
+                    <td>Platform untuk supplier mengelola produk grosir dan pesanan kulakan.</td>
+                </tr>
+                <tr>
+                    <td><strong>Seller App</strong></td>
+                    <td>Mobile (Flutter)</td>
+                    <td>Aplikasi kasir (POS) utama dengan fitur offline-first, cetak struk, dan PPOB.</td>
+                </tr>
+                <tr>
+                    <td><strong>Buyer App</strong></td>
+                    <td>Mobile (Flutter)</td>
+                    <td>Aplikasi marketplace untuk pelanggan belanja dari toko-toko terdekat.</td>
+                </tr>
+                <tr>
+                    <td><strong>Driver App</strong></td>
+                    <td>Mobile (Flutter)</td>
+                    <td>Aplikasi khusus kurir untuk manajemen pengantaran pesanan marketplace.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>3. Tech Stack</h2>
+        <ul>
+            <li><strong>Backend:</strong> Node.js, Express.js, Prisma ORM.</li>
+            <li><strong>Database:</strong> PostgreSQL (Penyimpanan Utama).</li>
+            <li><strong>Frontend Web:</strong> React.js, Vite, Tailwind CSS.</li>
+            <li><strong>Mobile:</strong> Flutter (Dart), Provider/Bloc untuk State Management.</li>
+            <li><strong>Infrastructure:</strong> Nginx (Reverse Proxy), PM2 (Process Manager), VPS Ubuntu.</li>
+            <li><strong>Integrasi:</strong> Digiflazz (PPOB), Fonnte (WhatsApp Gateway), Socket.io (Real-time).</li>
+        </ul>
+
+        <h2>4. Alur Data & Komunikasi</h2>
+        
+        <h3>A. Sinkronisasi POS (Offline-to-Cloud)</h3>
+        <p>Aplikasi Seller menyimpan transaksi di database lokal (SQLite) terlebih dahulu. Background service akan mengirimkan data dalam bentuk batch ke endpoint <code>/api/sync/upload</code> saat internet tersedia. Server kemudian memproses data tersebut secara asinkron untuk menjaga performa.</p>
+
+        <h3>B. Integrasi B2B (Kulakan)</h3>
+        <p>Merchant dapat melihat katalog dari <strong>Distributor Portal</strong> melalui menu Kulakan di aplikasi Seller. Pesanan yang dibuat akan masuk ke dashboard Distributor dan mengurangi stok grosir secara real-time.</p>
+
+        <h3>C. Real-time Notifications</h3>
+        <p>Menggunakan Socket.io untuk mengirimkan notifikasi instan (misal: pesanan baru masuk) dari server ke aplikasi Mobile atau Dashboard Web tanpa perlu refresh halaman.</p>
+
+        <h2>5. Struktur Folder Proyek</h2>
+        <div class="code-block">
+            <pre>
+rana/
+├── server/               # API Gateway & Logic
+├── admin_client/         # Super Admin Panel
+├── client/               # Merchant Panel
+├── distributor_client/   # Supplier Panel
+├── mobile/               # Seller/POS App
+├── mobile_buyer/         # Customer App
+├── mobile_driver/        # Delivery App
+└── docs/                 # Dokumentasi Teknis
+            </pre>
+        </div>
+
+        <footer>
+            &copy; 2026 Rana Market Team. All rights reserved.
+        </footer>
+    </main>
+    <script src="js/main.js"></script>
+</body>
+</html>

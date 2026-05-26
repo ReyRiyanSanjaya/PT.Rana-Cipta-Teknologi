@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Deployment - Dokumentasi Rana Market</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <a href="index.html" class="brand">Rana Market 🐸</a>
+        <ul class="nav-links">
+            <li class="nav-item"><a href="index.html" class="nav-link">🏠 Pengantar</a></li>
+            <li class="nav-item"><a href="installation.html" class="nav-link">🛠️ Instalasi Lokal</a></li>
+            <li class="nav-item"><a href="architecture.html" class="nav-link">🏗️ Arsitektur Sistem</a></li>
+            <li class="nav-item"><a href="database-schema.html" class="nav-link">💾 Database Schema</a></li>
+            <li class="nav-item"><a href="security.html" class="nav-link">🔒 Keamanan</a></li>
+            <li class="nav-item"><a href="server-deployment.html" class="nav-link">🖥️ Server Deployment</a></li>
+            <li class="nav-item"><a href="mobile-deployment.html" class="nav-link active">📱 Mobile Deployment</a></li>
+            <li class="nav-item"><a href="api-integration.html" class="nav-link">🔌 Integrasi API</a></li>
+            <li class="nav-item"><a href="cicd.html" class="nav-link">🚀 CI/CD Pipeline</a></li>
+            <li class="nav-item"><a href="tools.html" class="nav-link">🛠️ Tools & Utils</a></li>
+            <li class="nav-item"><a href="user-manual.html" class="nav-link">📖 Panduan Admin</a></li>
+            <li class="nav-item"><a href="maintenance.html" class="nav-link">🛠️ Maintenance & Ops</a></li>
+            <li class="nav-item"><a href="troubleshooting.html" class="nav-link">❓ Troubleshooting</a></li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <h1>Panduan Deployment Mobile Full Komplit</h1>
+        <p>Langkah-langkah untuk mem-build dan merilis 3 aplikasi mobile Flutter (Seller, Buyer, Driver) ke Google Play Store.</p>
+
+        <div class="alert alert-info">
+            <strong>Versi Dokumen:</strong> 1.2.0<br>
+            <strong>Terakhir Diupdate:</strong> 2026-03-31
+        </div>
+
+        <h2>1. Daftar Aplikasi Mobile</h2>
+        <p>Ekosistem Rana memiliki 3 aplikasi mobile terpisah:</p>
+        <ul>
+            <li><strong>Rana Seller (POS):</strong> Folder <code>mobile/</code>. Digunakan merchant untuk kasir dan stok.</li>
+            <li><strong>Rana Buyer (Marketplace):</strong> Folder <code>mobile_buyer/</code>. Digunakan pelanggan untuk belanja.</li>
+            <li><strong>Rana Driver (Delivery):</strong> Folder <code>mobile_driver/</code>. Digunakan kurir untuk pengantaran.</li>
+        </ul>
+
+        <hr>
+
+        <h2>2. Persiapan Produksi (Wajib)</h2>
+        
+        <h3>A. Konfigurasi URL API</h3>
+        <p>Pastikan aplikasi mengarah ke server produksi Anda. Edit file <code>lib/config/api_config.dart</code> di setiap folder aplikasi:</p>
+        <pre><code>// Ganti dengan URL domain API Anda
+static const String _prodUrl = 'https://api.domainanda.com/api';</code></pre>
+
+        <h3>B. Update Nama & Package ID</h3>
+        <p>Sesuaikan identitas aplikasi sebelum di-publish:</p>
+        <ul>
+            <li><strong>Nama Aplikasi:</strong> Edit <code>android/app/src/main/AndroidManifest.xml</code> pada bagian <code>android:label</code>.</li>
+            <li><strong>Package ID:</strong> Edit <code>android/app/build.gradle</code> pada bagian <code>applicationId</code> (misal: <code>com.ranamarket.seller</code>).</li>
+            <li><strong>App Icon:</strong> Ganti icon di <code>assets/icon/</code> lalu jalankan:
+                <pre><code>dart run flutter_launcher_icons</code></pre>
+            </li>
+        </ul>
+
+        <hr>
+
+        <h2>3. Penandatanganan Aplikasi (Signing)</h2>
+        <p>Setiap aplikasi membutuhkan <strong>Keystore</strong> yang berbeda atau sama (tergantung kebijakan Anda) untuk dirilis ke Play Store.</p>
+
+        <h3>Langkah Membuat Keystore:</h3>
+        <pre><code># Jalankan di terminal folder aplikasi masing-masing
+keytool -genkey -v -keystore upload-keystore.jks -storetype JKS -keyalg RSA -keysize 2048 -validity 10000 -alias upload</code></pre>
+
+        <h3>Konfigurasi key.properties:</h3>
+        <p>Buat file <code>android/key.properties</code> di setiap folder aplikasi:</p>
+        <pre><code>storePassword=password_keystore_anda
+keyPassword=password_alias_anda
+keyAlias=upload
+storeFile=../../upload-keystore.jks</code></pre>
+
+        <hr>
+
+        <h2>4. Proses Build (Android)</h2>
+        <p>Anda bisa memilih build manual via CLI atau otomatis via skrip batch.</p>
+
+        <div class="tool-card">
+            <h3>Metode A: Skrip Otomatis (Windows Only)</h3>
+            <p>Gunakan file <code>build_apk.bat</code> di root folder untuk mem-build aplikasi Seller dan Buyer secara cepat.</p>
+            <ol>
+                <li>Double click <code>build_apk.bat</code>.</li>
+                <li>Pilih aplikasi yang ingin di-build (1=Seller, 2=Buyer, 3=Both).</li>
+                <li>Hasil APK akan otomatis disalin ke folder <code>root/builds/</code>.</li>
+            </ol>
+        </div>
+
+        <div class="tool-card">
+            <h3>Metode B: Manual via Terminal</h3>
+            <p>Jalankan perintah berikut di folder aplikasi masing-masing:</p>
+            <pre><code>flutter clean
+flutter pub get
+# Untuk Google Play Store (App Bundle)
+flutter build appbundle --release
+# Untuk install langsung (APK)
+flutter build apk --release</code></pre>
+        </div>
+
+        <hr>
+
+        <h2>5. Checklist Sebelum Rilis</h2>
+        <ul class="checklist">
+            <li><input type="checkbox" checked disabled> <strong>API Config:</strong> URL sudah menunjuk ke server produksi HTTPS.</li>
+            <li><input type="checkbox" checked disabled> <strong>Version Code:</strong> Sudah dinaikkan di <code>pubspec.yaml</code> (misal: <code>version: 1.0.1+2</code>).</li>
+            <li><input type="checkbox" checked disabled> <strong>Permission:</strong> Izin Kamera, Lokasi, dan Storage sudah aktif di <code>AndroidManifest.xml</code>.</li>
+            <li><input type="checkbox" checked disabled> <strong>ProGuard:</strong> Pastikan <code>minifyEnabled</code> aktif di <code>build.gradle</code> untuk mengecilkan ukuran APK.</li>
+        </ul>
+
+        <hr>
+
+        <h2>6. Publikasi ke Google Play Console</h2>
+        <ol>
+            <li>Buka <a href="https://play.google.com/console">Google Play Console</a>.</li>
+            <li>Pilih <strong>Create App</strong>.</li>
+            <li>Masuk ke menu <strong>Production</strong> > <strong>Create new release</strong>.</li>
+            <li>Upload file <code>.aab</code> yang ada di folder <code>build/app/outputs/bundle/release/</code>.</li>
+            <li>Lengkapi Store Listing (Deskripsi, Screenshot, Icon).</li>
+            <li>Kirim untuk peninjauan (Review).</li>
+        </ol>
+
+        <footer>
+            &copy; 2026 Rana Market Team. All rights reserved.
+        </footer>
+    </main>
+    <script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Deployment - Dokumentasi Rana Market</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <a href="index.html" class="brand">Rana Market 🐸</a>
+        <ul class="nav-links">
+            <li class="nav-item"><a href="index.html" class="nav-link">🏠 Pengantar</a></li>
+            <li class="nav-item"><a href="installation.html" class="nav-link">🛠️ Instalasi Lokal</a></li>
+            <li class="nav-item"><a href="architecture.html" class="nav-link">🏗️ Arsitektur Sistem</a></li>
+            <li class="nav-item"><a href="database-schema.html" class="nav-link">💾 Database Schema</a></li>
+            <li class="nav-item"><a href="security.html" class="nav-link">🔒 Keamanan</a></li>
+            <li class="nav-item"><a href="server-deployment.html" class="nav-link active">🖥️ Server Deployment</a></li>
+            <li class="nav-item"><a href="mobile-deployment.html" class="nav-link">📱 Mobile Deployment</a></li>
+            <li class="nav-item"><a href="api-integration.html" class="nav-link">🔌 Integrasi API</a></li>
+            <li class="nav-item"><a href="cicd.html" class="nav-link">🚀 CI/CD Pipeline</a></li>
+            <li class="nav-item"><a href="tools.html" class="nav-link">🛠️ Tools & Utils</a></li>
+            <li class="nav-item"><a href="user-manual.html" class="nav-link">📖 Panduan Admin</a></li>
+            <li class="nav-item"><a href="maintenance.html" class="nav-link">🛠️ Maintenance & Ops</a></li>
+            <li class="nav-item"><a href="troubleshooting.html" class="nav-link">❓ Troubleshooting</a></li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <h1>Panduan Deployment Server Full Komplit</h1>
+        <p>Panduan langkah demi langkah untuk menyebarkan (deploy) seluruh ekosistem Rana Market ke lingkungan produksi menggunakan VPS (Ubuntu) dan layanan hosting statis.</p>
+
+        <div class="alert alert-info">
+            <strong>Versi Dokumen:</strong> 1.2.0<br>
+            <strong>Terakhir Diupdate:</strong> 2026-03-31
+        </div>
+
+        <h2>1. Prasyarat Produksi</h2>
+        <ul>
+            <li><strong>VPS:</strong> Minimum 2 vCPU, 4GB RAM (Rekomendasi: Ubuntu 22.04 LTS).</li>
+            <li><strong>Domain:</strong> 1 Domain utama (misal: <code>ranamarket.com</code>) dan Subdomain (misal: <code>api.ranamarket.com</code>).</li>
+            <li><strong>SSL:</strong> Sertifikat gratis via Let's Encrypt (Certbot).</li>
+        </ul>
+
+        <hr>
+
+        <h2>2. Persiapan Lingkungan VPS</h2>
+        <p>Login ke VPS Anda via SSH dan jalankan perintah berikut:</p>
+        <pre><code># 1. Update paket sistem
+sudo apt update && sudo apt upgrade -y
+
+# 2. Install Node.js (Versi 20 LTS)
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# 3. Install Database (PostgreSQL)
+sudo apt install -y postgresql postgresql-contrib
+
+# 4. Install Process Manager & Nginx
+sudo npm install -g pm2
+sudo apt install -y nginx git certbot python3-certbot-nginx</code></pre>
+
+        <hr>
+
+        <h2>3. Konfigurasi Database Produksi</h2>
+        <p>Gunakan user terpisah untuk aplikasi agar lebih aman:</p>
+        <pre><code>sudo -i -u postgres
+psql
+
+# Di dalam prompt SQL:
+CREATE DATABASE rana_market;
+CREATE USER rana_admin WITH ENCRYPTED PASSWORD 'password_sangat_rahasia';
+GRANT ALL PRIVILEGES ON DATABASE rana_market TO rana_admin;
+ALTER DATABASE rana_market OWNER TO rana_admin;
+\q
+exit</code></pre>
+
+        <hr>
+
+        <h2>4. Deployment Backend API (Server)</h2>
+        <p>Pusatkan seluruh logika di folder <code>server/</code>.</p>
+
+        <h3>A. Upload & Instalasi</h3>
+        <pre><code>cd /var/www
+sudo git clone https://github.com/username/rana-project.git
+cd rana-project/server
+npm install</code></pre>
+
+        <h3>B. Konfigurasi Environment (.env)</h3>
+        <p>Buat file <code>.env</code> produksi:</p>
+        <pre><code>PORT=4000
+NODE_ENV=production
+
+# Database
+DATABASE_URL="postgresql://rana_admin:password_sangat_rahasia@localhost:5432/rana_market?schema=public"
+
+# Security
+JWT_SECRET="generate_karakter_acak_panjang"
+
+# Layanan Pihak Ketiga (Ubah ke versi Produksi)
+DIGIFLAZZ_USERNAME="user_prod"
+DIGIFLAZZ_API_KEY="key_prod"
+WA_API_KEY="wa_key_prod"</code></pre>
+
+        <h3>C. Sinkronisasi Skema & Seeding</h3>
+        <pre><code>npx prisma generate
+npx prisma migrate deploy
+npm run seed:menus
+npm run seed:ppob</code></pre>
+
+        <h3>D. Menjalankan dengan PM2 (Cluster Mode)</h3>
+        <p>Gunakan <code>ecosystem.config.js</code> untuk mengaktifkan mode cluster agar aplikasi lebih stabil.</p>
+        <pre><code>pm2 start ecosystem.config.js --env production
+pm2 save
+pm2 startup</code></pre>
+
+        <hr>
+
+        <h2>5. Konfigurasi Reverse Proxy (Nginx)</h2>
+        <p>Nginx bertugas meneruskan trafik dari internet (port 80/443) ke Node.js (port 4000) dan menangani WebSockets (Socket.io).</p>
+        <pre><code>sudo nano /etc/nginx/sites-available/rana-api</code></pre>
+        
+        <p>Isi dengan konfigurasi berikut (sesuaikan <code>server_name</code>):</p>
+        <pre><code>server {
+    listen 80;
+    server_name api.ranamarket.com;
+
+    location / {
+        proxy_pass http://localhost:4000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    # Untuk upload gambar produk yang besar
+    client_max_body_size 50M;
+}</code></pre>
+
+        <p>Aktifkan konfigurasi dan install SSL:</p>
+        <pre><code>sudo ln -s /etc/nginx/sites-available/rana-api /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+
+# Install SSL Let's Encrypt
+sudo certbot --nginx -d api.ranamarket.com</code></pre>
+
+        <hr>
+
+        <h2>6. Deployment Dashboard Web (Front-end)</h2>
+        <p>Terdapat 3 dashboard (Admin, Merchant, Distributor). Disarankan menggunakan layanan seperti <strong>Vercel</strong> atau <strong>Netlify</strong> untuk performa terbaik dan integrasi CI/CD otomatis.</p>
+
+        <h3>Langkah Deployment Front-end:</h3>
+        <ol>
+            <li>Hubungkan repositori GitHub ke Vercel.</li>
+            <li>Tambahkan 3 project baru untuk folder: <code>admin_client</code>, <code>client</code>, dan <code>distributor_client</code>.</li>
+            <li>Atur <strong>Environment Variable</strong> di setiap project Vercel:
+                <pre><code>VITE_API_URL=https://api.ranamarket.com/api</code></pre>
+            </li>
+            <li>Vercel akan secara otomatis melakukan build (<code>npm run build</code>) dan deploy.</li>
+        </ol>
+
+        <hr>
+
+        <h2>7. Go-Live Checklist</h2>
+        <ul class="checklist">
+            <li><input type="checkbox" checked disabled> <strong>Environment:</strong> Pastikan <code>NODE_ENV=production</code> aktif.</li>
+            <li><input type="checkbox" checked disabled> <strong>Firewall:</strong> Aktifkan UFW (Hanya port 22, 80, 443 yang terbuka).</li>
+            <li><input type="checkbox" checked disabled> <strong>Monitoring:</strong> Cek PM2 logs secara berkala (<code>pm2 logs</code>).</li>
+            <li><input type="checkbox" checked disabled> <strong>Backup:</strong> Atur cronjob untuk backup database harian.</li>
+            <li><input type="checkbox" checked disabled> <strong>API Keys:</strong> Pastikan semua kunci Digiflazz/WA menggunakan versi Production.</li>
+        </ul>
+
+        <footer>
+            &copy; 2026 Rana Market Team. All rights reserved.
+        </footer>
+    </main>
+    <script src="js/main.js"></script>
+</body>
+</html>

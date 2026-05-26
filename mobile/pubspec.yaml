@@ -1,0 +1,91 @@
+name: rana_merchant
+description: Aplikasi Kelola Toko & Pesanan UMKM.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # State Management
+  provider: ^6.0.5
+  
+  # Networking
+  dio: ^5.3.3
+  
+  # Local Storage (Offline First)
+  sqflite: ^2.3.0
+  path: ^1.8.3
+  shared_preferences: ^2.5.4
+  sqflite_common_ffi: ^2.3.0
+  sqflite_common_ffi_web: ^0.4.0
+
+  # Audio
+  audioplayers: ^5.1.0
+
+  
+  # UI Components
+  google_fonts: ^6.1.0
+  intl: ^0.20.2
+  lucide_icons: ^0.257.0 # Or similar icon pack
+  fl_chart: ^0.68.0 # For Reporting Charts
+  url_launcher: ^6.3.2
+  mobile_scanner: ^3.5.0 # [NEW] For QR Scanning
+  image_picker: ^1.2.1 # [NEW] For Wallet Proof
+  blue_thermal_printer: ^1.2.3 # [NEW] Thermal Printer
+  permission_handler: ^11.0.1 # [NEW] Bluetooth Permissions
+  screenshot: ^3.0.0 # [FIX] Upgrade for Flutter 3.19+
+  share_plus: ^7.1.0 # [NEW] Share File
+  package_info_plus: ^9.0.0 # [NEW] App Version Info
+  path_provider: ^2.1.5 # [NEW] Temp Storage
+  barcode: ^2.2.4 # [NEW] Barcode generator
+  barcode_widget: ^2.0.3 # [NEW] Flutter widget for barcode
+  emoji_picker_flutter: ^1.6.2 # [NEW] Emoji picker for chat
+
+  
+  # Background Sync
+  workmanager: ^0.7.0
+  
+  # UUID
+  uuid: ^4.2.1
+  geolocator: ^10.1.0
+  geocoding: ^2.1.1
+  flutter_map: ^8.0.0
+  flutter_map_dragmarker: ^8.0.3
+  latlong2: ^0.9.1
+  flutter_animate: ^4.5.2
+  animations: ^2.1.0
+  lottie: ^3.1.0
+  flutter_local_notifications: ^17.0.0
+  socket_io_client: ^3.1.3
+  timezone: ^0.9.4
+  http_parser: ^4.0.2
+  flame: ^1.11.0
+  speech_to_text: ^7.3.0
+  local_auth: ^3.0.1
+  pdf: ^3.11.3
+  open_file: ^3.5.11
+  wakelock_plus: ^1.4.0
+  google_mlkit_text_recognition: ^0.15.1
+  flutter_blue_plus: ^2.2.1
+  auto_size_text: ^3.0.0
+  confetti: ^0.8.0
+  shimmer: ^3.0.0
+  flutter_tts: ^4.2.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+dependency_overrides:
+  path_provider_android: ^2.2.22
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/lottie/
+    - assets/sounds/

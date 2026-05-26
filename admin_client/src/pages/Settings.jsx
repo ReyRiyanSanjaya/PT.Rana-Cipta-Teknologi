@@ -1,0 +1,849 @@
+import React, { useEffect, useState } from 'react';
+import api from '../api';
+import { Save, AlertCircle, Truck, Trash2, Star } from 'lucide-react';
+import Card from '../components/ui/Card';
+import Input from '../components/ui/Input';
+import Button from '../components/ui/Button';
+
+const Settings = () => {
+    const [settings, setSettings] = useState({
+        PLATFORM_QRIS_URL: '',
+        BANK_NAME: 'BCA',
+        BANK_ACCOUNT_NUMBER: '8735089123',
+        BANK_ACCOUNT_NAME: 'PT RANA TEKNOLOGI INDONESIA',
+        PLATFORM_FEE_PERCENTAGE: '',
+        DIGIFLAZZ_USERNAME: '',
+        DIGIFLAZZ_MODE: 'production',
+        DIGIFLAZZ_BASE_URL: '',
+        DIGIFLAZZ_MARKUP_FLAT: '0',
+        DIGIFLAZZ_MARKUP_PERCENT: '0',
+        DIGIFLAZZ_API_KEY: '',
+        DIGIFLAZZ_API_KEY_IS_SET: 'false',
+        DIGIFLAZZ_WEBHOOK_SECRET: '',
+        DIGIFLAZZ_WEBHOOK_SECRET_IS_SET: 'false',
+        WHOLESALE_SHIPPING_COST_PER_KM: '3000',
+        WHOLESALE_PAYMENT_METHODS: 'Transfer Bank (BCA),Transfer Bank (Mandiri),Bayar di Tempat (COD)',
+        DEFAULT_LANGUAGE: 'id_ID',
+        ENABLE_SIGNUP: 'true',
+        SUPPORT_WHATSAPP_NUMBER: '+6281234567890',
+        COMPANY_LOGO_URL: ''
+    });
+    const [loading, setLoading] = useState(false);
+    const [digiflazzApiKeyInput, setDigiflazzApiKeyInput] = useState('');
+    const [digiflazzWebhookSecretInput, setDigiflazzWebhookSecretInput] = useState('');
+    const [fees, setFees] = useState({
+        buyerFee: '0',
+        buyerFeeType: 'FLAT',
+        buyerFeeCapMin: '',
+        buyerFeeCapMax: '',
+        merchantFee: '0',
+        merchantFeeType: 'FLAT',
+        merchantFeeCapMin: '',
+        merchantFeeCapMax: '',
+        wholesaleFee: '0',
+        wholesaleFeeType: 'FLAT',
+        wholesaleFeeCapMin: '',
+        wholesaleFeeCapMax: ''
+    });
+    const [banks, setBanks] = useState([]);
+    const [banksLoading, setBanksLoading] = useState(true);
+    const [savingBanks, setSavingBanks] = useState(false);
+
+    useEffect(() => {
+        api.get('/admin/settings').then(res => {
+            if (res.data.data) {
+                setSettings(prev => ({ ...prev, ...res.data.data }));
+            }
+        });
+        api.get('/admin/settings/fees').then(res => {
+            if (res.data?.data) {
+                setFees(prev => ({ ...prev, ...res.data.data }));
+            }
+        }).catch(() => {});
+        api.get('/admin/settings/subscription-banks')
+            .then(res => {
+                const raw = res.data?.data;
+                setBanks(Array.isArray(raw) ? raw : []);
+            })
+            .catch(() => {
+                setBanks([]);
+            })
+            .finally(() => setBanksLoading(false));
+    }, []);
+
+    const handleChange = (name, value) => {
+        setSettings(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSave = async (key, description) => {
+        setLoading(true);
+        try {
+            await api.post('/admin/settings', {
+                key,
+                value: String(settings[key]),
+                description
+            });
+            alert("Setting saved!");
+        } catch (error) {
+            console.error(error);
+            alert("Failed to save");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSaveWholesale = async () => {
+        setLoading(true);
+        try {
+            await Promise.all([
+                api.post('/admin/settings', { key: 'WHOLESALE_SHIPPING_COST_PER_KM', value: settings.WHOLESALE_SHIPPING_COST_PER_KM, description: 'Shipping Cost per KM' }),
+                api.post('/admin/settings', { key: 'WHOLESALE_PAYMENT_METHODS', value: settings.WHOLESALE_PAYMENT_METHODS, description: 'Payment Methods' }),
+            ]);
+            alert("Wholesale Settings Saved!");
+        } catch (error) {
+            console.error(error);
+            alert("Failed to save wholesale settings");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSaveBankInfo = async () => {
+        setLoading(true);
+        try {
+            await Promise.all([
+                api.post('/admin/settings', { key: 'BANK_NAME', value: settings.BANK_NAME, description: 'Bank Name' }),
+                api.post('/admin/settings', { key: 'BANK_ACCOUNT_NUMBER', value: settings.BANK_ACCOUNT_NUMBER, description: 'Account Number' }),
+                api.post('/admin/settings', { key: 'BANK_ACCOUNT_NAME', value: settings.BANK_ACCOUNT_NAME, description: 'Account Name' }),
+                api.post('/admin/settings', { key: 'PLATFORM_FEE_PERCENTAGE', value: settings.PLATFORM_FEE_PERCENTAGE, description: 'Platform Fee %' }),
+            ]);
+            alert("Bank & Platform Fee Settings Saved!");
+        } catch (error) {
+            console.error(error);
+            alert("Failed to save some settings");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleBankChange = (index, field, value) => {
+        setBanks(prev => prev.map((b, i) => (i === index ? { ...b, [field]: value } : b)));
+    };
+
+    const handleAddBank = () => {
+        setBanks(prev => [
+            ...prev,
+            {
+                bankName: '',
+                accountNumber: '',
+                accountName: '',
+                label: '',
+                isDefault: prev.length === 0
+            }
+        ]);
+    };
+
+    const handleRemoveBank = index => {
+        setBanks(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const handleSetDefaultBank = index => {
+        setBanks(prev => prev.map((b, i) => ({ ...b, isDefault: i === index })));
+    };
+
+    const handleSaveSubscriptionBanks = async () => {
+        try {
+            setSavingBanks(true);
+            const payload = banks.map(b => ({
+                bankName: b.bankName || '',
+                accountNumber: b.accountNumber || '',
+                accountName: b.accountName || '',
+                label: b.label || '',
+                isDefault: !!b.isDefault
+            }));
+            await api.post('/admin/settings/subscription-banks', { banks: payload });
+            alert('Subscription bank accounts saved');
+        } catch (error) {
+            console.error(error);
+            alert('Failed to save subscription bank accounts');
+        } finally {
+            setSavingBanks(false);
+        }
+    };
+
+    const handleSaveDigiflazz = async () => {
+        setLoading(true);
+        try {
+            const requests = [
+                api.post('/admin/settings', {
+                    key: 'DIGIFLAZZ_USERNAME',
+                    value: String(settings.DIGIFLAZZ_USERNAME || ''),
+                    description: 'Digiflazz Username'
+                }),
+                api.post('/admin/settings', {
+                    key: 'DIGIFLAZZ_MODE',
+                    value: String(settings.DIGIFLAZZ_MODE || 'production'),
+                    description: 'Digiflazz Mode'
+                }),
+                api.post('/admin/settings', {
+                    key: 'DIGIFLAZZ_BASE_URL',
+                    value: String(settings.DIGIFLAZZ_BASE_URL || ''),
+                    description: 'Digiflazz Base URL'
+                }),
+                api.post('/admin/settings', {
+                    key: 'DIGIFLAZZ_MARKUP_FLAT',
+                    value: String(settings.DIGIFLAZZ_MARKUP_FLAT || '0'),
+                    description: 'Digiflazz Markup Flat'
+                }),
+                api.post('/admin/settings', {
+                    key: 'DIGIFLAZZ_MARKUP_PERCENT',
+                    value: String(settings.DIGIFLAZZ_MARKUP_PERCENT || '0'),
+                    description: 'Digiflazz Markup Percent'
+                }),
+            ];
+
+            if (digiflazzApiKeyInput.trim()) {
+                requests.push(api.post('/admin/settings', {
+                    key: 'DIGIFLAZZ_API_KEY',
+                    value: digiflazzApiKeyInput,
+                    description: 'Digiflazz API Key'
+                }));
+            }
+            if (digiflazzWebhookSecretInput.trim()) {
+                requests.push(api.post('/admin/settings', {
+                    key: 'DIGIFLAZZ_WEBHOOK_SECRET',
+                    value: digiflazzWebhookSecretInput,
+                    description: 'Digiflazz Webhook Secret'
+                }));
+            }
+
+            await Promise.all(requests);
+
+            setDigiflazzApiKeyInput('');
+            setDigiflazzWebhookSecretInput('');
+
+            const res = await api.get('/admin/settings');
+            if (res.data.data) {
+                setSettings(prev => ({ ...prev, ...res.data.data }));
+            }
+
+            alert("Digiflazz settings saved!");
+        } catch (error) {
+            console.error(error);
+            alert("Failed to save Digiflazz settings");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Wholesale Config */}
+                <Card className="p-6 h-fit">
+                    <div className="flex items-start justify-between mb-6">
+                        <div>
+                            <h3 className="font-semibold text-slate-900">Wholesale (Kulakan) Configuration</h3>
+                            <p className="text-sm text-slate-500 mt-1">Manage fees, shipping costs, and payment methods for merchants.</p>
+                        </div>
+                        <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                            <Truck size={20} />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Shipping Cost per KM (Ongkir)</label>
+                            <Input
+                                type="number"
+                                placeholder="3000"
+                                value={settings.WHOLESALE_SHIPPING_COST_PER_KM || ''}
+                                onChange={(e) => handleChange('WHOLESALE_SHIPPING_COST_PER_KM', e.target.value)}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Payment Methods (Comma Separated)</label>
+                            <Input
+                                placeholder="Transfer Bank (BCA), COD"
+                                value={settings.WHOLESALE_PAYMENT_METHODS || ''}
+                                onChange={(e) => handleChange('WHOLESALE_PAYMENT_METHODS', e.target.value)}
+                            />
+                            <p className="text-xs text-slate-500 mt-1">Example: Transfer Bank (BCA),Bayar di Tempat (COD). For Transfer, configure bank details below.</p>
+                        </div>
+                    </div>
+
+                    <div className="pt-4 mt-2">
+                        <Button
+                            onClick={handleSaveWholesale}
+                            isLoading={loading}
+                            className="w-full sm:w-auto"
+                        >
+                            Save Wholesale Settings
+                        </Button>
+                    </div>
+                </Card>
+
+                {/* QRIS Config */}
+                <Card className="p-6 h-fit">
+                    <div className="flex items-start justify-between mb-6">
+                        <div>
+                            <h3 className="font-semibold text-slate-900">Payment Configuration (QRIS)</h3>
+                            <p className="text-sm text-slate-500 mt-1">Setup the central QRIS image for the platform.</p>
+                        </div>
+                        <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                            <Save size={20} />
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <Input
+                            label="Central QRIS Image URL"
+                            helperText="Paste the direct URL to the QRIS image file."
+                            name="PLATFORM_QRIS_URL"
+                            value={settings.PLATFORM_QRIS_URL}
+                            onChange={(e) => handleChange('PLATFORM_QRIS_URL', e.target.value)}
+                            placeholder="https://example.com/images/qris.png"
+                        />
+
+                        {settings.PLATFORM_QRIS_URL && (
+                            <div className="p-4 bg-slate-50 rounded-lg border border-dashed border-slate-300 flex justify-center items-center">
+                                <img src={settings.PLATFORM_QRIS_URL} alt="QRIS Preview" className="max-h-48 object-contain shadow-sm rounded-md" />
+                            </div>
+                        )}
+
+                        <div className="pt-2">
+                            <Button
+                                onClick={() => handleSave('PLATFORM_QRIS_URL', 'Central QRIS Image URL')}
+                                isLoading={loading}
+                                className="w-full sm:w-auto"
+                            >
+                                Save QRIS Settings
+                            </Button>
+                        </div>
+                    </div>
+                </Card>
+
+                {/* Bank Info */}
+                <Card className="p-6 h-fit">
+                    <div className="flex items-start justify-between mb-6">
+                        <div>
+                            <h3 className="font-semibold text-slate-900">Platform & Payment Details</h3>
+                            <p className="text-sm text-slate-500 mt-1">Configure bank info and platform fees.</p>
+                        </div>
+                        <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                            <AlertCircle size={20} />
+                        </div>
+                    </div>
+
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="md:col-span-2 border-b pb-4 mb-2">
+                                <h4 className="font-medium text-slate-900 mb-3">Service Fees</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Platform Fee (%)</label>
+                                        <Input
+                                            type="number"
+                                            placeholder="5"
+                                            value={settings.PLATFORM_FEE_PERCENTAGE || ''}
+                                            onChange={(e) => handleChange('PLATFORM_FEE_PERCENTAGE', e.target.value)}
+                                        />
+                                        <p className="text-xs text-slate-500 mt-1">Deducted from merchant sales.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="md:col-span-2">
+                                <h4 className="font-medium text-slate-900 mb-3">Default Bank Transfer Info</h4>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Bank Name</label>
+                                <Input
+                                    placeholder="BCA"
+                                    value={settings.BANK_NAME || ''}
+                                    onChange={(e) => handleChange('BANK_NAME', e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Account Number</label>
+                                <Input
+                                    placeholder="1234567890"
+                                    value={settings.BANK_ACCOUNT_NUMBER || ''}
+                                    onChange={(e) => handleChange('BANK_ACCOUNT_NUMBER', e.target.value)}
+                                />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Account Holder Name</label>
+                                <Input
+                                    placeholder="PT Rana Tech"
+                                    value={settings.BANK_ACCOUNT_NAME || ''}
+                                    onChange={(e) => handleChange('BANK_ACCOUNT_NAME', e.target.value)}
+                                />
+                            </div>
+                            <div className="md:col-span-2 flex justify-end">
+                                <Button
+                                    onClick={handleSaveBankInfo}
+                                    isLoading={loading}
+                                    className="w-full sm:w-auto"
+                                >
+                                    Save Bank & Fees
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div className="border-t pt-4 mt-2 space-y-4">
+                            <div className="flex items-start justify-between">
+                                <div>
+                                    <h4 className="font-medium text-slate-900 mb-1">Subscription Bank Accounts</h4>
+                                    <p className="text-xs text-slate-500">
+                                        Rekening tujuan transfer untuk pembayaran langganan platform. Bisa lebih dari satu rekening.
+                                    </p>
+                                </div>
+                            </div>
+
+                            {banksLoading ? (
+                                <div className="text-sm text-slate-500">Loading bank accounts...</div>
+                            ) : (
+                                <>
+                                    {banks.length === 0 && (
+                                        <div className="text-sm text-slate-400 mb-2">
+                                            Belum ada rekening. Tambahkan minimal satu rekening bank.
+                                        </div>
+                                    )}
+                                    <div className="space-y-4">
+                                        {banks.map((bank, index) => (
+                                            <div
+                                                key={index}
+                                                className="border border-slate-200 rounded-lg p-4 space-y-3"
+                                            >
+                                                <div className="flex justify-between items-center">
+                                                    <div className="text-sm font-medium text-slate-900">
+                                                        Rekening {index + 1}
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleSetDefaultBank(index)}
+                                                            className={`inline-flex items-center text-xs px-2 py-1 rounded-full border ${
+                                                                bank.isDefault
+                                                                    ? 'border-amber-500 bg-amber-50 text-amber-700'
+                                                                    : 'border-slate-200 text-slate-500 hover:border-slate-300'
+                                                            }`}
+                                                        >
+                                                            <Star
+                                                                size={14}
+                                                                className={bank.isDefault ? 'fill-amber-400 text-amber-400 mr-1' : 'mr-1'}
+                                                            />
+                                                            Default
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleRemoveBank(index)}
+                                                            className="inline-flex items-center text-xs px-2 py-1 rounded-full border border-red-200 text-red-600 hover:bg-red-50"
+                                                        >
+                                                            <Trash2 size={14} className="mr-1" />
+                                                            Remove
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                                    <div>
+                                                        <div className="text-xs font-medium text-slate-600 mb-1">
+                                                            Bank Name
+                                                        </div>
+                                                        <Input
+                                                            placeholder="BCA"
+                                                            value={bank.bankName || ''}
+                                                            onChange={e =>
+                                                                handleBankChange(index, 'bankName', e.target.value)
+                                                            }
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-xs font-medium text-slate-600 mb-1">
+                                                            Account Number
+                                                        </div>
+                                                        <Input
+                                                            placeholder="1234567890"
+                                                            value={bank.accountNumber || ''}
+                                                            onChange={e =>
+                                                                handleBankChange(index, 'accountNumber', e.target.value)
+                                                            }
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-xs font-medium text-slate-600 mb-1">
+                                                            Account Name
+                                                        </div>
+                                                        <Input
+                                                            placeholder="PT Rana Tech"
+                                                            value={bank.accountName || ''}
+                                                            onChange={e =>
+                                                                handleBankChange(index, 'accountName', e.target.value)
+                                                            }
+                                                        />
+                                                    </div>
+                                                    <div className="md:col-span-3">
+                                                        <div className="text-xs font-medium text-slate-600 mb-1">
+                                                            Label (opsional)
+                                                        </div>
+                                                        <Input
+                                                            placeholder="Rekening utama, Rekening cadangan, dll."
+                                                            value={bank.label || ''}
+                                                            onChange={e =>
+                                                                handleBankChange(index, 'label', e.target.value)
+                                                            }
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className="flex justify-between items-center mt-4">
+                                        <Button variant="outline" onClick={handleAddBank}>
+                                            Tambah Bank
+                                        </Button>
+                                        <Button onClick={handleSaveSubscriptionBanks} isLoading={savingBanks}>
+                                            Simpan Rekening
+                                        </Button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </Card>
+
+                {/* Fee Settings */}
+                <Card className="p-6 h-fit">
+                    <div className="flex items-start justify-between mb-6">
+                        <div>
+                            <h3 className="font-semibold text-slate-900">Fee Settings</h3>
+                            <p className="text-sm text-slate-500 mt-1">Atur biaya untuk Buyer, Merchant, dan Wholesale.</p>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="space-y-3">
+                            <div className="font-semibold text-slate-900">Buyer Fee</div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Type</label>
+                                <select
+                                    className="w-full border rounded p-2"
+                                    value={fees.buyerFeeType}
+                                    onChange={e => setFees({ ...fees, buyerFeeType: e.target.value })}
+                                >
+                                    <option value="FLAT">Flat</option>
+                                    <option value="PERCENT">Percent</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Value</label>
+                                <Input
+                                    value={fees.buyerFee}
+                                    onChange={e => setFees({ ...fees, buyerFee: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Min Cap</label>
+                                    <Input
+                                        value={fees.buyerFeeCapMin}
+                                        onChange={e => setFees({ ...fees, buyerFeeCapMin: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Max Cap</label>
+                                    <Input
+                                        value={fees.buyerFeeCapMax}
+                                        onChange={e => setFees({ ...fees, buyerFeeCapMax: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="space-y-3">
+                            <div className="font-semibold text-slate-900">Merchant Fee</div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Type</label>
+                                <select
+                                    className="w-full border rounded p-2"
+                                    value={fees.merchantFeeType}
+                                    onChange={e => setFees({ ...fees, merchantFeeType: e.target.value })}
+                                >
+                                    <option value="FLAT">Flat</option>
+                                    <option value="PERCENT">Percent</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Value</label>
+                                <Input
+                                    value={fees.merchantFee}
+                                    onChange={e => setFees({ ...fees, merchantFee: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Min Cap</label>
+                                    <Input
+                                        value={fees.merchantFeeCapMin}
+                                        onChange={e => setFees({ ...fees, merchantFeeCapMin: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Max Cap</label>
+                                    <Input
+                                        value={fees.merchantFeeCapMax}
+                                        onChange={e => setFees({ ...fees, merchantFeeCapMax: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="space-y-3">
+                            <div className="font-semibold text-slate-900">Wholesale Fee</div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Type</label>
+                                <select
+                                    className="w-full border rounded p-2"
+                                    value={fees.wholesaleFeeType}
+                                    onChange={e => setFees({ ...fees, wholesaleFeeType: e.target.value })}
+                                >
+                                    <option value="FLAT">Flat</option>
+                                    <option value="PERCENT">Percent</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Value</label>
+                                <Input
+                                    value={fees.wholesaleFee}
+                                    onChange={e => setFees({ ...fees, wholesaleFee: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Min Cap</label>
+                                    <Input
+                                        value={fees.wholesaleFeeCapMin}
+                                        onChange={e => setFees({ ...fees, wholesaleFeeCapMin: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Max Cap</label>
+                                    <Input
+                                        value={fees.wholesaleFeeCapMax}
+                                        onChange={e => setFees({ ...fees, wholesaleFeeCapMax: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="pt-4 mt-2">
+                        <Button
+                            onClick={async () => {
+                                setLoading(true);
+                                try {
+                                    await api.post('/admin/settings/fees', {
+                                        buyerFee: fees.buyerFee,
+                                        buyerFeeType: fees.buyerFeeType,
+                                        buyerFeeCapMin: fees.buyerFeeCapMin,
+                                        buyerFeeCapMax: fees.buyerFeeCapMax,
+                                        merchantFee: fees.merchantFee,
+                                        merchantFeeType: fees.merchantFeeType,
+                                        merchantFeeCapMin: fees.merchantFeeCapMin,
+                                        merchantFeeCapMax: fees.merchantFeeCapMax,
+                                        wholesaleFee: fees.wholesaleFee,
+                                        wholesaleFeeType: fees.wholesaleFeeType,
+                                        wholesaleFeeCapMin: fees.wholesaleFeeCapMin,
+                                        wholesaleFeeCapMax: fees.wholesaleFeeCapMax
+                                    });
+                                    alert('Fee settings saved!');
+                                } catch (e) {
+                                    alert('Failed to save fee settings');
+                                } finally {
+                                    setLoading(false);
+                                }
+                            }}
+                            isLoading={loading}
+                            className="w-full sm:w-auto"
+                        >
+                            Save Fee Settings
+                        </Button>
+                    </div>
+                </Card>
+
+                {/* Digiflazz PPOB */}
+                <Card className="p-6 h-fit">
+                    <div className="flex items-start justify-between mb-6">
+                        <div>
+                            <h3 className="font-semibold text-slate-900">PPOB Configuration (Digiflazz)</h3>
+                            <p className="text-sm text-slate-500 mt-1">Configure Digiflazz credentials and pricing markup.</p>
+                        </div>
+                        <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                            <Save size={20} />
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <Input
+                            label="Digiflazz Username"
+                            name="DIGIFLAZZ_USERNAME"
+                            value={settings.DIGIFLAZZ_USERNAME || ''}
+                            onChange={(e) => handleChange('DIGIFLAZZ_USERNAME', e.target.value)}
+                            placeholder="username"
+                        />
+
+                        <Input
+                            label="Digiflazz API Key"
+                            type="password"
+                            helperText={
+                                settings.DIGIFLAZZ_API_KEY_IS_SET === 'true'
+                                    ? `Sudah tersimpan (${settings.DIGIFLAZZ_API_KEY || '****'}). Isi untuk mengganti.`
+                                    : 'Belum di-set.'
+                            }
+                            value={digiflazzApiKeyInput}
+                            onChange={(e) => setDigiflazzApiKeyInput(e.target.value)}
+                            placeholder="Masukkan API key baru jika ingin ganti"
+                        />
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Mode</label>
+                            <select
+                                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                                value={settings.DIGIFLAZZ_MODE || 'production'}
+                                onChange={(e) => handleChange('DIGIFLAZZ_MODE', e.target.value)}
+                            >
+                                <option value="production">production</option>
+                                <option value="testing">testing</option>
+                            </select>
+                        </div>
+
+                        <Input
+                            label="Base URL (optional)"
+                            helperText="Kosongkan untuk default https://api.digiflazz.com/v1"
+                            name="DIGIFLAZZ_BASE_URL"
+                            value={settings.DIGIFLAZZ_BASE_URL || ''}
+                            onChange={(e) => handleChange('DIGIFLAZZ_BASE_URL', e.target.value)}
+                            placeholder="https://api.digiflazz.com/v1"
+                        />
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Input
+                                label="Markup Flat"
+                                type="number"
+                                value={settings.DIGIFLAZZ_MARKUP_FLAT || '0'}
+                                onChange={(e) => handleChange('DIGIFLAZZ_MARKUP_FLAT', e.target.value)}
+                                placeholder="0"
+                            />
+                            <Input
+                                label="Markup Percent (%)"
+                                type="number"
+                                value={settings.DIGIFLAZZ_MARKUP_PERCENT || '0'}
+                                onChange={(e) => handleChange('DIGIFLAZZ_MARKUP_PERCENT', e.target.value)}
+                                placeholder="0"
+                            />
+                        </div>
+
+                        <Input
+                            label="Webhook Secret (optional)"
+                            type="password"
+                            helperText={
+                                settings.DIGIFLAZZ_WEBHOOK_SECRET_IS_SET === 'true'
+                                    ? `Sudah tersimpan (${settings.DIGIFLAZZ_WEBHOOK_SECRET || '****'}). Isi untuk mengganti.`
+                                    : 'Kosongkan jika tidak memakai.'
+                            }
+                            value={digiflazzWebhookSecretInput}
+                            onChange={(e) => setDigiflazzWebhookSecretInput(e.target.value)}
+                            placeholder="Masukkan secret baru jika ingin ganti"
+                        />
+
+                        <div className="pt-2">
+                            <Button
+                                onClick={handleSaveDigiflazz}
+                                isLoading={loading}
+                                className="w-full sm:w-auto"
+                            >
+                                Save Digiflazz Settings
+                            </Button>
+                        </div>
+                    </div>
+                </Card>
+
+                {/* Platform Settings */}
+                <Card className="p-6 h-fit">
+                    <div className="flex items-start justify-between mb-6">
+                        <div>
+                            <h3 className="font-semibold text-slate-900">Platform Settings</h3>
+                            <p className="text-sm text-slate-500 mt-1">Global configuration for language, signup, and branding.</p>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Default Language</label>
+                            <Input
+                                placeholder="id_ID"
+                                value={settings.DEFAULT_LANGUAGE || ''}
+                                onChange={(e) => handleChange('DEFAULT_LANGUAGE', e.target.value)}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Enable Signup</label>
+                            <select
+                                className="w-full border rounded p-2"
+                                value={settings.ENABLE_SIGNUP || 'true'}
+                                onChange={(e) => handleChange('ENABLE_SIGNUP', e.target.value)}
+                            >
+                                <option value="true">Enabled</option>
+                                <option value="false">Disabled</option>
+                            </select>
+                        </div>
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Support WhatsApp Number</label>
+                            <Input
+                                placeholder="+6281234567890"
+                                value={settings.SUPPORT_WHATSAPP_NUMBER || ''}
+                                onChange={(e) => handleChange('SUPPORT_WHATSAPP_NUMBER', e.target.value)}
+                            />
+                        </div>
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Company Logo URL</label>
+                            <Input
+                                placeholder="https://example.com/logo.png"
+                                value={settings.COMPANY_LOGO_URL || ''}
+                                onChange={(e) => handleChange('COMPANY_LOGO_URL', e.target.value)}
+                            />
+                            {settings.COMPANY_LOGO_URL && (
+                                <div className="p-4 mt-2 bg-slate-50 rounded border border-slate-200">
+                                    <img src={settings.COMPANY_LOGO_URL} alt="Logo Preview" className="max-h-48 object-contain" />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    <div className="pt-4 mt-2">
+                        <Button
+                            onClick={async () => {
+                                setLoading(true);
+                                try {
+                                    await Promise.all([
+                                        api.post('/admin/settings', { key: 'DEFAULT_LANGUAGE', value: settings.DEFAULT_LANGUAGE, description: 'Default Language' }),
+                                        api.post('/admin/settings', { key: 'ENABLE_SIGNUP', value: settings.ENABLE_SIGNUP, description: 'Enable Signup' }),
+                                        api.post('/admin/settings', { key: 'SUPPORT_WHATSAPP_NUMBER', value: settings.SUPPORT_WHATSAPP_NUMBER, description: 'Support WhatsApp' }),
+                                        api.post('/admin/settings', { key: 'COMPANY_LOGO_URL', value: settings.COMPANY_LOGO_URL, description: 'Company Logo' }),
+                                    ]);
+                                    alert('Platform settings saved!');
+                                } catch (e) {
+                                    alert('Failed to save platform settings');
+                                } finally {
+                                    setLoading(false);
+                                }
+                            }}
+                            isLoading={loading}
+                            className="w-full sm:w-auto"
+                        >
+                            Save Platform Settings
+                        </Button>
+                    </div>
+                </Card>
+            </div>
+        </div>
+    );
+};
+
+export default Settings;

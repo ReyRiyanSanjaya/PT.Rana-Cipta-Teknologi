@@ -1,0 +1,267 @@
+const prisma = require('../config/database'); // [FIX] Singleton Prisma
+const { successResponse, errorResponse } = require('../utils/response');
+const crypto = require('crypto');
+const { emitToTenant, emitToOrder } = require('../socket');
+
+// BUYER: Create Order
+const createOrder = async (req, res) => {
+    try {
+        const { storeId, items, customerName, customerPhone, deliveryAddress, fulfillmentType, deliveryFee } = req.body;
+        // items: [{ productId, quantity, price }]
+
+        if (!storeId || !items || items.length === 0) {
+            return errorResponse(res, "Invalid Order Data", 400);
+        }
+
+        // Get Store to find TenantId
+        const store = await prisma.store.findUnique({ where: { id: storeId } });
+        if (!store) return errorResponse(res, "Store not found", 404);
+
+        // Apply Flash Sale Pricing if applicable
+        const now = new Date();
+        const activeSales = await prisma.flashSale.findMany({
+            where: {
+                storeId,
+                status: { in: ['APPROVED', 'ACTIVE'] },
+                startAt: { lte: now },
+                endAt: { gte: now }
+            },
+            include: { items: true }
+        });
+        const saleMap = new Map();
+        for (const sale of activeSales) {
+            for (const si of sale.items) {
+                saleMap.set(si.productId, { price: si.salePrice, maxQtyPerOrder: si.maxQtyPerOrder || 0 });
+            }
+        }
+        // Recalculate item prices with flash sale
+        let recomputedItems = [];
+        for (const i of items) {
+            const sale = saleMap.get(i.productId);
+            if (sale) {
+                if (sale.maxQtyPerOrder > 0 && i.quantity > sale.maxQtyPerOrder) {
+                    return errorResponse(res, "Quantity exceeds flash sale limit", 400);
+                }
+                recomputedItems.push({ ...i, price: sale.price });
+            } else {
+                recomputedItems.push(i);
+            }
+        }
+
+        // Get Fee Settings
+        const subtotal = recomputedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const feeSetting = await prisma.systemSettings.findUnique({ where: { key: 'BUYER_SERVICE_FEE' } });
+        const feeTypeSetting = await prisma.systemSettings.findUnique({ where: { key: 'BUYER_SERVICE_FEE_TYPE' } });
+        const minCapSetting = await prisma.systemSettings.findUnique({ where: { key: 'BUYER_FEE_CAP_MIN' } });
+        const maxCapSetting = await prisma.systemSettings.findUnique({ where: { key: 'BUYER_FEE_CAP_MAX' } });
+        const feeVal = feeSetting ? parseFloat(feeSetting.value) : 0;
+        const feeType = feeTypeSetting ? String(feeTypeSetting.value) : 'FLAT';
+        let buyerFee = 0;
+        if (feeType === 'PERCENT') {
+            buyerFee = (subtotal * feeVal) / 100;
+        } else {
+            buyerFee = feeVal;
+        }
+        const minCap = minCapSetting ? parseFloat(minCapSetting.value) : undefined;
+        const maxCap = maxCapSetting ? parseFloat(maxCapSetting.value) : undefined;
+        if (minCap !== undefined && buyerFee < minCap) buyerFee = minCap;
+        if (maxCap !== undefined && buyerFee > maxCap) buyerFee = maxCap;
+        
+        const validDeliveryFee = (fulfillmentType === 'DELIVERY' && deliveryFee) ? parseFloat(deliveryFee) : 0;
+        const totalAmount = subtotal + buyerFee + validDeliveryFee;
+
+        // [NEW] Generate Pickup Code
+        let pickupCode = null;
+        if (fulfillmentType === 'PICKUP' || fulfillmentType === 'DELIVERY') {
+             pickupCode = crypto.randomBytes(3).toString('hex').toUpperCase(); // 6 Chars
+        }
+
+        // [NEW] Deduct Merchant Wallet (Service Fee)
+        // Since payment is "Bayar Ditempat" (Cash to Merchant), Merchant owes Platform the Fee.
+        if (buyerFee > 0) {
+            await prisma.store.update({
+                where: { id: storeId },
+                data: { balance: { decrement: buyerFee } }
+            });
+        }
+
+        const result = await prisma.transaction.create({
+            data: {
+                id: `ORD-${Date.now()}`,
+                tenantId: store.tenantId,
+                storeId: storeId,
+                totalAmount: totalAmount,
+                buyerFee: buyerFee, 
+                platformFee: buyerFee,
+                deliveryFee: validDeliveryFee,
+                paymentMethod: 'CASH', // [UPDATED] Always CASH for "Bayar Ditempat"
+                amountPaid: 0, // Not paid yet
+                change: 0,
+                source: 'MARKET',
+                orderStatus: 'PENDING',
+                paymentStatus: 'UNPAID', 
+                fulfillmentType: fulfillmentType || 'DELIVERY',
+                pickupCode: pickupCode,
+                customerName,
+                customerPhone,
+                deliveryAddress,
+                occurredAt: new Date(),
+                transactionItems: {
+                    create: recomputedItems.map(i => ({
+                        productId: i.productId,
+                        quantity: i.quantity,
+                        price: i.price
+                    }))
+                }
+            },
+            include: { transactionItems: true }
+        });
+
+        try {
+            emitToTenant(store.tenantId, 'orders:updated', result);
+            // Notify Buyer (though they just created it, good for sync)
+            emitToOrder(result.id, 'order_status', result);
+        } catch (e) {
+            console.error('Socket emit failed', e);
+        }
+
+        return successResponse(res, result, "Order Placed - Waiting for Payment");
+    } catch (error) {
+        console.error(error);
+        return errorResponse(res, "Order Failed", 500);
+    }
+};
+
+// [NEW] Confirm Payment (Buyer Uploads Proof)
+const confirmPayment = async (req, res) => {
+    try {
+        const { orderId, proofUrl } = req.body;
+
+        // In a real app, 'proofUrl' would be the result of a file upload
+        // Here we simulate it or accept a string
+
+        const order = await prisma.transaction.update({
+            where: { id: orderId },
+            data: {
+                paymentStatus: 'PAID', // Auto-verify for MVP, or set 'WAITING_VERIFICATION' if Admin Panel exists
+                paymentProof: proofUrl || 'manual_confirm',
+                paidAt: new Date()
+            }
+        });
+
+        if (order.platformFee && order.platformFee > 0) {
+            await prisma.platformRevenue.create({
+                data: {
+                    amount: order.platformFee,
+                    source: 'OTHER',
+                    description: `Transaction Fee (Buyer) - ${order.id}`,
+                    referenceId: order.id
+                }
+            });
+        }
+
+        try {
+            emitToTenant(order.tenantId, 'orders:updated', order);
+            // Notify Buyer
+            emitToOrder(order.id, 'payment_status', order);
+        } catch (e) {
+            console.error('Socket emit failed', e);
+        }
+
+        try {
+            await prisma.notification.create({
+                data: {
+                    tenantId: order.tenantId,
+                    title: 'Pembayaran pesanan marketplace dikonfirmasi',
+                    body: `Order ${order.id} telah dibayar oleh pelanggan`
+                }
+            });
+        } catch (e) {
+            console.error('Create notification failed', e);
+        }
+
+        return successResponse(res, order, "Payment Confirmed");
+    } catch (error) {
+        return errorResponse(res, "Confirmation Failed", 500, error);
+    }
+};
+
+// BUYER: Get My History
+const getOrdersByPhone = async (req, res) => {
+    const { phone } = req.query;
+    try {
+        const orders = await prisma.transaction.findMany({
+            where: { customerPhone: phone, source: 'MARKET' },
+            include: { store: { select: { name: true } } },
+            orderBy: { occurredAt: 'desc' }
+        });
+        return successResponse(res, orders);
+    } catch (error) {
+        return errorResponse(res, "Fetch Error", 500);
+    }
+};
+
+
+// BUYER: Cancel Order (only if PENDING)
+const cancelOrder = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const order = await prisma.transaction.findUnique({ where: { id } });
+        if (!order) return errorResponse(res, 'Order not found', 404);
+        if (order.orderStatus !== 'PENDING') {
+            return errorResponse(res, 'Pesanan tidak dapat dibatalkan karena sudah diproses', 400);
+        }
+
+        const cancelled = await prisma.transaction.update({
+            where: { id },
+            data: { orderStatus: 'CANCELLED' }
+        });
+
+        // Refund buyer fee back to store balance
+        if (order.buyerFee && order.buyerFee > 0) {
+            await prisma.store.update({
+                where: { id: order.storeId },
+                data: { balance: { increment: order.buyerFee } }
+            });
+        }
+
+        try {
+            emitToTenant(order.tenantId, 'orders:updated', cancelled);
+            emitToOrder(id, 'order_status', cancelled);
+        } catch (e) {
+            console.error('Socket emit failed', e);
+        }
+
+        return successResponse(res, cancelled, 'Pesanan berhasil dibatalkan');
+    } catch (error) {
+        console.error(error);
+        return errorResponse(res, 'Gagal membatalkan pesanan', 500);
+    }
+};
+
+// BUYER: Check if buyer has purchased a specific product (COMPLETED/DELIVERED order)
+const checkPurchased = async (req, res) => {
+    try {
+        const { productId, phone } = req.query;
+        if (!productId || !phone) return errorResponse(res, 'Missing params', 400);
+
+        const count = await prisma.transactionItem.count({
+            where: {
+                productId,
+                transaction: {
+                    customerPhone: phone,
+                    source: 'MARKET',
+                    orderStatus: { in: ['COMPLETED', 'DELIVERED'] }
+                }
+            }
+        });
+
+        return successResponse(res, { hasPurchased: count > 0 });
+    } catch (error) {
+        console.error(error);
+        return errorResponse(res, 'Check failed', 500);
+    }
+};
+
+module.exports = { createOrder, getOrdersByPhone, confirmPayment, cancelOrder, checkPurchased };
+

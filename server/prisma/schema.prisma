@@ -1,0 +1,1103 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ================================
+// CORE TENANCY & IAM
+// ================================
+
+model Tenant {
+  id                 String             @id @default(uuid())
+  name               String
+  plan               SubscriptionPlan   @default(FREE)
+  trialEndsAt        DateTime? // Date when trial expires
+  subscriptionEndsAt DateTime? // [NEW] Subscription expiry date based on package
+  subscriptionStatus SubscriptionStatus @default(TRIAL)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  users        User[]
+  stores       Store[]
+  products     Product[]
+  categories   Category[]
+  customers    Customer[]
+  transactions Transaction[]
+
+  // Reporting Aggregates
+  dailySales           DailySalesSummary[]
+  productStats         ProductSalesSummary[]
+  cashLogs             CashflowLog[]
+  purchases            Purchase[]
+  debtRecords          DebtRecord[]
+  subscriptionRequests SubscriptionRequest[] // [FIX] Added relation
+  tickets              SupportTicket[] // [NEW]
+  notifications        Notification[] // [NEW]
+  ppobTransactions     PpobTransaction[] // [NEW]
+  flashSales           FlashSale[] // [FIX] Added relation
+  referralCodes        ReferralCode[]
+  referralsAsReferrer  Referral[]            @relation("TenantAsReferrer")
+  referralsAsReferee   Referral[]            @relation("TenantAsReferee")
+  referralRewards      ReferralReward[]      @relation("ReferralRewardTenant")
+  wholesaleOrders      WholesaleOrder[]
+  distributorRelations DistributorCustomer[]
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  tenantId  String
+  title     String
+  body      String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+}
+
+enum SubscriptionPlan {
+  FREE
+  BASIC
+  PREMIUM
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+// [NEW] Configurable Packages
+model SubscriptionPackage {
+  id           String   @id @default(uuid())
+  name         String // e.g. "Bulanan", "Tahunan"
+  price        Float // e.g. 49000
+  durationDays Int // e.g. 30
+  description  String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  subscriptionRequests SubscriptionRequest[] // [NEW] Reverse relation
+}
+
+model SubscriptionRequest {
+  id           String        @id @default(uuid())
+  tenantId     String
+  packageId    String? // [NEW] Selected package
+  proofUrl     String?
+  status       RequestStatus @default(PENDING)
+  selectedBank Json?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  tenant  Tenant               @relation(fields: [tenantId], references: [id])
+  package SubscriptionPackage? @relation(fields: [packageId], references: [id]) // [NEW]
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id           String   @id @default(uuid())
+  tenantId     String
+  storeId      String? // If null, can access all stores (Admin)
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(CASHIER)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  store        Store?        @relation(fields: [storeId], references: [id])
+  transactions Transaction[] @relation("UserAsCashier") // Updated for clarity
+
+  loginHistory LoginHistory[]
+
+  // Community & Chat Relations
+  chatMessages    ChatMessage[]
+  chatMemberships ChatMember[]
+  communityPosts  CommunityPost[]
+  postComments    CommunityComment[]
+  postLikes       CommunityPostLike[]
+  distributor     Distributor?
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  STORE_MANAGER
+  CASHIER
+  SUPER_ADMIN
+  DISTRIBUTOR
+}
+
+model LoginHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  ip        String?
+  userAgent String?
+  loginAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+// ================================
+// SYSTEM SETTINGS
+// ================================
+
+model SystemSettings {
+  key         String   @id
+  value       String?
+  description String?
+  updatedAt   DateTime @updatedAt
+}
+
+// ================================
+// B2B WHOLESALE (KULAKAN)
+// ================================
+
+model Distributor {
+  id             String         @id @default(uuid())
+  userId         String         @unique
+  companyName    String
+  npwp           String?
+  kycDocuments   Json? // Array of URLs
+  approvalStatus ApprovalStatus @default(PENDING)
+  balance        Float          @default(0)
+  approvedAt     DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  user              User                  @relation(fields: [userId], references: [id])
+  wholesaleProducts WholesaleProduct[]
+  warehouses        Warehouse[]
+  wholesaleOrders   WholesaleOrder[]
+  discounts         WholesaleDiscount[]
+  customers         DistributorCustomer[]
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Warehouse {
+  id            String   @id @default(uuid())
+  distributorId String
+  name          String
+  address       String
+  isPrimary     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  distributor Distributor @relation(fields: [distributorId], references: [id])
+}
+
+model WholesaleCategory {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  parentId  String?
+  createdAt DateTime @default(now())
+
+  products WholesaleProduct[]
+}
+
+model WholesaleProduct {
+  id                  String   @id @default(uuid())
+  distributorId       String
+  wholesaleCategoryId String?
+  name                String
+  description         String?
+  images              Json? // Array of URLs
+  pricingTiers        Json // Array of {minQty, price}
+  moq                 Int      @default(1)
+  stockQuantity       Int      @default(0)
+  unit                String // e.g. "box", "carton"
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  distributor       Distributor         @relation(fields: [distributorId], references: [id])
+  wholesaleCategory WholesaleCategory?  @relation(fields: [wholesaleCategoryId], references: [id])
+  orderItems        OrderItem[]
+  discounts         WholesaleDiscount[]
+}
+
+model WholesaleDiscount {
+  id             String       @id @default(uuid())
+  distributorId  String
+  name           String
+  code           String? // Optional promo code
+  type           DiscountType @default(PERCENTAGE)
+  value          Float // e.g. 10 for 10% or 10000 for 10k off
+  minOrderAmount Float?       @default(0)
+  startDate      DateTime
+  endDate        DateTime
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  distributor Distributor        @relation(fields: [distributorId], references: [id])
+  products    WholesaleProduct[]
+}
+
+model DistributorCustomer {
+  id            String @id @default(uuid())
+  distributorId String
+  tenantId      String
+
+  creditLimit Float   @default(0)
+  creditUsed  Float   @default(0)
+  paymentTerm Int     @default(0) // Days
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  distributor Distributor @relation(fields: [distributorId], references: [id])
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+
+  @@unique([distributorId, tenantId])
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+model WholesaleOrder {
+  id              String               @id @default(uuid())
+  tenantId        String
+  distributorId   String
+  orderNumber     String               @unique
+  totalAmount     Float
+  status          WholesaleOrderStatus @default(PENDING)
+  shippingAddress Json
+  paymentMethod   String
+  paymentStatus   PaymentStatus        @default(UNPAID)
+  paymentDetails  Json?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  distributor Distributor @relation(fields: [distributorId], references: [id])
+  items       OrderItem[]
+}
+
+enum WholesaleOrderStatus {
+  PENDING
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model OrderItem {
+  id                 String   @id @default(uuid())
+  wholesaleOrderId   String
+  wholesaleProductId String
+  quantity           Int
+  unitPrice          Float
+  subtotal           Float
+  createdAt          DateTime @default(now())
+
+  wholesaleOrder   WholesaleOrder   @relation(fields: [wholesaleOrderId], references: [id])
+  wholesaleProduct WholesaleProduct @relation(fields: [wholesaleProductId], references: [id])
+}
+
+// ================================
+// BUSINESS DATA
+// ================================
+
+// 
+model Store {
+  id           String   @id @default(uuid())
+  tenantId     String
+  name         String
+  location     String?
+  latitude     Float? // [NEW] For Map Visualization
+  longitude    Float? // [NEW] For Map Visualization
+  category     String? // [NEW] UMKM Category (Apotik, Kedai, etc.)
+  waNumber     String?  @unique // [NEW] For WhatsApp Notifications
+  imageUrl     String?
+  bannerUrl    String? // [NEW] Store banner
+  description  String? // [NEW] Store description
+  openingHours String? // [NEW] e.g. "09:00 - 21:00"
+  isActive     Boolean  @default(true) // [FIX] Added missing field
+  balance      Float    @default(0) // [NEW] Digital Wallet Balance
+  createdAt    DateTime @default(now())
+
+  tenant            Tenant              @relation(fields: [tenantId], references: [id])
+  users             User[]
+  transactions      Transaction[]
+  dailySales        DailySalesSummary[]
+  stock             Stock[]
+  cashLogs          CashflowLog[]
+  debts             DebtRecord[]
+  purchases         Purchase[]
+  withdrawals       Withdrawal[] // [NEW]
+  topUps            TopUpRequest[] // [NEW]
+  sentTransfers     WalletTransfer[]    @relation("SentTransfers") // [NEW]
+  receivedTransfers WalletTransfer[]    @relation("ReceivedTransfers") // [NEW]
+  ppobTransactions  PpobTransaction[] // [NEW]
+  flashSales        FlashSale[] // [FIX] Added relation
+  products          Product[]
+}
+
+// [NEW] Withdrawal Request
+model Withdrawal {
+  id            String           @id @default(uuid())
+  storeId       String
+  amount        Float
+  fee           Float            @default(0) // [NEW] Platform Fee applied
+  netAmount     Float            @default(0) // [NEW] Final amount transferred
+  bankName      String
+  accountNumber String
+  status        WithdrawalStatus @default(PENDING)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt // Track approval time
+
+  store Store @relation(fields: [storeId], references: [id])
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// [NEW] Global Announcements
+model Announcement {
+  id          String   @id @default(uuid())
+  title       String
+  content     String
+  isActive    Boolean  @default(true)
+  target      String   @default("ALL") // ALL, PLAN, STATUS, STORE
+  targetValue String? // e.g. "PREMIUM", "ACTIVE", or StoreID
+  createdAt   DateTime @default(now())
+}
+
+model Supplier {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  phone     String?
+  address   String?
+  createdAt DateTime @default(now())
+
+  purchases Purchase[]
+}
+
+model Purchase {
+  id          String   @id @default(uuid())
+  tenantId    String
+  storeId     String
+  supplierId  String?
+  totalAmount Float
+  purchasedAt DateTime @default(now())
+
+  tenant   Tenant         @relation(fields: [tenantId], references: [id])
+  store    Store          @relation(fields: [storeId], references: [id])
+  supplier Supplier?      @relation(fields: [supplierId], references: [id])
+  items    PurchaseItem[]
+}
+
+model PurchaseItem {
+  id         String @id @default(uuid())
+  purchaseId String
+  productId  String
+  quantity   Int
+  costPrice  Float // Price at the moment of purchase
+
+  purchase Purchase @relation(fields: [purchaseId], references: [id])
+}
+
+// ... existing models ...
+
+model Product {
+  id           String   @id @default(uuid())
+  tenantId     String
+  storeId      String? // If null, is a global template or HQ product
+  name         String
+  description  String?
+  sku          String?
+  barcode      String?
+  basePrice    Float
+  sellingPrice Float
+  stock        Int      @default(0)
+  categoryId   String?
+  imageUrl     String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant        Tenant            @relation(fields: [tenantId], references: [id])
+  store         Store?            @relation(fields: [storeId], references: [id])
+  category      Category?         @relation(fields: [categoryId], references: [id])
+  stocks        Stock[]
+  sales         TransactionItem[]
+  inventoryLogs InventoryLog[]
+  minStock      Int               @default(5)
+
+  averageRating Float      @default(0)
+  reviewCount   Int        @default(0)
+
+  // [NEW] Discount features
+  originalPrice  Float? // For storing price before discount
+  discountLabel  String? // e.g. "Flash Sale"
+  flashSaleItems FlashSaleItem[] // [FIX] Added relation
+
+  // [NEW] Favorites & Reviews
+  favorites     Favorite[]
+  reviews       Review[]
+
+  @@index([tenantId, categoryId])
+  @@index([storeId])
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  productId String
+  userId    String? // Optional if we want to link to User/Customer
+  userName  String // Display Name
+  rating    Int // 1-5
+  comment   String?
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  productId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id])
+  products Product[]
+}
+
+model Customer {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String
+  phoneNumber String?
+  email       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  transactions Transaction[]
+  debtRecords  DebtRecord[]
+}
+
+model Transaction {
+  id            String            @id @default(uuid())
+  tenantId      String
+  offlineId     String? // For offline idempotency
+  storeId       String
+  customerId    String?
+  cashierId     String?           @map("userId")
+  totalAmount   Float             @default(0)
+  discount      Float             @default(0)
+  tax           Float             @default(0)
+  amountPaid    Float             @default(0)
+  change        Float             @default(0)
+  paymentMethod String            @default("CASH")
+  orderStatus   TransactionStatus @default(COMPLETED) @map("status")
+  paymentStatus PaymentStatus     @default(PAID)
+  occurredAt    DateTime          @default(now()) // [NEW] Actual time on device
+  createdAt     DateTime          @default(now())
+
+  // Reporting Metadata
+  customerName String?
+  notes        String?
+  shiftId      String?
+
+  tenant           Tenant            @relation(fields: [tenantId], references: [id])
+  store            Store             @relation(fields: [storeId], references: [id])
+  customer         Customer?         @relation(fields: [customerId], references: [id])
+  cashier          User?             @relation("UserAsCashier", fields: [cashierId], references: [id])
+  transactionItems TransactionItem[]
+
+  @@unique([tenantId, offlineId])
+  @@index([storeId, occurredAt])
+  @@index([tenantId, occurredAt])
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PAID
+  UNPAID
+  PARTIAL
+  REFUNDED
+}
+
+model TransactionItem {
+  id            String @id @default(uuid())
+  transactionId String
+  productId     String
+  quantity      Int
+  price         Float
+  costPrice     Float? // Track COGS at moment of sale
+
+  // [NEW] Snapshot Data
+  productName  String?
+  productSku   String?
+  productImage String?
+  basePrice    Float?
+
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+  product     Product     @relation(fields: [productId], references: [id])
+}
+
+// ================================
+// INVENTORY MANAGEMENT
+// ================================
+
+model Stock {
+  id        String   @id @default(uuid())
+  storeId   String
+  productId String
+  quantity  Int      @default(0)
+  updatedAt DateTime @default(now()) @updatedAt
+
+  store   Store   @relation(fields: [storeId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([storeId, productId])
+}
+
+model InventoryLog {
+  id        String   @id @default(uuid())
+  productId String
+  storeId   String?
+  type      String? // [NEW] IN, OUT, ADJUSTMENT
+  quantity  Int      @default(0) @map("changeAmount") // [FIX] Renamed from changeAmount
+  reason    String? // "SALE", "RESTOCK", "DAMAGE", "ADJUSTMENT"
+  createdAt DateTime @default(now())
+  userId    String? // Who made the change
+
+  product Product @relation(fields: [productId], references: [id])
+}
+
+// ================================
+// CASH & FINANCE
+// ================================
+
+model CashflowLog {
+  id          String   @id @default(uuid())
+  tenantId    String
+  storeId     String
+  type        String? // CashType: IN, OUT
+  category    String? // SALES, EXPENSE, DEPOSIT, WITHDRAWAL
+  amount      Float
+  description String?
+  occurredAt  DateTime @default(now()) @map("date") // [FIX] Unified name
+  createdAt   DateTime @default(now())
+
+  // [NEW] Shift Support
+  shiftId String?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  store  Store  @relation(fields: [storeId], references: [id])
+
+  @@index([storeId, occurredAt])
+  @@index([tenantId, occurredAt])
+}
+
+enum CashType {
+  IN
+  OUT
+}
+
+model DebtRecord {
+  id          String     @id @default(uuid())
+  tenantId    String
+  storeId     String
+  customerId  String
+  amount      Float
+  dueDate     DateTime?
+  status      DebtStatus @default(UNPAID)
+  description String?
+  createdAt   DateTime   @default(now())
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  store    Store    @relation(fields: [storeId], references: [id])
+  customer Customer @relation(fields: [customerId], references: [id])
+}
+
+enum DebtStatus {
+  UNPAID
+  PAID
+  PARTIAL
+  BAD_DEBT
+}
+
+// [NEW] Wallet & Transfers
+model WalletTransfer {
+  id          String   @id @default(uuid())
+  fromStoreId String?
+  toStoreId   String?
+  amount      Float
+  note        String?
+  createdAt   DateTime @default(now())
+
+  fromStore Store? @relation("SentTransfers", fields: [fromStoreId], references: [id])
+  toStore   Store? @relation("ReceivedTransfers", fields: [toStoreId], references: [id])
+}
+
+model TopUpRequest {
+  id        String      @id @default(uuid())
+  storeId   String
+  amount    Float
+  proofUrl  String?
+  status    TopUpStatus @default(PENDING)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id])
+}
+
+enum TopUpStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ================================
+// SUPPORT & TICKETS
+// ================================
+
+model SupportTicket {
+  id        String       @id @default(uuid())
+  tenantId  String
+  subject   String
+  status    TicketStatus @default(OPEN)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  tenant   Tenant          @relation(fields: [tenantId], references: [id])
+  messages TicketMessage[]
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+model TicketMessage {
+  id         String   @id @default(uuid())
+  ticketId   String
+  senderId   String // User ID or Admin ID
+  senderType String? // 'MERCHANT' or 'ADMIN'
+  message    String
+  isAdmin    Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id])
+}
+
+// ================================
+// REPORTING AGGREGATES (For Performance)
+// ================================
+
+model DailySalesSummary {
+  id               String   @id @default(uuid())
+  tenantId         String
+  storeId          String
+  date             DateTime // Midnight
+  totalSales       Float    @default(0)
+  totalProfit      Float    @default(0)
+  transactionCount Int      @default(0)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  store  Store  @relation(fields: [storeId], references: [id])
+
+  @@unique([storeId, date])
+}
+
+model ProductSalesSummary {
+  id            String   @id @default(uuid())
+  tenantId      String
+  productId     String
+  date          DateTime // Month start or Week start
+  totalQuantity Int      @default(0)
+  totalRevenue  Float    @default(0)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+}
+
+// ================================
+// PPOB & DIGITAL PRODUCTS
+// ================================
+
+model PpobTransaction {
+  id           String     @id @default(uuid())
+  tenantId     String
+  storeId      String
+  refId        String // External Ref ID (e.g. from Digiflazz)
+  productCode  String
+  customerNo   String // Phone number or PLN ID
+  amount       Float // Cost Price
+  sellingPrice Float // Price charged to customer
+  status       PpobStatus @default(PENDING)
+  sn           String? // Serial Number from provider
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  store  Store  @relation(fields: [storeId], references: [id])
+}
+
+enum PpobStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+// ================================
+// FLASH SALES & PROMOTIONS
+// ================================
+
+model FlashSale {
+  id        String   @id @default(uuid())
+  tenantId  String
+  storeId   String
+  title     String
+  startTime DateTime
+  endTime   DateTime
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  tenant Tenant          @relation(fields: [tenantId], references: [id])
+  store  Store           @relation(fields: [storeId], references: [id])
+  items  FlashSaleItem[]
+}
+
+model FlashSaleItem {
+  id            String @id @default(uuid())
+  flashSaleId   String
+  productId     String
+  discountPrice Float
+  maxQuantity   Int? // Limit per user or total? Let's say total stock allocated
+  soldQuantity  Int    @default(0)
+
+  flashSale FlashSale @relation(fields: [flashSaleId], references: [id])
+  product   Product   @relation(fields: [productId], references: [id])
+}
+
+model ReferralCode {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  tenantId  String // Owner of the code
+  createdAt DateTime @default(now())
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  referrals Referral[]
+}
+
+model Referral {
+  id             String         @id @default(uuid())
+  referralCodeId String
+  referrerId     String // Tenant ID who owns the code
+  refereeId      String         @unique // Tenant ID who used the code
+  status         ReferralStatus @default(PENDING)
+  createdAt      DateTime       @default(now())
+
+  referralCode ReferralCode    @relation(fields: [referralCodeId], references: [id])
+  referrer     Tenant          @relation("TenantAsReferrer", fields: [referrerId], references: [id])
+  referee      Tenant          @relation("TenantAsReferee", fields: [refereeId], references: [id])
+  reward       ReferralReward?
+}
+
+enum ReferralStatus {
+  PENDING
+  COMPLETED // When referee subscribes
+  PAID // When reward is paid out
+  PENDING_REWARD
+  CANCELED
+}
+
+model ReferralReward {
+  id         String       @id @default(uuid())
+  referralId String       @unique
+  tenantId   String // Beneficiary (Referrer)
+  amount     Float
+  status     RewardStatus @default(PENDING)
+  paidAt     DateTime?
+  createdAt  DateTime     @default(now())
+
+  referral Referral @relation(fields: [referralId], references: [id])
+  tenant   Tenant   @relation("ReferralRewardTenant", fields: [tenantId], references: [id])
+}
+
+enum RewardStatus {
+  PENDING
+  PAID
+}
+
+// ================================
+// COMMUNITY & CHAT
+// ================================
+
+model ChatRoom {
+  id        String   @id @default(uuid())
+  name      String
+  type      String   @default("public") // public, private, group
+  icon      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages ChatMessage[]
+  members  ChatMember[]
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  roomId    String
+  userId    String?
+  userName  String?
+  content   String
+  createdAt DateTime @default(now())
+
+  room ChatRoom @relation(fields: [roomId], references: [id])
+  user User?    @relation(fields: [userId], references: [id])
+}
+
+model ChatMember {
+  id       String   @id @default(uuid())
+  roomId   String
+  userId   String
+  joinedAt DateTime @default(now())
+
+  room ChatRoom @relation(fields: [roomId], references: [id])
+  user User     @relation(fields: [userId], references: [id])
+}
+
+model CommunityTopic {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  icon        String?
+  color       String?
+  createdAt   DateTime @default(now())
+
+  posts CommunityPost[]
+}
+
+model CommunityPost {
+  id        Int      @id @default(autoincrement())
+  topicId   Int
+  authorId  String
+  title     String?
+  content   String
+  tags      String[]
+  image     String?
+  likes     Int      @default(0)
+  views     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  topic     CommunityTopic      @relation(fields: [topicId], references: [id])
+  author    User                @relation(fields: [authorId], references: [id])
+  comments  CommunityComment[]
+  postLikes CommunityPostLike[]
+}
+
+model CommunityComment {
+  id        Int      @id @default(autoincrement())
+  postId    Int
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+
+  post   CommunityPost @relation(fields: [postId], references: [id])
+  author User          @relation(fields: [authorId], references: [id])
+}
+
+model CommunityPostLike {
+  id        Int      @id @default(autoincrement())
+  postId    Int
+  userId    String
+  createdAt DateTime @default(now())
+
+  post CommunityPost @relation(fields: [postId], references: [id])
+  user User          @relation(fields: [userId], references: [id])
+
+  @@unique([postId, userId])
+}
+
+// ================================
+// CONTACT
+// ================================
+model ContactMessage {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  subject   String?
+  message   String
+  status    String   @default("UNREAD") // UNREAD, READ, ARCHIVED
+  createdAt DateTime @default(now())
+}
+
+// ================================
+// CAREERS
+// ================================
+enum ApplicationStatus {
+  PENDING
+  REVIEWED
+  SHORTLISTED
+  REJECTED
+}
+
+model JobApplication {
+  id            String            @id @default(uuid())
+  name          String
+  email         String
+  phone         String?
+  positionTitle String
+  positionDept  String?
+  seniority     String?
+  resumeLink    String?
+  portfolioLink String?
+  coverLetter   String?
+  status        ApplicationStatus @default(PENDING)
+  createdAt     DateTime          @default(now())
+}
+
+// ================================
+// BLOG
+// ================================
+model BlogPost {
+  id          String    @id @default(uuid())
+  title       String
+  slug        String    @unique
+  summary     String
+  content     String
+  imageUrl    String?
+  author      String
+  tags        String[]
+  status      String    @default("DRAFT") // DRAFT, PUBLISHED
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// ================================
+// DRIVER & RIDE-HAILING
+// ================================
+
+model Driver {
+  id           String       @id @default(uuid())
+  userId       String?      @unique // Link to User if they also use the buyer app
+  name         String
+  phone        String       @unique
+  email        String?
+  nik          String?      // [NEW]
+  address      String?      // [NEW]
+  vehicleType  String // 'MOTORCYCLE', 'CAR', 'TRUCK'
+  vehiclePlate String
+  vehicleBrand String?
+  vehicleYear  String?      // [NEW]
+  ktpImage     String?      // [NEW]
+  simImage     String?      // [NEW]
+  stnkImage    String?      // [NEW]
+  selfieImage  String?      // [NEW]
+  status       DriverStatus @default(OFFLINE) // OFFLINE, ONLINE, BUSY
+  latitude     Float?
+  longitude    Float?
+  balance      Float        @default(0)
+  rating       Float        @default(0)
+  ratingCount  Int          @default(0)
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  serviceRequests ServiceRequest[]
+}
+
+enum DriverStatus {
+  OFFLINE
+  ONLINE
+  BUSY
+}
+
+model ServiceRequest {
+  id         String        @id @default(uuid())
+  type       ServiceType // RIDE, SEND, FOOD
+  customerId String // Can link to Customer/User
+  driverId   String?
+  status     ServiceStatus @default(SEARCHING)
+
+  // Origin Data
+  originLat     Float
+  originLng     Float
+  originAddress String
+
+  // Destination Data
+  destLat     Float
+  destLng     Float
+  destAddress String
+
+  // Pricing & Payment
+  price         Float
+  paymentMethod String        @default("CASH")
+  paymentStatus PaymentStatus @default(UNPAID) // existing enum
+
+  // For Delivery/Food
+  notes         String?
+  transactionId String? // Optional link to E-commerce Transaction
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  driver Driver? @relation(fields: [driverId], references: [id])
+}
+
+enum ServiceType {
+  RIDE
+  SEND
+  FOOD
+}
+
+enum ServiceStatus {
+  SEARCHING
+  ACCEPTED
+  ARRIVED
+  IN_TRANSIT
+  COMPLETED
+  CANCELLED
+}
+

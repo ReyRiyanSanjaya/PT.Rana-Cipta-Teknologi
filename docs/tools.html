@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Tools - Dokumentasi Rana Market</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <a href="index.html" class="brand">Rana Market 🐸</a>
+        <ul class="nav-links">
+            <li class="nav-item"><a href="index.html" class="nav-link">🏠 Pengantar</a></li>
+            <li class="nav-item"><a href="installation.html" class="nav-link">🛠️ Instalasi Lokal</a></li>
+            <li class="nav-item"><a href="architecture.html" class="nav-link">🏗️ Arsitektur Sistem</a></li>
+            <li class="nav-item"><a href="database-schema.html" class="nav-link">💾 Database Schema</a></li>
+            <li class="nav-item"><a href="security.html" class="nav-link">🔒 Keamanan</a></li>
+            <li class="nav-item"><a href="server-deployment.html" class="nav-link">🖥️ Server Deployment</a></li>
+            <li class="nav-item"><a href="mobile-deployment.html" class="nav-link">📱 Mobile Deployment</a></li>
+            <li class="nav-item"><a href="api-integration.html" class="nav-link">🔌 Integrasi API</a></li>
+            <li class="nav-item"><a href="cicd.html" class="nav-link">🚀 CI/CD Pipeline</a></li>
+            <li class="nav-item"><a href="tools.html" class="nav-link active">🛠️ Tools & Utils</a></li>
+            <li class="nav-item"><a href="user-manual.html" class="nav-link">📖 Panduan Admin</a></li>
+            <li class="nav-item"><a href="maintenance.html" class="nav-link">🛠️ Maintenance & Ops</a></li>
+            <li class="nav-item"><a href="troubleshooting.html" class="nav-link">❓ Troubleshooting</a></li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <h1>Interactive Tools</h1>
+        <p>Kumpulan utilitas untuk membantu developer dan admin dalam mengelola Rana Market.</p>
+
+        <div class="tool-card" id="tool-md5">
+            <h2>🔐 Digiflazz Signature Generator</h2>
+            <p>Gunakan alat ini untuk men-generate MD5 Signature yang dibutuhkan saat testing API Digiflazz manual (Postman/cURL).</p>
+            
+            <div class="form-group">
+                <label>Username Digiflazz</label>
+                <input type="text" id="md5-username" placeholder="user123">
+            </div>
+            <div class="form-group">
+                <label>API Key (Prod/Dev)</label>
+                <input type="text" id="md5-key" placeholder="api_key_xxx">
+            </div>
+            <div class="form-group">
+                <label>Ref ID (Trx ID)</label>
+                <input type="text" id="md5-refid" placeholder="trx-12345">
+            </div>
+            
+            <button class="btn-primary" id="btn-gen-md5">Generate Signature</button>
+
+            <div class="result-box">
+                <p><strong>Result (MD5 Hash):</strong></p>
+                <code id="md5-result" class="large-code">...</code>
+                <p class="small-text" id="md5-raw">String: ...</p>
+            </div>
+        </div>
+
+        <div class="tool-card" id="tool-markup">
+            <h2>💰 PPOB Price Calculator</h2>
+            <p>Simulasi perhitungan harga jual pulsa berdasarkan konfigurasi Markup di <code>.env</code>.</p>
+            
+            <div class="form-group">
+                <label>Harga Dasar (Dari Digiflazz)</label>
+                <input type="number" id="calc-base" placeholder="10000">
+            </div>
+            <div class="form-group">
+                <label>Markup Flat (Rp)</label>
+                <input type="number" id="calc-flat" placeholder="500" value="500">
+            </div>
+            <div class="form-group">
+                <label>Markup Persen (%)</label>
+                <input type="number" id="calc-percent" placeholder="0" value="0">
+            </div>
+            
+            <button class="btn-primary" id="btn-calc-markup">Hitung Harga Jual</button>
+
+            <div class="result-box">
+                <p><strong>Harga Jual User:</strong></p>
+                <code id="calc-result" class="large-code">Rp 0</code>
+                <p class="small-text" id="calc-detail">Base + Flat + %</p>
+            </div>
+        </div>
+
+        <div class="tool-card" id="tool-batch">
+            <h2>🛠️ Developer Batch Scripts (.bat)</h2>
+            <p>Semua file shortcut tersedia di <strong>root folder</strong> proyek. Double-click untuk menjalankan. Gunakan <strong>CMD</strong> bukan PowerShell jika ada error "scripts is disabled".</p>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nama File</th>
+                        <th>Fungsi</th>
+                        <th>Kapan Digunakan</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="background: rgba(224,122,95,0.08);">
+                        <td><code>Install manual awal.bat</code> ⭐</td>
+                        <td>Setup <strong>lengkap otomatis</strong>: install npm + flutter + prisma db push + generate + seeding semua data</td>
+                        <td><strong>Pertama kali</strong> setup di komputer baru</td>
+                    </tr>
+                    <tr>
+                        <td><code>start_all.bat</code></td>
+                        <td>Buka 4 terminal sekaligus: Server (4000) + Dashboard Merchant (5173) + Admin (5174) + Distributor (5175)</td>
+                        <td>Setiap hari development</td>
+                    </tr>
+                    <tr>
+                        <td><code>start_server.bat</code></td>
+                        <td>Jalankan hanya backend API di port 4000 dengan <code>npm run dev</code> (nodemon)</td>
+                        <td>Saat hanya butuh backend / testing API</td>
+                    </tr>
+                    <tr>
+                        <td><code>seed_db.bat</code></td>
+                        <td>Isi ulang data demo: akun (merchant + admin), menu navigasi, produk PPOB</td>
+                        <td>Jika perlu reset data demo saja</td>
+                    </tr>
+                    <tr>
+                        <td><code>update_db.bat</code></td>
+                        <td>Sinkronisasi <code>schema.prisma</code> ke PostgreSQL + generate Prisma Client</td>
+                        <td>Setiap kali ada perubahan schema database</td>
+                    </tr>
+                    <tr>
+                        <td><code>build_apk.bat</code></td>
+                        <td>Build APK Release dengan pilihan interaktif: Rana Merchant, Rana Buyer, atau keduanya. Output di <code>builds/</code></td>
+                        <td>Deploy APK ke HP tanpa Android Studio</td>
+                    </tr>
+                    <tr>
+                        <td><code>run_test.bat</code></td>
+                        <td>Jalankan unit test di sisi server Node.js</td>
+                        <td>Sebelum commit perubahan besar</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="alert alert-info" style="margin-top:1rem;">
+                💡 <strong>Alur kerja pertama kali:</strong><br>
+                1. Edit <code>server/.env</code> → 2. Buat database <code>rana_pos</code> di pgAdmin → 3. Double-click <code>Install manual awal.bat</code> → 4. Double-click <code>start_all.bat</code>
+            </div>
+        </div>
+
+        <footer>
+            &copy; 2026 Rana Market Team. All rights reserved.
+
+        </footer>
+    </main>
+
+    <script src="js/main.js"></script>
+</body>
+</html>

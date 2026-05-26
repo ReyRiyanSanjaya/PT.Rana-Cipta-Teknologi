@@ -1,0 +1,54 @@
+name: rana_market
+description: Aplikasi Pesan Antar Makanan & Belanja UMKM.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.1.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  provider: ^6.0.5
+  dio: ^5.3.2
+  google_fonts: ^6.1.0
+  intl: ^0.18.1
+  url_launcher: ^6.1.11
+  cached_network_image: ^3.3.0 # For product images
+  geolocator: ^10.1.0 # Find nearby stores
+  flutter_map: ^6.0.0 # OpenStreetMap for Location
+  latlong2: ^0.9.0
+  qr_flutter: ^4.1.0
+  socket_io_client: ^2.0.3
+  flutter_local_notifications: ^17.1.2
+  shared_preferences: ^2.5.3
+  flutter_animate: ^4.5.0
+  lottie: ^3.3.1
+  share_plus: ^10.0.0
+  speech_to_text: ^7.3.0
+  vibration: ^2.0.1
+  mobile_scanner: ^5.2.3
+  camera: ^0.10.5
+  flutter_compass: ^0.7.0
+  sensors_plus: ^4.0.0
+  fl_chart: ^0.66.2
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png" # You need to put your icon here
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png" # Optional
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
