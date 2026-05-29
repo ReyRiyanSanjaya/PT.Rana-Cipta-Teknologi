@@ -169,7 +169,6 @@ const AdminUsers = () => {
                         <option value="">All Roles</option>
                         <option value="SUPER_ADMIN">Super Admin</option>
                         <option value="ADMIN">Admin</option>
-                        <option value="SUPPORT">Support</option>
                     </select>
                     <Button icon={Settings} variant="outline" onClick={() => setShowRoleModal(true)}>Role Permissions</Button>
                     <Button icon={Plus} onClick={() => setShowModal(true)}>New Admin</Button>
@@ -182,7 +181,6 @@ const AdminUsers = () => {
                         <span className="text-sm text-indigo-700">{selectedRows.length} selected</span>
                         <div className="flex gap-2">
                             <Button size="sm" onClick={() => bulkSetRole('ADMIN')} icon={Pencil}>Set Role: Admin</Button>
-                            <Button size="sm" onClick={() => bulkSetRole('SUPPORT')} icon={Pencil}>Set Role: Support</Button>
                             <Button variant="destructive" size="sm" onClick={bulkDeactivate} icon={Ban}>Deactivate</Button>
                         </div>
                     </div>
@@ -230,7 +228,6 @@ const AdminUsers = () => {
                                         >
                                             <option value="SUPER_ADMIN">Super Admin</option>
                                             <option value="ADMIN">Admin</option>
-                                            <option value="SUPPORT">Support</option>
                                         </select>
                                     </div>
                                 </Td>
@@ -297,7 +294,6 @@ const AdminUsers = () => {
                             >
                                 <option>SUPER_ADMIN</option>
                                 <option>ADMIN</option>
-                                <option>SUPPORT</option>
                             </select>
                             <Button size="sm" variant="secondary" onClick={() => {
                                 const next = { ...roleMenus, [roleSelected]: allMenus.map(m => m.path) };

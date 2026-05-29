@@ -3,7 +3,8 @@ import api from '../api';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
-import { Layout, Image, Type, Save, Globe, Users, Star, List, Percent, Wallet } from 'lucide-react';
+import Badge from '../components/ui/Badge';
+import { Layout, Image, Type, Save, Globe, Users, Star, List, Percent, Wallet, RefreshCw, CheckCircle } from 'lucide-react';
 
 const ContentManager = () => {
     const [activeTab, setActiveTab] = useState('general');
@@ -65,6 +66,8 @@ const ContentManager = () => {
         CMS_MILESTONES: '[]'
     });
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [saveSuccess, setSaveSuccess] = useState('');
     const [flashSales, setFlashSales] = useState([]);
     const [preview, setPreview] = useState({
         buyerSubtotal: 0,
@@ -146,11 +149,15 @@ const ContentManager = () => {
     };
 
     const handleSave = async (key, value) => {
+        setSaving(true);
         try {
             await api.post('/admin/settings', { key, value });
-            alert("Content updated!");
+            setSaveSuccess(key);
+            setTimeout(() => setSaveSuccess(''), 2000);
         } catch (error) {
-            alert("Failed to save content");
+            alert(error.response?.data?.message || "Failed to save content");
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -210,19 +217,48 @@ const ContentManager = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex overflow-x-auto">
-                <div className="flex space-x-4 border-b border-slate-200 min-w-max">
+            {/* Page Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-semibold text-slate-900">Content Manager</h1>
+                    <p className="text-slate-500 mt-1">Manage website content, chatbot knowledge, and platform fee settings.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    {saveSuccess && (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100 animate-in fade-in duration-200">
+                            <CheckCircle size={14} />
+                            Saved!
+                        </span>
+                    )}
+                    <Button variant="outline" icon={RefreshCw} onClick={() => { fetchSettings(); fetchPublic(); }} isLoading={loading}>
+                        Refresh
+                    </Button>
+                </div>
+            </div>
+
+            {/* Loading State */}
+            {loading && (
+                <div className="flex items-center justify-center py-12">
+                    <div className="h-8 w-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+            )}
+
+            {!loading && (
+            <>
+            {/* Tab Navigation */}
+            <div className="bg-white rounded-xl border border-slate-200 p-1.5 shadow-sm">
+                <div className="flex overflow-x-auto gap-1">
                     {tabs.map(tab => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`pb-4 px-4 flex items-center gap-2 font-medium transition-colors relative ${activeTab === tab.id
-                                ? 'text-indigo-600 border-b-2 border-indigo-600'
-                                : 'text-slate-500 hover:text-slate-700'
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${activeTab === tab.id
+                                ? 'bg-indigo-50 text-indigo-700 shadow-sm border border-indigo-100'
+                                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
                                 }`}
                         >
                             {tab.icon}
-                            {tab.label}
+                            <span className="hidden sm:inline">{tab.label}</span>
                         </button>
                     ))}
                 </div>
@@ -613,8 +649,8 @@ const ContentManager = () => {
                 )}
                 {activeTab === 'chatbot' && (
                     <Card className="p-6 col-span-2">
-                        <h3 className="text-lg font-bold mb-4">Chatbot Knowledge Base</h3>
-                        <p className="text-sm text-slate-600 mb-4">
+                        <h3 className="text-lg font-bold mb-2">Chatbot Knowledge Base</h3>
+                        <p className="text-sm text-slate-500 mb-6">
                             Atur jawaban standar yang akan digunakan Rana AI ketika menjawab pertanyaan calon merchant di website.
                         </p>
                         <div className="grid grid-cols-1 gap-6">
@@ -685,6 +721,7 @@ const ContentManager = () => {
                         </div>
                     </Card>
                 )}
+                {activeTab === 'general' && (
                 <Card className="p-6 col-span-2">
                     <h3 className="text-lg font-bold mb-4">Public Preview</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -702,6 +739,7 @@ const ContentManager = () => {
                         </div>
                     </div>
                 </Card>
+                )}
                 {activeTab === 'fees' && (
                     <Card className="p-6 col-span-2">
                         <h3 className="text-lg font-bold mb-4">Fee Settings</h3>
@@ -915,6 +953,8 @@ const ContentManager = () => {
                     </Card>
                 )}
             </div>
+            </>
+            )}
         </div>
     );
 };

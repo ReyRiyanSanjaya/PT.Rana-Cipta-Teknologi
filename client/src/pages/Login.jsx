@@ -21,7 +21,7 @@ const Login = () => {
             await login(email, password);
             navigate('/dashboard');
         } catch (err) {
-            setError(err.response?.data?.message || "Gagal masuk");
+            setError(typeof err === 'string' ? err : (err.response?.data?.message || err.message || "Gagal masuk"));
         } finally {
             setLoading(false);
         }
@@ -92,7 +92,7 @@ const Login = () => {
                         </div>
 
                         <div className="flex justify-end">
-                            <a href="#" className="text-sm text-teal-400 font-bold hover:underline">Lupa Kata Sandi?</a>
+                            <Link to="/login" className="text-sm text-teal-400 font-bold hover:underline">Lupa Kata Sandi?</Link>
                         </div>
 
                         <button

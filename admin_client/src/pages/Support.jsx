@@ -311,6 +311,7 @@ const Support = () => {
                     <select className="px-3 py-2 border rounded-lg text-sm bg-white" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
                         <option value="">All</option>
                         <option value="OPEN">OPEN</option>
+                        <option value="IN_PROGRESS">IN PROGRESS</option>
                         <option value="RESOLVED">RESOLVED</option>
                         <option value="CLOSED">CLOSED</option>
                     </select>
@@ -350,7 +351,7 @@ const Support = () => {
                             >
                                 <div className="flex justify-between items-start mb-1">
                                     <h4 className="font-medium text-slate-900 truncate pr-2">{ticket.subject}</h4>
-                                    <Badge variant={ticket.status === 'OPEN' ? 'warning' : ticket.status === 'RESOLVED' ? 'success' : 'secondary'}>
+                                    <Badge variant={ticket.status === 'OPEN' ? 'warning' : ticket.status === 'IN_PROGRESS' ? 'brand' : ticket.status === 'RESOLVED' ? 'success' : 'secondary'}>
                                         {ticket.status}
                                     </Badge>
                                 </div>
@@ -382,7 +383,7 @@ const Support = () => {
                                         Ticket ID: #{selectedTicket.id.substring(0, 8)} • {selectedTicket.tenant?.name}
                                     </div>
                                     <div className="mt-1 flex items-center gap-2">
-                                        <Badge variant={isOverdue(selectedTicket) ? 'danger' : 'secondary'}>
+                                        <Badge variant={isOverdue(selectedTicket) ? 'error' : 'secondary'}>
                                             {isOverdue(selectedTicket) ? 'Overdue' : `SLA ${remainingHours(selectedTicket) ?? '-'}h`}
                                         </Badge>
                                         <Badge variant="brand">{(metaMap[selectedTicket.id]?.priority || 'Normal')}</Badge>

@@ -134,6 +134,22 @@ const DashboardLayout = ({ children }) => {
         };
     }, []);
 
+    // Keyboard shortcut for Command Palette (Ctrl+K / Cmd+K)
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                setIsCommandPaletteOpen(prev => !prev);
+                setCommandQuery('');
+            }
+            if (e.key === 'Escape') {
+                setIsCommandPaletteOpen(false);
+            }
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
     // Close dropdowns on click outside
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -350,6 +366,15 @@ const DashboardLayout = ({ children }) => {
         ${isSidebarCollapsed ? 'md:w-20' : 'md:w-64'}
       `}
             >
+
+            {/* Mobile sidebar backdrop */}
+            {isMobileMenuOpen && (
+                <div 
+                    className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[-1] md:hidden"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    aria-hidden="true"
+                />
+            )}
                 <div className="flex h-full flex-col">
                     <div className="p-6 flex items-center justify-between gap-2">
                         <motion.div
@@ -658,7 +683,7 @@ const DashboardLayout = ({ children }) => {
                 </motion.header>
 
                 {/* Page Content */}
-                <main className="flex-1 overflow-y-auto overflow-x-hidden text-slate-900 dark:text-slate-100">
+                <main ref={mainContentRef} className="flex-1 overflow-y-auto overflow-x-hidden text-slate-900 dark:text-slate-100">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}

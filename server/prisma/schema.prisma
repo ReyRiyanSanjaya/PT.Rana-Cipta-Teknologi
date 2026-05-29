@@ -115,6 +115,7 @@ model User {
   name         String
   email        String   @unique
   passwordHash String
+  avatarUrl    String?
   role         UserRole @default(CASHIER)
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
@@ -389,6 +390,33 @@ model Announcement {
   target      String   @default("ALL") // ALL, PLAN, STATUS, STORE
   targetValue String? // e.g. "PREMIUM", "ACTIVE", or StoreID
   createdAt   DateTime @default(now())
+}
+
+model AppMenu {
+  id       String  @id @default(uuid())
+  key      String  @unique
+  label    String
+  icon     String?
+  route    String
+  order    Int     @default(0)
+  isActive Boolean @default(true)
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  action     String // CREATE, UPDATE, DELETE, LOGIN, LOGOUT
+  entity     String? // e.g. "User", "Withdrawal", "Subscription"
+  entityId   String?
+  oldValue   String? // JSON string of previous state
+  newValue   String? // JSON string of new state
+  ipAddress  String?
+  occurredAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([occurredAt])
 }
 
 model Supplier {
@@ -692,6 +720,19 @@ enum TopUpStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+// ================================
+// PLATFORM REVENUE TRACKING
+// ================================
+
+model PlatformRevenue {
+  id          String   @id @default(uuid())
+  amount      Float
+  source      String // SUBSCRIPTION, WITHDRAWAL_FEE, OTHER
+  description String?
+  referenceId String?
+  createdAt   DateTime @default(now())
 }
 
 // ================================
@@ -1101,3 +1142,117 @@ enum ServiceStatus {
   CANCELLED
 }
 
+
+// ================================
+// AI MARKETING AUTOMATION
+// ================================
+
+model AiBrandingProfile {
+  id                   String   @id @default(uuid())
+  detectedBusinessType String?
+  brandingTone         String?  // professional, friendly, bold, minimal
+  primaryColor         String?
+  secondaryColor       String?
+  slogan               String?
+  ctaStyle             String?  // bold, subtle, urgent, friendly
+  targetAudience       String?
+  generatedByAi        Boolean  @default(true)
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model AiServiceAnalysis {
+  id                String   @id @default(uuid())
+  websiteTitle      String?
+  detectedServices  Json?    // Array of detected services
+  detectedKeywords  Json?    // Array of keywords
+  targetAudience    String?
+  businessCategory  String?
+  generatedStrategy Json?    // AI generated marketing strategy
+  rawAnalysis       Json?    // Full analysis data
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model AiCampaign {
+  id            String           @id @default(uuid())
+  title         String
+  subject       String
+  preheader     String?
+  content       String           @db.Text
+  template      String?          // template name/type
+  ctaText       String?
+  ctaUrl        String?
+  scheduleTime  DateTime?
+  sentAt        DateTime?
+  status        AiCampaignStatus @default(DRAFT)
+  recipientType String           @default("ALL") // ALL, MERCHANTS, BUYERS, DRIVERS
+  totalSent     Int              @default(0)
+  totalOpened   Int              @default(0)
+  totalClicked  Int              @default(0)
+  generatedByAi Boolean          @default(true)
+  aiScore       Float?           // AI confidence score
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+}
+
+enum AiCampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+}
+
+model AiMarketingConfig {
+  id                  String   @id @default(uuid())
+  isEnabled           Boolean  @default(false)
+  autoAnalyze         Boolean  @default(true)
+  autoBranding        Boolean  @default(true)
+  autoCampaign        Boolean  @default(true)
+  autoSchedule        Boolean  @default(true)
+  autoOptimize        Boolean  @default(true)
+  sendFrequency       String   @default("WEEKLY") // DAILY, WEEKLY, BIWEEKLY, MONTHLY
+  preferredSendHour   Int      @default(9) // 0-23
+  preferredSendDay    Int      @default(2) // 0=Sun, 1=Mon, ...
+  lastAnalyzedAt      DateTime?
+  lastCampaignSentAt  DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+// ================================
+// EMAIL RECIPIENT MANAGEMENT
+// ================================
+
+model EmailRecipient {
+  id        String   @id @default(uuid())
+  email     String
+  name      String?
+  category  String   @default("GENERAL") // MERCHANT, BUYER, DRIVER, DISTRIBUTOR, LEAD, GENERAL
+  tags      String[] // custom tags for segmentation
+  source    String?  // where they came from: REGISTER, IMPORT, MANUAL, LANDING
+  isActive  Boolean  @default(true)
+  isVerified Boolean @default(false)
+  unsubscribed Boolean @default(false)
+  metadata  Json?    // extra data (company, phone, etc)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([email])
+  @@index([category])
+  @@index([isActive, unsubscribed])
+}
+
+model EmailList {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  category    String   @default("GENERAL")
+  color       String?  // for UI display
+  recipientCount Int   @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

@@ -16,13 +16,13 @@ const TopUps = () => {
     const [selectedProof, setSelectedProof] = useState(null);
     const [error, setError] = useState(null);
     const [actionLoading, setActionLoading] = useState({});
+    const [counts, setCounts] = useState({ PENDING: 0, APPROVED: 0, REJECTED: 0 });
 
     const fetchTopUps = async () => {
         setLoading(true);
         setError(null);
         try {
             const res = await api.get('/admin/topups', { params: { status: filter } });
-            // Ensure data is array, handle potential structure mismatch
             setTopups(Array.isArray(res.data?.data) ? res.data.data : []);
         } catch (error) {
             console.error(error);
@@ -32,9 +32,30 @@ const TopUps = () => {
         }
     };
 
+    const fetchCounts = async () => {
+        try {
+            const [pending, approved, rejected] = await Promise.all([
+                api.get('/admin/topups', { params: { status: 'PENDING' } }),
+                api.get('/admin/topups', { params: { status: 'APPROVED' } }),
+                api.get('/admin/topups', { params: { status: 'REJECTED' } }),
+            ]);
+            setCounts({
+                PENDING: Array.isArray(pending.data?.data) ? pending.data.data.length : 0,
+                APPROVED: Array.isArray(approved.data?.data) ? approved.data.data.length : 0,
+                REJECTED: Array.isArray(rejected.data?.data) ? rejected.data.data.length : 0,
+            });
+        } catch (e) {
+            console.error('Failed to fetch counts', e);
+        }
+    };
+
     useEffect(() => {
         fetchTopUps();
     }, [filter]);
+
+    useEffect(() => {
+        fetchCounts();
+    }, []);
 
     const handleApprove = async (id) => {
         if (!window.confirm("Approve this Top Up? Balance will be added to Merchant.")) return;
@@ -42,6 +63,7 @@ const TopUps = () => {
             setActionLoading(prev => ({ ...prev, [id]: true }));
             await api.put(`/admin/topups/${id}/approve`);
             fetchTopUps();
+            fetchCounts();
         } catch (error) {
             alert(error.response?.data?.message || "Failed to approve");
         } finally {
@@ -56,6 +78,7 @@ const TopUps = () => {
             setActionLoading(prev => ({ ...prev, [id]: true }));
             await api.put(`/admin/topups/${id}/reject`, { reason });
             fetchTopUps();
+            fetchCounts();
         } catch (error) {
             alert(error.response?.data?.message || "Failed to reject");
         } finally {
@@ -110,6 +133,12 @@ const TopUps = () => {
                             <tab.icon className={cn("mr-3 h-5 w-5", filter === tab.id ? "opacity-100" : "opacity-70")} />
                             <span className={cn("font-semibold", filter === tab.id ? "" : "text-slate-600")}>
                                 {tab.label}
+                            </span>
+                            <span className={cn(
+                                "ml-2 text-xs font-bold px-2 py-0.5 rounded-full",
+                                filter === tab.id ? "bg-white/80 text-slate-700" : "bg-slate-100 text-slate-500"
+                            )}>
+                                {counts[tab.id] || 0}
                             </span>
                         </button>
                     ))}
@@ -222,6 +251,16 @@ const TopUps = () => {
                                                 Reject
                                             </Button>
                                         </div>
+                                    )}
+                                    {t.status === 'APPROVED' && (
+                                        <span className="text-xs text-green-600">
+                                            {t.updatedAt ? new Date(t.updatedAt).toLocaleDateString('id-ID') : 'Approved'}
+                                        </span>
+                                    )}
+                                    {t.status === 'REJECTED' && (
+                                        <span className="text-xs text-red-500">
+                                            {t.updatedAt ? new Date(t.updatedAt).toLocaleDateString('id-ID') : 'Rejected'}
+                                        </span>
                                     )}
                                 </Td>
                             </Tr>

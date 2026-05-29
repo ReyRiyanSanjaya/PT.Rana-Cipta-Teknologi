@@ -29,21 +29,15 @@ export const initTransactionsStream = async () => {
   socket = io(socketUrl, { auth: { token }, transports: ['websocket', 'polling'] })
   socket.on('connect', () => { connected = true; lastSync = new Date().toISOString(); emit() })
   socket.on('disconnect', () => { connected = false; emit() })
-  socket.on('transactions:created', async (payload) => {
-    if (payload && typeof payload === 'object') {
-      list = [payload, ...list].slice(0, 200)
+  socket.on('transactions:created', async () => {
+    // Always re-fetch full history to get complete transaction data
+    try {
+      const data = await fetchTransactionHistory()
+      list = Array.isArray(data) ? data : list
       lastSync = new Date().toISOString()
       recentEventAt = lastSync
       emit()
-    } else {
-      try {
-        const data = await fetchTransactionHistory()
-        list = Array.isArray(data) ? data : list
-        lastSync = new Date().toISOString()
-        recentEventAt = lastSync
-        emit()
-      } catch {}
-    }
+    } catch {}
   })
 }
 

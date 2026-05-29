@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
-import { Megaphone, Trash2, CheckCircle, XCircle } from 'lucide-react';
+import { Megaphone, Trash2, CheckCircle, XCircle, RefreshCw, Send } from 'lucide-react';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
@@ -10,12 +10,14 @@ import Badge from '../components/ui/Badge';
 const Broadcasts = () => {
     const [announcements, setAnnouncements] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
     const [form, setForm] = useState({ title: '', content: '', target: 'ALL', targetValue: '' });
 
     const fetchAnnouncements = async () => {
+        setLoading(true);
         try {
             const res = await api.get('/admin/announcements');
-            setAnnouncements(res.data.data);
+            setAnnouncements(res.data.data || []);
         } catch (error) {
             console.error(error);
         } finally {
@@ -31,37 +33,50 @@ const Broadcasts = () => {
         if (!form.title || !form.content) return alert("Please fill all fields");
         if (form.target !== 'ALL' && !form.targetValue) return alert("Please select a target value");
 
+        setSubmitting(true);
         try {
             await api.post('/admin/announcements', { ...form, isActive: true });
             setForm({ title: '', content: '', target: 'ALL', targetValue: '' });
             fetchAnnouncements();
             alert("Broadcast created!");
         } catch (error) {
-            alert("Failed to create broadcast");
+            alert(error.response?.data?.message || "Failed to create broadcast");
+        } finally {
+            setSubmitting(false);
         }
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm("Delete this broadcast?")) return;
+        if (!window.confirm("Delete this broadcast? This action cannot be undone.")) return;
         try {
             await api.delete(`/admin/announcements/${id}`);
             fetchAnnouncements();
         } catch (error) {
-            alert("Failed to delete");
+            alert(error.response?.data?.message || "Failed to delete");
         }
     };
 
     const toggleActive = async (id, currentStatus) => {
         try {
-            await api.put(`/admin/announcements/${id}/active`, { isActive: !currentStatus });
+            await api.put(`/admin/announcements/${id}`, { isActive: !currentStatus });
             fetchAnnouncements();
         } catch (error) {
-            alert("Failed to update status");
+            alert(error.response?.data?.message || "Failed to update status");
         }
     };
 
     return (
         <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl font-semibold text-slate-900">Broadcasts & Announcements</h1>
+                        <p className="text-slate-500 mt-1">Send announcements to merchants. Target all users or specific segments.</p>
+                    </div>
+                    <Button variant="outline" icon={RefreshCw} onClick={fetchAnnouncements} isLoading={loading}>
+                        Refresh
+                    </Button>
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Create Form */}
                     <div className="lg:col-span-1">
@@ -133,7 +148,7 @@ const Broadcasts = () => {
                                 </div>
                             )}
 
-                            <Button onClick={handleCreate} className="w-full">
+                            <Button onClick={handleCreate} className="w-full" icon={Send} isLoading={submitting} disabled={submitting}>
                                 Send Broadcast
                             </Button>
                         </div>

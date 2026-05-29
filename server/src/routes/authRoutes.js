@@ -26,6 +26,8 @@ router.post('/register-distributor', authController.registerDistributor); // [NE
 router.post('/login', authController.login);
 router.get('/me', verifyToken, authController.getProfile);
 router.put('/me', verifyToken, authController.updateUserProfile);
-router.put('/store', verifyToken, authController.updateStoreProfile); // [NEW]
+router.put('/store', verifyToken, authController.updateStoreProfile);
+router.put('/password', verifyToken, authController.changePassword);
+router.put('/photo', verifyToken, authController.updatePhoto);
 
 module.exports = router;

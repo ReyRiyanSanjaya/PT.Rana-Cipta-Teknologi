@@ -260,18 +260,33 @@ const Transactions = () => {
 
                                     {/* Summary */}
                                     <div className="space-y-2 pt-4 border-t border-dashed border-slate-200 dark:border-slate-700">
-                                        <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                                            <span>Subtotal</span>
-                                            <span>{formatCurrency((selectedTransaction.totalAmount / 1.11))}</span>
-                                        </div>
-                                        <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                                            <span>Pajak (11%)</span>
-                                            <span>{formatCurrency(selectedTransaction.totalAmount - (selectedTransaction.totalAmount / 1.11))}</span>
-                                        </div>
-                                        <div className="flex justify-between items-end pt-2">
-                                            <span className="font-bold text-slate-900 dark:text-white text-lg">Total Bayar</span>
-                                            <span className="font-extrabold text-2xl text-indigo-600 dark:text-indigo-400 tracking-tight">{formatCurrency(selectedTransaction.totalAmount)}</span>
-                                        </div>
+                                        {(() => {
+                                            const itemsSubtotal = selectedTransaction.items && selectedTransaction.items.length > 0
+                                                ? selectedTransaction.items.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+                                                : selectedTransaction.totalAmount;
+                                            const tax = selectedTransaction.tax != null 
+                                                ? Number(selectedTransaction.tax) 
+                                                : (selectedTransaction.totalAmount - itemsSubtotal);
+                                            const actualTax = Math.max(0, tax);
+                                            return (
+                                                <>
+                                                    <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                                                        <span>Subtotal</span>
+                                                        <span>{formatCurrency(itemsSubtotal)}</span>
+                                                    </div>
+                                                    {actualTax > 0 && (
+                                                        <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                                                            <span>Pajak</span>
+                                                            <span>{formatCurrency(actualTax)}</span>
+                                                        </div>
+                                                    )}
+                                                    <div className="flex justify-between items-end pt-2">
+                                                        <span className="font-bold text-slate-900 dark:text-white text-lg">Total Bayar</span>
+                                                        <span className="font-extrabold text-2xl text-indigo-600 dark:text-indigo-400 tracking-tight">{formatCurrency(selectedTransaction.totalAmount)}</span>
+                                                    </div>
+                                                </>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
                                 

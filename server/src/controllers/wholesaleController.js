@@ -358,14 +358,18 @@ const updateOrderStatus = async (req, res) => {
         });
 
         if (status === 'PAID' && order.serviceFee && order.serviceFee > 0) {
-            await prisma.platformRevenue.create({
-                data: {
-                    amount: order.serviceFee,
-                    source: 'OTHER',
-                    description: `Wholesale Service Fee - ${order.id}`,
-                    referenceId: order.id
-                }
-            });
+            try {
+                await prisma.platformRevenue.create({
+                    data: {
+                        amount: order.serviceFee,
+                        source: 'OTHER',
+                        description: `Wholesale Service Fee - ${order.id}`,
+                        referenceId: order.id
+                    }
+                });
+            } catch (revenueErr) {
+                console.warn('PlatformRevenue log skipped:', revenueErr.message);
+            }
         }
 
         // TODO: Notification logic here

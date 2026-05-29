@@ -15,6 +15,26 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
+// Handle 401 responses (expired token) globally
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401) {
+            // Token expired or invalid - clean up and redirect
+            const currentPath = window.location.pathname;
+            const publicPaths = ['/', '/login', '/register', '/about', '/features', '/contact', '/blog', '/community', '/careers', '/distributor'];
+            const isPublicPage = publicPaths.some(p => currentPath === p) || currentPath.startsWith('/blog/');
+            
+            if (!isPublicPage) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                window.location.href = '/login';
+            }
+        }
+        return Promise.reject(error);
+    }
+);
+
 // --- Local Storage Helpers for Mock Data ---
 const STORAGE_KEYS = {
     POSTS: 'rana_community_posts_v1',
@@ -290,28 +310,42 @@ export const fetchProfile = async () => {
 };
 
 export const updateUserProfile = async (data) => {
-    const user = getStoredData('user', {});
-    const updatedUser = { ...user, ...data };
-    setStoredData('user', updatedUser);
-    return updatedUser;
+    try {
+        const res = await api.put('/auth/me', data);
+        // Also update localStorage cache
+        const user = getStoredData('user', {});
+        const updatedUser = { ...user, ...data };
+        setStoredData('user', updatedUser);
+        return res.data.data || updatedUser;
+    } catch (e) {
+        console.error("Failed to update user profile", e);
+        throw e;
+    }
 };
 
 export const updateStoreProfile = async (data) => {
-    const user = getStoredData('user', {});
-    const updatedUser = {
-        ...user,
-        tenant: {
-            ...(user.tenant || {}),
-            name: data.businessName || user.tenant?.name
-        },
-        store: {
-            ...(user.store || {}),
-            location: data.address || user.store?.location,
-            waNumber: data.waNumber || user.store?.waNumber
-        }
-    };
-    setStoredData('user', updatedUser);
-    return updatedUser;
+    try {
+        const res = await api.put('/auth/store', data);
+        // Also update localStorage cache
+        const user = getStoredData('user', {});
+        const updatedUser = {
+            ...user,
+            tenant: {
+                ...(user.tenant || {}),
+                name: data.businessName || user.tenant?.name
+            },
+            store: {
+                ...(user.store || {}),
+                location: data.address || user.store?.location,
+                waNumber: data.waNumber || user.store?.waNumber
+            }
+        };
+        setStoredData('user', updatedUser);
+        return res.data.data || updatedUser;
+    } catch (e) {
+        console.error("Failed to update store profile", e);
+        throw e;
+    }
 };
 
 // --- Subscription ---
@@ -455,7 +489,7 @@ export const requestWithdrawal = async (data) => {
 
 export const fetchTransactionHistory = async (params) => {
     try {
-        const res = await api.get('/transactions', { params });
+        const res = await api.get('/transactions/history', { params });
         return res.data.data;
     } catch (e) {
         console.error("Failed to fetch transaction history", e);
@@ -465,7 +499,7 @@ export const fetchTransactionHistory = async (params) => {
 
 export const createTransaction = async (data) => {
     try {
-        const res = await api.post('/transactions', data);
+        const res = await api.post('/transactions/sync', data);
         return res.data;
     } catch (e) {
         console.error("Failed to create transaction", e);

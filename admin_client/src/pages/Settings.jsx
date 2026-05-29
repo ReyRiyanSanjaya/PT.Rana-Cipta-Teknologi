@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
-import { Save, AlertCircle, Truck, Trash2, Star } from 'lucide-react';
+import { Save, AlertCircle, Truck, Trash2, Star, Settings as SettingsIcon, CreditCard, Globe, Zap, RefreshCw, CheckCircle } from 'lucide-react';
 import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 
 const Settings = () => {
+    const [activeTab, setActiveTab] = useState('payment');
     const [settings, setSettings] = useState({
         PLATFORM_QRIS_URL: '',
         BANK_NAME: 'BCA',
@@ -29,6 +30,7 @@ const Settings = () => {
         COMPANY_LOGO_URL: ''
     });
     const [loading, setLoading] = useState(false);
+    const [saveSuccess, setSaveSuccess] = useState('');
     const [digiflazzApiKeyInput, setDigiflazzApiKeyInput] = useState('');
     const [digiflazzWebhookSecretInput, setDigiflazzWebhookSecretInput] = useState('');
     const [fees, setFees] = useState({
@@ -83,7 +85,8 @@ const Settings = () => {
                 value: String(settings[key]),
                 description
             });
-            alert("Setting saved!");
+            setSaveSuccess(key);
+            setTimeout(() => setSaveSuccess(''), 2500);
         } catch (error) {
             console.error(error);
             alert("Failed to save");
@@ -99,7 +102,8 @@ const Settings = () => {
                 api.post('/admin/settings', { key: 'WHOLESALE_SHIPPING_COST_PER_KM', value: settings.WHOLESALE_SHIPPING_COST_PER_KM, description: 'Shipping Cost per KM' }),
                 api.post('/admin/settings', { key: 'WHOLESALE_PAYMENT_METHODS', value: settings.WHOLESALE_PAYMENT_METHODS, description: 'Payment Methods' }),
             ]);
-            alert("Wholesale Settings Saved!");
+            setSaveSuccess('wholesale');
+            setTimeout(() => setSaveSuccess(''), 2500);
         } catch (error) {
             console.error(error);
             alert("Failed to save wholesale settings");
@@ -117,7 +121,8 @@ const Settings = () => {
                 api.post('/admin/settings', { key: 'BANK_ACCOUNT_NAME', value: settings.BANK_ACCOUNT_NAME, description: 'Account Name' }),
                 api.post('/admin/settings', { key: 'PLATFORM_FEE_PERCENTAGE', value: settings.PLATFORM_FEE_PERCENTAGE, description: 'Platform Fee %' }),
             ]);
-            alert("Bank & Platform Fee Settings Saved!");
+            setSaveSuccess('bank');
+            setTimeout(() => setSaveSuccess(''), 2500);
         } catch (error) {
             console.error(error);
             alert("Failed to save some settings");
@@ -162,7 +167,8 @@ const Settings = () => {
                 isDefault: !!b.isDefault
             }));
             await api.post('/admin/settings/subscription-banks', { banks: payload });
-            alert('Subscription bank accounts saved');
+            setSaveSuccess('banks');
+            setTimeout(() => setSaveSuccess(''), 2500);
         } catch (error) {
             console.error(error);
             alert('Failed to save subscription bank accounts');
@@ -227,7 +233,8 @@ const Settings = () => {
                 setSettings(prev => ({ ...prev, ...res.data.data }));
             }
 
-            alert("Digiflazz settings saved!");
+            setSaveSuccess('digiflazz');
+            setTimeout(() => setSaveSuccess(''), 2500);
         } catch (error) {
             console.error(error);
             alert("Failed to save Digiflazz settings");
@@ -236,9 +243,54 @@ const Settings = () => {
         }
     };
 
+    const tabs = [
+        { id: 'payment', label: 'Payment & Bank', icon: CreditCard },
+        { id: 'fees', label: 'Fee Settings', icon: AlertCircle },
+        { id: 'wholesale', label: 'Wholesale', icon: Truck },
+        { id: 'ppob', label: 'PPOB (Digiflazz)', icon: Zap },
+        { id: 'platform', label: 'Platform', icon: Globe },
+    ];
+
     return (
         <div className="space-y-6">
+            {/* Page Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-semibold text-slate-900">General Settings</h1>
+                    <p className="text-slate-500 mt-1">Configure platform payment, fees, integrations, and global settings.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    {saveSuccess && (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100 animate-in fade-in duration-200">
+                            <CheckCircle size={14} />
+                            Saved!
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            {/* Tab Navigation */}
+            <div className="bg-white rounded-xl border border-slate-200 p-1.5 shadow-sm">
+                <div className="flex overflow-x-auto gap-1">
+                    {tabs.map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${activeTab === tab.id
+                                ? 'bg-indigo-50 text-indigo-700 shadow-sm border border-indigo-100'
+                                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                            }`}
+                        >
+                            <tab.icon size={16} />
+                            <span>{tab.label}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {activeTab === 'wholesale' && (
+                <>
                 {/* Wholesale Config */}
                 <Card className="p-6 h-fit">
                     <div className="flex items-start justify-between mb-6">
@@ -282,7 +334,11 @@ const Settings = () => {
                         </Button>
                     </div>
                 </Card>
+                </>
+                )}
 
+                {activeTab === 'payment' && (
+                <>
                 {/* QRIS Config */}
                 <Card className="p-6 h-fit">
                     <div className="flex items-start justify-between mb-6">
@@ -513,7 +569,11 @@ const Settings = () => {
                         </div>
                     </div>
                 </Card>
+                </>
+                )}
 
+                {activeTab === 'fees' && (
+                <>
                 {/* Fee Settings */}
                 <Card className="p-6 h-fit">
                     <div className="flex items-start justify-between mb-6">
@@ -654,7 +714,8 @@ const Settings = () => {
                                         wholesaleFeeCapMin: fees.wholesaleFeeCapMin,
                                         wholesaleFeeCapMax: fees.wholesaleFeeCapMax
                                     });
-                                    alert('Fee settings saved!');
+                                    setSaveSuccess('fees');
+                                    setTimeout(() => setSaveSuccess(''), 2500);
                                 } catch (e) {
                                     alert('Failed to save fee settings');
                                 } finally {
@@ -668,7 +729,11 @@ const Settings = () => {
                         </Button>
                     </div>
                 </Card>
+                </>
+                )}
 
+                {activeTab === 'ppob' && (
+                <>
                 {/* Digiflazz PPOB */}
                 <Card className="p-6 h-fit">
                     <div className="flex items-start justify-between mb-6">
@@ -765,7 +830,11 @@ const Settings = () => {
                         </div>
                     </div>
                 </Card>
+                </>
+                )}
 
+                {activeTab === 'platform' && (
+                <>
                 {/* Platform Settings */}
                 <Card className="p-6 h-fit">
                     <div className="flex items-start justify-between mb-6">
@@ -827,7 +896,8 @@ const Settings = () => {
                                         api.post('/admin/settings', { key: 'SUPPORT_WHATSAPP_NUMBER', value: settings.SUPPORT_WHATSAPP_NUMBER, description: 'Support WhatsApp' }),
                                         api.post('/admin/settings', { key: 'COMPANY_LOGO_URL', value: settings.COMPANY_LOGO_URL, description: 'Company Logo' }),
                                     ]);
-                                    alert('Platform settings saved!');
+                                    setSaveSuccess('platform');
+                                    setTimeout(() => setSaveSuccess(''), 2500);
                                 } catch (e) {
                                     alert('Failed to save platform settings');
                                 } finally {
@@ -841,6 +911,8 @@ const Settings = () => {
                         </Button>
                     </div>
                 </Card>
+                </>
+                )}
             </div>
         </div>
     );

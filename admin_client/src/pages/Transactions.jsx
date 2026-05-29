@@ -386,7 +386,7 @@ const Transactions = () => {
                                     </Badge>
                                 </Td>
                                 <Td>
-                                    <span className="text-sm text-slate-600">{t.user?.name || '-'}</span>
+                                    <span className="text-sm text-slate-600">{t.cashier?.name || '-'}</span>
                                 </Td>
                                 <Td>
                                     <Badge variant={getOrderStatusVariant(t.orderStatus)}>
@@ -518,7 +518,7 @@ const Transactions = () => {
                                     <div className="flex justify-between">
                                         <span className="text-slate-500">Kasir</span>
                                         <span className="text-slate-900">
-                                            {selectedTransaction.user?.name || '-'}
+                                            {selectedTransaction.cashier?.name || '-'}
                                         </span>
                                     </div>
                                     <div className="flex justify-between">
@@ -556,20 +556,20 @@ const Transactions = () => {
                                                 <tr key={idx}>
                                                     <td className="px-3 py-2">
                                                         <div className="flex items-center gap-2">
-                                                            {item.productImage ? (
-                                                                <img src={item.productImage} alt="" className="w-8 h-8 rounded object-cover bg-slate-100" />
+                                                            {(item.productImage || item.product?.imageUrl) ? (
+                                                                <img src={item.productImage || item.product?.imageUrl} alt="" className="w-8 h-8 rounded object-cover bg-slate-100" />
                                                             ) : (
                                                                 <div className="w-8 h-8 rounded bg-slate-100 flex items-center justify-center text-slate-400 text-xs">IMG</div>
                                                             )}
                                                             <div>
-                                                                <div className="font-medium text-slate-900 line-clamp-1">{item.productName || 'Unknown'}</div>
-                                                                {item.productSku && <div className="text-xs text-slate-500">{item.productSku}</div>}
+                                                                <div className="font-medium text-slate-900 line-clamp-1">{item.productName || item.product?.name || 'Unknown'}</div>
+                                                                {(item.productSku || item.product?.sku) && <div className="text-xs text-slate-500">{item.productSku || item.product?.sku}</div>}
                                                             </div>
                                                         </div>
                                                     </td>
                                                     <td className="px-3 py-2 text-right">{item.quantity}</td>
                                                     <td className="px-3 py-2 text-right text-slate-600">{formatCurrency(item.price)}</td>
-                                                    <td className="px-3 py-2 text-right text-slate-500 text-xs">{item.basePrice ? formatCurrency(item.basePrice) : '-'}</td>
+                                                    <td className="px-3 py-2 text-right text-slate-500 text-xs">{(item.basePrice || item.product?.basePrice) ? formatCurrency(item.basePrice || item.product?.basePrice) : '-'}</td>
                                                     <td className="px-3 py-2 text-right font-medium text-slate-900">{formatCurrency(item.quantity * item.price)}</td>
                                                 </tr>
                                             ))

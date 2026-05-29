@@ -11,7 +11,6 @@ import Support from './pages/Support'; // [NEW]
 import Settings from './pages/Settings';
 import SubscriptionRequests from './pages/SubscriptionRequests';
 import Reports from './pages/Reports'; // [NEW]
-import Kulakan from './pages/Kulakan'; // [NEW]
 import Profile from './pages/Profile'; // [NEW]
 import AuditLogs from './pages/AuditLogs'; // [NEW]
 import ContentManager from './pages/ContentManager'; // [NEW]
@@ -26,6 +25,12 @@ import ManageMenu from './pages/ManageMenu'; // [NEW]
 import AdminLayout from './components/AdminLayout';
 import FlashSales from './pages/FlashSales';
 import ReferralMonitoring from './pages/ReferralMonitoring';
+import DriverManagement from './pages/DriverManagement'; // [NEW] Driver Integration
+import DriverMap from './pages/DriverMap'; // [NEW] Driver Map
+import DistributorManagement from './pages/DistributorManagement'; // [NEW] Distributor
+import BuyerManagement from './pages/BuyerManagement'; // [NEW] Buyer
+import AiMarketing from './pages/AiMarketing'; // [NEW] AI Marketing
+import EmailRecipients from './pages/EmailRecipients'; // [NEW] Email Recipients
 import { getToken, isTokenExpired, getUser } from './lib/auth';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -79,7 +84,6 @@ function App() {
             <Route path="subscriptions" element={<SubscriptionRequests />} />
             <Route path="map" element={<AcquisitionMap />} />
             <Route path="reports" element={<Reports />} />
-            <Route path="kulakan" element={<Kulakan />} />
             <Route path="profile" element={<Profile />} />
             <Route path="packages" element={<Packages />} />
             <Route path="broadcasts" element={<Broadcasts />} />
@@ -93,6 +97,12 @@ function App() {
             <Route path="flashsales" element={<FlashSales />} />
             <Route path="referrals" element={<ReferralMonitoring />} />
             <Route path="transactions" element={<Transactions />} />
+            <Route path="drivers" element={<DriverManagement />} />
+            <Route path="drivers/map" element={<DriverMap />} />
+            <Route path="distributors" element={<DistributorManagement />} />
+            <Route path="buyers" element={<BuyerManagement />} />
+            <Route path="ai-marketing" element={<AiMarketing />} />
+            <Route path="email-recipients" element={<EmailRecipients />} />
           </Route>
           <Route path="/" element={<Navigate to="/admin" replace />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />

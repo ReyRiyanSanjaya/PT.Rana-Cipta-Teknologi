@@ -72,6 +72,13 @@ const BottomNav = ({ onLayoutChange }) => {
         return null;
     }
 
+    // Hide on dashboard/protected pages (only show on public marketing pages)
+    const publicPaths = ['/', '/about', '/features', '/distributor', '/blog', '/contact', '/community', '/careers', '/login', '/register'];
+    const isPublicPage = publicPaths.some(p => location.pathname === p) || location.pathname.startsWith('/blog/');
+    if (!isPublicPage) {
+        return null;
+    }
+
     return (
         <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden pointer-events-none pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]">
             <AnimatePresence>

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../services/api';
 import { Building2, Mail, Lock, Phone, MapPin, ArrowRight, CheckCircle, User, Tag, Gift, Upload, Crosshair } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Modern3DBackground from '../components/ui/Modern3DBackground';
@@ -113,7 +113,7 @@ const Register = () => {
                 referralCode: formData.referralCode || null
             };
 
-            await axios.post('http://localhost:4000/api/auth/register', payload);
+            await api.post('/auth/register', payload);
             navigate('/login');
         } catch (err) {
             setError(err.response?.data?.message || 'Pendaftaran gagal. Silakan coba lagi.');

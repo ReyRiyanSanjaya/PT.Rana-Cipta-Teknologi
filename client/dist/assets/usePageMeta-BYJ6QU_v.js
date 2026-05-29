@@ -1,1 +1,0 @@
-import{r as a}from"./index-KE_3-qke.js";const o=(n,t)=>{let e=document.querySelector(t);return e||(e=document.createElement("meta"),e.name="description",document.head.appendChild(e)),e},m=({title:n,description:t})=>{a.useEffect(()=>{typeof document>"u"||(n&&(document.title=n),t&&o("description",'meta[name="description"]').setAttribute("content",t))},[n,t])};export{m as u};

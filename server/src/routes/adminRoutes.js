@@ -23,6 +23,21 @@ router.delete('/packages/:id', adminController.deletePackage);
 // Tickets & Support
 router.use('/tickets', require('./admin/tickets'));
 
+// Driver Management
+router.use('/drivers', require('./admin/drivers'));
+
+// Distributor Management
+router.use('/distributors', require('./admin/distributors'));
+
+// Buyer Management
+router.use('/buyers', require('./admin/buyers'));
+
+// AI Marketing Automation
+router.use('/ai-marketing', require('./admin/aiMarketing'));
+
+// Email Recipients Management
+router.use('/email-recipients', require('./admin/emailRecipients'));
+
 // Announcements
 router.use('/announcements', require('./admin/announcements'));
 router.use('/chat', require('./admin/chat'));

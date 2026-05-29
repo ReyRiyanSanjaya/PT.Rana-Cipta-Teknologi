@@ -150,14 +150,18 @@ const confirmPayment = async (req, res) => {
         });
 
         if (order.platformFee && order.platformFee > 0) {
-            await prisma.platformRevenue.create({
-                data: {
-                    amount: order.platformFee,
-                    source: 'OTHER',
-                    description: `Transaction Fee (Buyer) - ${order.id}`,
-                    referenceId: order.id
-                }
-            });
+            try {
+                await prisma.platformRevenue.create({
+                    data: {
+                        amount: order.platformFee,
+                        source: 'OTHER',
+                        description: `Transaction Fee (Buyer) - ${order.id}`,
+                        referenceId: order.id
+                    }
+                });
+            } catch (revenueErr) {
+                console.warn('PlatformRevenue log skipped:', revenueErr.message);
+            }
         }
 
         try {

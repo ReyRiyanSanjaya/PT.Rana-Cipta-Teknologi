@@ -4,6 +4,7 @@ import { DollarSign, ShoppingBag, CreditCard, Activity, Package, Calendar, Alert
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../components/layout/DashboardLayout';
+import { DashboardSkeleton } from '../components/LoadingSkeleton';
 import { fetchDashboardStats, fetchAdminStats, fetchAdminChart, fetchWalletData } from '../services/api';
 import api from '../services/api';
 import { io } from 'socket.io-client';
@@ -32,7 +33,7 @@ const StatCard = ({ title, value, subtext, icon: Icon, colorClass, trend, delay,
                     <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-opacity-10 backdrop-blur-sm transition-transform duration-300 group-hover:scale-110 ${bgBase} ${colorClass} dark:${colorClass.replace('600', '400')}`}>
                         <Icon size={24} />
                     </div>
-                    {trend !== undefined && (
+                    {trend !== undefined && trend !== null && (
                         <div className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold border ${trend >= 0 ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20' : 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20'}`}>
                             {trend >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
                             {Math.abs(trend)}%
@@ -96,11 +97,34 @@ const Dashboard = () => {
                 }
             } else {
                 try {
-                    const [stats, annRes, walletData] = await Promise.all([
+                    // Fetch today and yesterday for trend comparison
+                    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+                    const [stats, yesterdayStats, annRes, walletData] = await Promise.all([
                         fetchDashboardStats(today, user?.storeId),
+                        fetchDashboardStats(yesterday, user?.storeId).catch(() => null),
                         annResPromise,
                         walletPromise
                     ]);
+                    
+                    // Calculate real trends
+                    if (stats && yesterdayStats) {
+                        const calcTrend = (current, previous) => {
+                            if (!previous || previous === 0) return current > 0 ? 100 : 0;
+                            return Math.round(((current - previous) / previous) * 100 * 10) / 10;
+                        };
+                        const todayFin = stats.financials || {};
+                        const yestFin = yesterdayStats.financials || {};
+                        stats._trends = {
+                            grossProfit: calcTrend(todayFin.grossProfit || 0, yestFin.grossProfit || 0),
+                            netSales: calcTrend(todayFin.netSales || 0, yestFin.netSales || 0),
+                            avgOrder: calcTrend(
+                                (todayFin.netSales || 0) / (todayFin.transactionCount || 1),
+                                (yestFin.netSales || 0) / (yestFin.transactionCount || 1)
+                            ),
+                            cogs: calcTrend(todayFin.cogs || 0, yestFin.cogs || 0),
+                        };
+                    }
+                    
                     setData(stats);
                     setAnnouncements(annRes?.data?.data || []);
                     setWallet(walletData);
@@ -141,12 +165,7 @@ const Dashboard = () => {
 
     if (loading) return (
         <DashboardLayout>
-            <div className="flex items-center justify-center h-[80vh]">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-                    <p className="text-slate-500 dark:text-slate-400 animate-pulse font-medium">Memuat dashboard...</p>
-                </div>
-            </div>
+            <DashboardSkeleton />
         </DashboardLayout>
     );
 
@@ -176,11 +195,23 @@ const Dashboard = () => {
         return (
             <DashboardLayout>
                 <div className="flex items-center justify-center h-[80vh]">
-                    <div className="flex flex-col items-center gap-2 text-center">
-                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">Dashboard belum memiliki data</h3>
-                        <p className="text-slate-500 dark:text-slate-400 text-sm">
-                            Tidak ada data transaksi yang bisa ditampilkan untuk hari ini.
-                        </p>
+                    <div className="flex flex-col items-center gap-4 text-center max-w-md">
+                        <div className="p-4 rounded-full bg-slate-100 dark:bg-slate-800">
+                            <Package size={40} className="text-slate-400 dark:text-slate-500" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Belum Ada Data Hari Ini</h3>
+                            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+                                Mulai transaksi di POS untuk melihat ringkasan performa toko Anda di sini.
+                            </p>
+                        </div>
+                        <button 
+                            onClick={() => navigate('/pos')}
+                            className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors font-medium flex items-center gap-2"
+                        >
+                            <Store size={18} />
+                            Buka Kasir (POS)
+                        </button>
                     </div>
                 </div>
             </DashboardLayout>
@@ -361,7 +392,7 @@ const Dashboard = () => {
                         subtext="Pendapatan - HPP"
                         icon={DollarSign}
                         colorClass="text-emerald-600"
-                        trend={12.5}
+                        trend={data?._trends?.grossProfit}
                         delay={0.1}
                         onClick={() => navigate('/profit-loss')}
                     />
@@ -371,7 +402,7 @@ const Dashboard = () => {
                         subtext={`${financials.transactionCount} Transaksi sukses`}
                         icon={ShoppingBag}
                         colorClass="text-indigo-600"
-                        trend={8.2}
+                        trend={data?._trends?.netSales}
                         delay={0.2}
                         onClick={() => navigate('/transactions')}
                     />
@@ -381,7 +412,7 @@ const Dashboard = () => {
                         subtext="Per transaksi sukses"
                         icon={CreditCard}
                         colorClass="text-violet-600"
-                        trend={-2.4}
+                        trend={data?._trends?.avgOrder}
                         delay={0.3}
                         onClick={() => navigate('/reports')}
                     />
@@ -391,7 +422,7 @@ const Dashboard = () => {
                         subtext="Modal barang terjual"
                         icon={Activity}
                         colorClass="text-amber-600"
-                        trend={5.1}
+                        trend={data?._trends?.cogs}
                         delay={0.4}
                         onClick={() => navigate('/profit-loss')}
                     />

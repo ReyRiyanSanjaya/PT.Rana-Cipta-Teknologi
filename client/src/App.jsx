@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { ToastProvider } from './components/Toast';
 import AIAssistant from './components/AIAssistant'; // [NEW]
 import BottomNav from './components/BottomNav'; // [NEW]
 
@@ -68,8 +69,22 @@ function App() {
     return (
         <AuthProvider>
             <NotificationProvider>
+                <ToastProvider>
                 <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-[#0a0b0f] text-slate-200">Memuat...</div>}>
+                    <Suspense fallback={
+                        <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#0a0b0f]">
+                            <div className="flex flex-col items-center gap-4">
+                                <div className="relative">
+                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-teal-500 flex items-center justify-center text-white font-bold text-xl animate-pulse">R</div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                                    <div className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                                    <div className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                                </div>
+                            </div>
+                        </div>
+                    }>
                         <Routes>
                         <Route path="/" element={<Landing />} />
                         <Route path="/blog" element={<BlogList />} />
@@ -84,7 +99,11 @@ function App() {
                         <Route path="/login" element={<Login />} />
                         <Route path="/register" element={<Register />} />
 
-                        <Route path="/dashboard" element={<Dashboard />} />
+                        <Route path="/dashboard" element={
+                            <ProtectedRoute>
+                                <Dashboard />
+                            </ProtectedRoute>
+                        } />
 
                         <Route path="/pos" element={
                             <ProtectedRoute>
@@ -173,6 +192,7 @@ function App() {
                 <AIAssistant bottomOffset={floatingBottomOffset} />
                 <BottomNav onLayoutChange={handleBottomNavLayout} />
             </Router>
+            </ToastProvider>
             </NotificationProvider>
         </AuthProvider>
     );

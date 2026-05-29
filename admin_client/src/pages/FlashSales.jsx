@@ -228,7 +228,7 @@ const FlashSales = () => {
             {/* Items Modal */}
             {selectedSale && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80" onClick={() => setSelectedSale(null)}>
-                    <div className="relative max-w-4xl w-full bg白 rounded-xl overflow-hidden shadow-2xl max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                    <div className="relative max-w-4xl w-full bg-white rounded-xl overflow-hidden shadow-2xl max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
                         <div className="p-4 border-b flex justify-between items-center bg-gray-50">
                             <div>
                                 <h3 className="font-bold text-gray-900 text-lg">{selectedSale.title}</h3>

@@ -15,12 +15,18 @@ export default function SubscriptionRequests() {
     const [statusFilter, setStatusFilter] = useState('ALL'); // ALL, PENDING, APPROVED, REJECTED
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedProof, setSelectedProof] = useState(null);
+    const [actionLoading, setActionLoading] = useState({});
+    const [counts, setCounts] = useState({ ALL: 0, PENDING: 0, APPROVED: 0, REJECTED: 0 });
     const itemsPerPage = 10;
     const SERVER_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:4000';
 
     useEffect(() => {
         fetchRequests();
     }, [statusFilter]);
+
+    useEffect(() => {
+        fetchCounts();
+    }, []);
 
     const fetchRequests = async () => {
         setLoading(true);
@@ -30,44 +36,69 @@ export default function SubscriptionRequests() {
                 params.status = statusFilter;
             }
             const res = await api.get('/admin/subscriptions', { params });
-            // Backend returns array directly in successResponse data
             if (res.data.status === 'success') {
-                setRequests(res.data.data);
+                setRequests(res.data.data || []);
             } else {
-                // Fallback if structure is different
                 setRequests(res.data.data || []);
             }
         } catch (error) {
             console.error('Failed to fetch requests', error);
-            // Optional: Add toast notification here
         } finally {
             setLoading(false);
         }
     };
 
+    const fetchCounts = async () => {
+        try {
+            const [all, pending, approved, rejected] = await Promise.all([
+                api.get('/admin/subscriptions'),
+                api.get('/admin/subscriptions', { params: { status: 'PENDING' } }),
+                api.get('/admin/subscriptions', { params: { status: 'APPROVED' } }),
+                api.get('/admin/subscriptions', { params: { status: 'REJECTED' } }),
+            ]);
+            setCounts({
+                ALL: all.data?.data?.length || 0,
+                PENDING: pending.data?.data?.length || 0,
+                APPROVED: approved.data?.data?.length || 0,
+                REJECTED: rejected.data?.data?.length || 0,
+            });
+        } catch (e) {
+            console.error('Failed to fetch counts', e);
+        }
+    };
+
     const handleRefresh = () => {
         fetchRequests();
+        fetchCounts();
     };
 
     const handleApprove = async (id) => {
         if (!confirm('Are you sure you want to approve this subscription upgrade?')) return;
         try {
+            setActionLoading(prev => ({ ...prev, [id]: true }));
             await api.put(`/admin/subscriptions/${id}/approve`);
             fetchRequests();
+            fetchCounts();
         } catch (error) {
             console.error(error);
-            alert('Failed to approve request');
+            alert(error.response?.data?.message || 'Failed to approve request');
+        } finally {
+            setActionLoading(prev => ({ ...prev, [id]: false }));
         }
     };
 
     const handleReject = async (id) => {
         if (!confirm('Are you sure you want to reject this request?')) return;
         try {
+            setActionLoading(prev => ({ ...prev, [id]: true }));
             await api.put(`/admin/subscriptions/${id}/reject`);
             fetchRequests();
+            fetchCounts();
         } catch (error) {
             console.error(error);
-            alert('Failed to reject request');
+            alert(error.response?.data?.message || 'Failed to reject request');
+        } finally {
+            setActionLoading(prev => ({ ...prev, [id]: false }));
         }
     };
 
@@ -121,21 +152,27 @@ export default function SubscriptionRequests() {
         <>
             <div className="space-y-6">
                 {/* Tabs */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {tabs.map((tab) => (
                         <button
                             key={tab.id}
                             onClick={() => { setStatusFilter(tab.id); setCurrentPage(1); }}
                             className={cn(
-                                "flex items-center justify-center p-4 rounded-xl border transition-all duration-200",
+                                "flex items-center justify-center p-3 rounded-xl border transition-all duration-200",
                                 statusFilter === tab.id 
                                     ? `border-2 ${tab.activeColor} shadow-sm ring-1 ring-offset-0` 
                                     : "bg-white border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-slate-50"
                             )}
                         >
-                            <tab.icon className={cn("mr-3 h-5 w-5", statusFilter === tab.id ? "opacity-100" : "opacity-70")} />
-                            <span className={cn("font-semibold", statusFilter === tab.id ? "" : "text-slate-600")}>
+                            <tab.icon className={cn("mr-2 h-4 w-4", statusFilter === tab.id ? "opacity-100" : "opacity-70")} />
+                            <span className={cn("font-semibold text-sm", statusFilter === tab.id ? "" : "text-slate-600")}>
                                 {tab.label}
+                            </span>
+                            <span className={cn(
+                                "ml-2 text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center",
+                                statusFilter === tab.id ? "bg-white/80 text-slate-700" : "bg-slate-100 text-slate-500"
+                            )}>
+                                {counts[tab.id] || 0}
                             </span>
                         </button>
                     ))}
@@ -187,7 +224,7 @@ export default function SubscriptionRequests() {
                         <TableBody>
                             {loading ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center py-8 text-slate-500">
+                                    <TableCell colSpan={7} className="text-center py-8 text-slate-500">
                                         <div className="flex justify-center items-center">
                                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
                                         </div>
@@ -195,7 +232,7 @@ export default function SubscriptionRequests() {
                                 </TableRow>
                             ) : paginatedRequests.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center py-8 text-slate-500">
+                                    <TableCell colSpan={7} className="text-center py-8 text-slate-500">
                                         No subscription requests found matching your criteria.
                                     </TableCell>
                                 </TableRow>
@@ -286,6 +323,7 @@ export default function SubscriptionRequests() {
                                                         variant="outline"
                                                         className="text-red-600 border-red-200 hover:bg-red-50"
                                                         onClick={() => handleReject(req.id)}
+                                                        disabled={!!actionLoading[req.id]}
                                                     >
                                                         <XCircle size={16} className="mr-1" />
                                                         Reject
@@ -294,11 +332,22 @@ export default function SubscriptionRequests() {
                                                         size="sm"
                                                         className="bg-green-600 hover:bg-green-700 text-white"
                                                         onClick={() => handleApprove(req.id)}
+                                                        disabled={!!actionLoading[req.id]}
                                                     >
                                                         <CheckCircle size={16} className="mr-1" />
                                                         Approve
                                                     </Button>
                                                 </div>
+                                            )}
+                                            {req.status === 'APPROVED' && (
+                                                <span className="text-xs text-green-600">
+                                                    {req.updatedAt ? new Date(req.updatedAt).toLocaleDateString('id-ID') : 'Approved'}
+                                                </span>
+                                            )}
+                                            {req.status === 'REJECTED' && (
+                                                <span className="text-xs text-red-500">
+                                                    {req.updatedAt ? new Date(req.updatedAt).toLocaleDateString('id-ID') : 'Rejected'}
+                                                </span>
                                             )}
                                         </TableCell>
                                     </TableRow>

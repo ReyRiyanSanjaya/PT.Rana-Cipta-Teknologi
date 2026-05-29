@@ -161,16 +161,21 @@ const approveWithdrawal = async (req, res) => {
         if (!Number.isFinite(feeAmount)) feeAmount = 0;
         const netAmount = amount - feeAmount;
 
-        // 3. Create Platform Revenue Log if fee exists
+        // 3. Log Platform Revenue if fee exists (skip if table not available)
         if (feeAmount > 0) {
-            await prisma.platformRevenue.create({
-                data: {
-                    amount: feeAmount,
-                    source: 'WITHDRAWAL_FEE',
-                    description: `Fee from Withdrawal #${withdrawal.id.substring(0, 8)}`,
-                    referenceId: withdrawal.id
-                }
-            });
+            try {
+                await prisma.platformRevenue.create({
+                    data: {
+                        amount: feeAmount,
+                        source: 'WITHDRAWAL_FEE',
+                        description: `Fee from Withdrawal #${withdrawal.id.substring(0, 8)}`,
+                        referenceId: withdrawal.id
+                    }
+                });
+            } catch (revenueErr) {
+                // PlatformRevenue table may not exist yet, log and continue
+                console.warn('PlatformRevenue log skipped:', revenueErr.message);
+            }
         }
 
         const updated = await prisma.withdrawal.update({
@@ -220,9 +225,26 @@ const getTopUps = async (req, res) => {
 
 const getReferralPrograms = async (req, res) => {
     try {
-        const programs = await prisma.referralProgram.findMany({
+        const codes = await prisma.referralCode.findMany({
+            include: {
+                tenant: { select: { id: true, name: true } }
+            },
             orderBy: { createdAt: 'desc' }
         });
+
+        // Map to a "program-like" structure for the frontend
+        const programs = codes.map(c => ({
+            id: c.id,
+            name: c.tenant?.name ? `Referral ${c.tenant.name}` : `Code ${c.code}`,
+            code: c.code,
+            type: 'REFERRAL_CODE',
+            status: 'ACTIVE',
+            rewardL1: 0, // Will be calculated from rewards if needed
+            createdAt: c.createdAt,
+            tenantId: c.tenantId,
+            tenantName: c.tenant?.name || 'Unknown'
+        }));
+
         return successResponse(res, programs);
     } catch (error) {
         return errorResponse(res, "Failed to fetch referral programs", 500, error);
@@ -233,18 +255,18 @@ const getReferrals = async (req, res) => {
     try {
         const { programId, referrerTenantId, refereeTenantId, status } = req.query;
         const where = {};
-        if (programId) where.programId = programId;
-        if (referrerTenantId) where.referrerTenantId = referrerTenantId;
-        if (refereeTenantId) where.refereeTenantId = refereeTenantId;
+        if (programId) where.referralCodeId = programId;
+        if (referrerTenantId) where.referrerId = referrerTenantId;
+        if (refereeTenantId) where.refereeId = refereeTenantId;
         if (status) where.status = status;
 
         const referrals = await prisma.referral.findMany({
             where,
             include: {
-                program: true,
+                referralCode: true,
                 referrer: { select: { id: true, name: true } },
                 referee: { select: { id: true, name: true } },
-                rewards: true
+                reward: true
             },
             orderBy: { createdAt: 'desc' }
         });
@@ -254,20 +276,20 @@ const getReferrals = async (req, res) => {
             createdAt: r.createdAt,
             status: r.status,
             program: {
-                id: r.program.id,
-                name: r.program.name,
-                code: r.program.code
+                id: r.referralCode.id,
+                name: `Code ${r.referralCode.code}`,
+                code: r.referralCode.code
             },
             referrer: r.referrer ? { id: r.referrer.id, name: r.referrer.name } : null,
             referee: r.referee ? { id: r.referee.id, name: r.referee.name } : null,
-            rewards: r.rewards.map((rw) => ({
-                id: rw.id,
-                level: rw.level,
-                amount: rw.amount,
-                currency: rw.currency,
-                status: rw.status,
-                releasedAt: rw.releasedAt
-            }))
+            rewards: r.reward ? [{
+                id: r.reward.id,
+                level: 1,
+                amount: r.reward.amount,
+                currency: 'IDR',
+                status: r.reward.status,
+                releasedAt: r.reward.paidAt
+            }] : []
         }));
 
         return successResponse(res, mapped);
@@ -281,9 +303,9 @@ const getReferralRewards = async (req, res) => {
         const { status, beneficiaryTenantId, programId } = req.query;
         const where = {};
         if (status) where.status = status;
-        if (beneficiaryTenantId) where.beneficiaryTenantId = beneficiaryTenantId;
+        if (beneficiaryTenantId) where.tenantId = beneficiaryTenantId;
         if (programId) {
-            where.referral = { programId };
+            where.referral = { referralCodeId: programId };
         }
 
         const rewards = await prisma.referralReward.findMany({
@@ -291,12 +313,12 @@ const getReferralRewards = async (req, res) => {
             include: {
                 referral: {
                     include: {
-                        program: true,
+                        referralCode: true,
                         referrer: { select: { id: true, name: true } },
                         referee: { select: { id: true, name: true } }
                     }
                 },
-                beneficiaryTenant: { select: { id: true, name: true } }
+                tenant: { select: { id: true, name: true } }
             },
             orderBy: { createdAt: 'desc' }
         });
@@ -304,19 +326,19 @@ const getReferralRewards = async (req, res) => {
         const mapped = rewards.map((rw) => ({
             id: rw.id,
             createdAt: rw.createdAt,
-            level: rw.level,
+            level: 1,
             amount: rw.amount,
-            currency: rw.currency,
+            currency: 'IDR',
             status: rw.status,
-            holdUntil: rw.holdUntil,
-            releasedAt: rw.releasedAt,
+            holdUntil: null,
+            releasedAt: rw.paidAt,
             referral: {
                 id: rw.referral.id,
                 status: rw.referral.status,
                 program: {
-                    id: rw.referral.program.id,
-                    name: rw.referral.program.name,
-                    code: rw.referral.program.code
+                    id: rw.referral.referralCode.id,
+                    name: `Code ${rw.referral.referralCode.code}`,
+                    code: rw.referral.referralCode.code
                 },
                 referrer: rw.referral.referrer
                     ? { id: rw.referral.referrer.id, name: rw.referral.referrer.name }
@@ -325,8 +347,8 @@ const getReferralRewards = async (req, res) => {
                     ? { id: rw.referral.referee.id, name: rw.referral.referee.name }
                     : null
             },
-            beneficiary: rw.beneficiaryTenant
-                ? { id: rw.beneficiaryTenant.id, name: rw.beneficiaryTenant.name }
+            beneficiary: rw.tenant
+                ? { id: rw.tenant.id, name: rw.tenant.name }
                 : null
         }));
 
@@ -713,9 +735,13 @@ module.exports = {
             }
 
             if (startDate || endDate) {
-                where.createdAt = {};
-                if (startDate) where.createdAt.gte = new Date(startDate);
-                if (endDate) where.createdAt.lte = new Date(endDate);
+                where.occurredAt = {};
+                if (startDate) where.occurredAt.gte = new Date(startDate);
+                if (endDate) {
+                    const end = new Date(endDate);
+                    end.setHours(23, 59, 59, 999);
+                    where.occurredAt.lte = end;
+                }
             }
 
             if (paymentStatus) where.paymentStatus = paymentStatus;
@@ -725,14 +751,24 @@ module.exports = {
                 const storeWhere = {};
                 if (area) storeWhere.location = { contains: area, mode: 'insensitive' };
                 if (category) storeWhere.category = category;
-                if (Object.keys(storeWhere).length > 0) {
-                    where.store = storeWhere;
-                }
+                
                 if (search) {
-                    where.OR = [
+                    // When search is combined with area/category, use AND to combine them
+                    const searchConditions = [
                         { id: { contains: search, mode: 'insensitive' } },
                         { store: { name: { contains: search, mode: 'insensitive' } } }
                     ];
+                    
+                    if (Object.keys(storeWhere).length > 0) {
+                        where.AND = [
+                            { store: storeWhere },
+                            { OR: searchConditions }
+                        ];
+                    } else {
+                        where.OR = searchConditions;
+                    }
+                } else if (Object.keys(storeWhere).length > 0) {
+                    where.store = storeWhere;
                 }
             }
 
@@ -755,25 +791,29 @@ module.exports = {
                                 name: true
                             }
                         },
-                        user: {
+                        cashier: {
                             select: {
                                 name: true
                             }
                         },
-                        items: {
-              select: {
-                quantity: true,
-                price: true,
-                product: {
-                  select: {
-                    name: true,
-                    sku: true,
-                    imageUrl: true,
-                    basePrice: true
-                  }
-                }
-              }
-            }
+                        transactionItems: {
+                            select: {
+                                quantity: true,
+                                price: true,
+                                productName: true,
+                                productSku: true,
+                                productImage: true,
+                                basePrice: true,
+                                product: {
+                                    select: {
+                                        name: true,
+                                        sku: true,
+                                        imageUrl: true,
+                                        basePrice: true
+                                    }
+                                }
+                            }
+                        }
                     }
                 }),
                 prisma.transaction.count({ where })
@@ -815,38 +855,29 @@ module.exports = {
             }
 
             const txnWhere = {
-                status: 'COMPLETED',
-                createdAt: { gte: startDate, lte: endDate }
+                paymentStatus: 'PAID',
+                occurredAt: { gte: startDate, lte: endDate }
             };
             if (storeIds) txnWhere.storeId = { in: storeIds };
 
-            // 1. Total Revenue (from platform fees and subscriptions)
-            const platformRevenue = await prisma.platformRevenue.aggregate({
-                where: { createdAt: { gte: startDate, lte: endDate } },
-                _sum: { amount: true }
+            // 1. Revenue calculation from real data sources
+            // Subscription Revenue = sum of approved subscription package prices
+            const approvedSubs = await prisma.subscriptionRequest.findMany({
+                where: { status: 'APPROVED', createdAt: { gte: startDate, lte: endDate } },
+                include: { package: { select: { price: true } } }
             });
-            const totalRevenue = platformRevenue._sum.amount || 0;
+            const totalSubscriptionRevenue = approvedSubs.reduce((sum, s) => sum + (s.package?.price || 0), 0);
 
-            // Subscription Revenue
-            const subRevenue = await prisma.platformRevenue.aggregate({
-                where: { source: 'SUBSCRIPTION', createdAt: { gte: startDate, lte: endDate } },
-                _sum: { amount: true }
+            // Withdrawal Fees = sum of fees from approved withdrawals
+            const wdFeesAgg = await prisma.withdrawal.aggregate({
+                where: { status: 'APPROVED', createdAt: { gte: startDate, lte: endDate } },
+                _sum: { fee: true }
             });
-            const totalSubscriptionRevenue = subRevenue._sum.amount || 0;
+            const totalTxnFees = wdFeesAgg._sum.fee || 0;
 
-            // Transaction Fees
-            const txnFeesAgg = await prisma.platformRevenue.aggregate({
-                where: { source: 'WITHDRAWAL_FEE', createdAt: { gte: startDate, lte: endDate } },
-                _sum: { amount: true }
-            });
-            const totalTxnFees = txnFeesAgg._sum.amount || 0;
-
-            // Wholesale Fees (OTHER source)
-            const wholesaleFees = await prisma.platformRevenue.aggregate({
-                where: { source: 'OTHER', createdAt: { gte: startDate, lte: endDate } },
-                _sum: { amount: true }
-            });
-            const totalWholesaleFees = wholesaleFees._sum.amount || 0;
+            // Total platform revenue
+            const totalRevenue = totalSubscriptionRevenue + totalTxnFees;
+            const totalWholesaleFees = 0;
 
             // 2. Tenant Statistics
             const totalTenants = await prisma.tenant.count();
@@ -864,11 +895,13 @@ module.exports = {
             const arpu = activeSubscribers > 0 ? totalRevenue / activeSubscribers : 0;
 
             // 3. Revenue by Source (for pie chart)
-            const revenueBySource = await prisma.platformRevenue.groupBy({
-                by: ['source'],
-                where: { createdAt: { gte: startDate, lte: endDate } },
-                _sum: { amount: true }
-            });
+            const revenueBySource = [];
+            if (totalSubscriptionRevenue > 0) {
+                revenueBySource.push({ source: 'SUBSCRIPTION', _sum: { amount: totalSubscriptionRevenue } });
+            }
+            if (totalTxnFees > 0) {
+                revenueBySource.push({ source: 'WITHDRAWAL_FEE', _sum: { amount: totalTxnFees } });
+            }
 
             // 4. Transaction breakdown by payment method
             const txnByMethodRaw = await prisma.transaction.groupBy({
@@ -924,14 +957,22 @@ module.exports = {
                 monthEnd.setDate(0);
                 monthEnd.setHours(23, 59, 59, 999);
 
-                const monthRevenue = await prisma.platformRevenue.aggregate({
-                    where: { createdAt: { gte: monthStart, lte: monthEnd } },
-                    _sum: { amount: true }
+                // Monthly subscription revenue
+                const monthSubs = await prisma.subscriptionRequest.findMany({
+                    where: { status: 'APPROVED', createdAt: { gte: monthStart, lte: monthEnd } },
+                    include: { package: { select: { price: true } } }
+                });
+                const monthSubRevenue = monthSubs.reduce((sum, s) => sum + (s.package?.price || 0), 0);
+
+                // Monthly withdrawal fees
+                const monthFees = await prisma.withdrawal.aggregate({
+                    where: { status: 'APPROVED', createdAt: { gte: monthStart, lte: monthEnd } },
+                    _sum: { fee: true }
                 });
 
                 revenueChart.push({
                     name: monthStart.toLocaleDateString('id-ID', { month: 'short', year: '2-digit' }),
-                    revenue: monthRevenue._sum.amount || 0
+                    revenue: monthSubRevenue + (monthFees._sum.fee || 0)
                 });
             }
 
@@ -1621,14 +1662,18 @@ module.exports = {
             });
 
             if (request.package) {
-                await prisma.platformRevenue.create({
-                    data: {
-                        amount: request.package.price,
-                        source: 'SUBSCRIPTION',
-                        description: `Subscription: ${request.package.name} - ${request.tenant.name}`,
-                        referenceId: request.id
-                    }
-                });
+                try {
+                    await prisma.platformRevenue.create({
+                        data: {
+                            amount: request.package.price,
+                            source: 'SUBSCRIPTION',
+                            description: `Subscription: ${request.package.name} - ${request.tenant.name}`,
+                            referenceId: request.id
+                        }
+                    });
+                } catch (revenueErr) {
+                    console.warn('PlatformRevenue log skipped:', revenueErr.message);
+                }
             }
 
             try {
@@ -1865,7 +1910,7 @@ module.exports = {
         try {
             const { search, role, page = 1, limit = 10 } = req.query;
             const where = {
-                role: { in: ["SUPER_ADMIN", "ADMIN", "SUPPORT"] },
+                role: { in: ["SUPER_ADMIN", "ADMIN"] },
                 storeId: null
             };
 
@@ -2043,10 +2088,16 @@ module.exports = {
             });
             const totalPayouts = payoutsAgg._sum.amount || 0;
 
-            const revenueAgg = await prisma.platformRevenue.aggregate({
-                _sum: { amount: true }
+            // Calculate platform revenue from subscriptions + withdrawal fees
+            const allApprovedSubs = await prisma.subscriptionRequest.findMany({
+                where: { status: 'APPROVED' },
+                include: { package: { select: { price: true } } }
             });
-            const totalPlatformRevenue = revenueAgg._sum.amount || 0;
+            const allWdFees = await prisma.withdrawal.aggregate({
+                where: { status: 'APPROVED' },
+                _sum: { fee: true }
+            });
+            const totalPlatformRevenue = allApprovedSubs.reduce((sum, s) => sum + (s.package?.price || 0), 0) + (allWdFees._sum.fee || 0);
 
             const byPlan = await prisma.tenant.groupBy({
                 by: ["plan"],
@@ -2209,26 +2260,37 @@ module.exports = {
 
             const where = {};
             if (startDate || endDate) {
-                where.createdAt = {};
-                if (startDate) where.createdAt.gte = new Date(startDate);
-                if (endDate) where.createdAt.lte = new Date(endDate);
+                where.occurredAt = {};
+                if (startDate) where.occurredAt.gte = new Date(startDate);
+                if (endDate) {
+                    const end = new Date(endDate);
+                    end.setHours(23, 59, 59, 999);
+                    where.occurredAt.lte = end;
+                }
             }
             if (paymentStatus) where.paymentStatus = paymentStatus;
             if (paymentMethod) where.paymentMethod = paymentMethod;
 
             if (search || area || category) {
-                where.store = {};
                 const storeWhere = {};
                 if (area) storeWhere.location = { contains: area, mode: "insensitive" };
                 if (category) storeWhere.category = category;
-                if (Object.keys(storeWhere).length > 0) {
-                    where.store = storeWhere;
-                }
+                
                 if (search) {
-                    where.OR = [
+                    const searchConditions = [
                         { id: { contains: search, mode: "insensitive" } },
                         { store: { name: { contains: search, mode: "insensitive" } } }
                     ];
+                    if (Object.keys(storeWhere).length > 0) {
+                        where.AND = [
+                            { store: storeWhere },
+                            { OR: searchConditions }
+                        ];
+                    } else {
+                        where.OR = searchConditions;
+                    }
+                } else if (Object.keys(storeWhere).length > 0) {
+                    where.store = storeWhere;
                 }
             }
 
@@ -2243,7 +2305,7 @@ module.exports = {
                             category: true
                         }
                     },
-                    user: {
+                    cashier: {
                         select: { name: true }
                     }
                 },
@@ -2260,7 +2322,7 @@ module.exports = {
                 paymentMethod: t.paymentMethod,
                 paymentStatus: t.paymentStatus,
                 orderStatus: t.orderStatus,
-                cashier: t.user?.name || ""
+                cashier: t.cashier?.name || ""
             }));
 
             return successResponse(res, data);
@@ -2271,12 +2333,7 @@ module.exports = {
     },
     getFlashSales: async (req, res) => {
         try {
-            const { status } = req.query;
-            const where = {};
-            if (status) where.status = status;
-
             const flashSales = await prisma.flashSale.findMany({
-                where,
                 include: {
                     store: { select: { name: true } },
                     items: {
@@ -2287,7 +2344,36 @@ module.exports = {
                 },
                 orderBy: { createdAt: 'desc' }
             });
-            return successResponse(res, flashSales);
+
+            // Map to include a virtual "status" based on isActive and time
+            const now = new Date();
+            const mapped = flashSales.map(fs => {
+                let status = 'PENDING';
+                if (!fs.isActive) {
+                    status = 'ENDED';
+                } else if (now >= new Date(fs.startTime) && now <= new Date(fs.endTime)) {
+                    status = 'ACTIVE';
+                } else if (now > new Date(fs.endTime)) {
+                    status = 'ENDED';
+                } else {
+                    status = 'PENDING'; // Not started yet
+                }
+
+                return {
+                    ...fs,
+                    status,
+                    startAt: fs.startTime,
+                    endAt: fs.endTime,
+                    items: fs.items.map(item => ({
+                        ...item,
+                        salePrice: item.discountPrice,
+                        saleStock: item.maxQuantity,
+                        maxQtyPerOrder: null
+                    }))
+                };
+            });
+
+            return successResponse(res, mapped);
         } catch (error) {
             console.error('getFlashSales error:', error);
             return errorResponse(res, "Failed to fetch flash sales", 500, error);
@@ -2298,19 +2384,15 @@ module.exports = {
             const { id } = req.params;
             const { action } = req.body; // APPROVE, REJECT, ACTIVATE, END
 
-            let newStatus;
+            let data = {};
             switch (action) {
                 case 'APPROVE':
-                    newStatus = 'APPROVED';
+                case 'ACTIVATE':
+                    data = { isActive: true };
                     break;
                 case 'REJECT':
-                    newStatus = 'REJECTED';
-                    break;
-                case 'ACTIVATE':
-                    newStatus = 'ACTIVE';
-                    break;
                 case 'END':
-                    newStatus = 'ENDED';
+                    data = { isActive: false };
                     break;
                 default:
                     return errorResponse(res, "Invalid action", 400);
@@ -2318,7 +2400,7 @@ module.exports = {
 
             const updated = await prisma.flashSale.update({
                 where: { id },
-                data: { status: newStatus }
+                data
             });
             return successResponse(res, updated, `Flash sale ${action.toLowerCase()}d`);
         } catch (error) {
