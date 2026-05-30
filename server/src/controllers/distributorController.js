@@ -325,7 +325,7 @@ const getCustomers = async (req, res) => {
                     take: 1 
                 },
                 stores: { 
-                    select: { name: true, location: true, waNumber: true }, 
+                    select: { name: true, location: true, waNumber: true, latitude: true, longitude: true, category: true }, 
                     take: 1 
                 },
                 _count: {
@@ -351,6 +351,9 @@ const getCustomers = async (req, res) => {
                 storeName: c.stores[0]?.name || '-',
                 address: c.stores[0]?.location || '-',
                 location: c.stores[0]?.location || '-',
+                latitude: c.stores[0]?.latitude || null,
+                longitude: c.stores[0]?.longitude || null,
+                category: c.stores[0]?.category || null,
                 totalOrders: c._count.wholesaleOrders,
                 joinDate: c.createdAt,
                 // Credit Data
@@ -486,11 +489,54 @@ const getDashboardStats = async (req, res) => {
             }
         });
 
+        // 5. Recent Orders (last 5)
+        const recentOrders = await prisma.wholesaleOrder.findMany({
+            where: { distributorId },
+            include: {
+                tenant: { select: { name: true, users: { select: { name: true }, take: 1 } } }
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 5
+        });
+
+        // 6. Weekly Revenue Chart (last 7 days)
+        const now = new Date();
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const weeklyOrders = await prisma.wholesaleOrder.findMany({
+            where: {
+                distributorId,
+                status: { in: ['PAID', 'SHIPPED', 'DELIVERED'] },
+                createdAt: { gte: weekAgo }
+            },
+            select: { totalAmount: true, createdAt: true }
+        });
+
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const weeklyChart = [];
+        for (let i = 6; i >= 0; i--) {
+            const day = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+            const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+            const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+            const daySales = weeklyOrders
+                .filter(o => new Date(o.createdAt) >= dayStart && new Date(o.createdAt) < dayEnd)
+                .reduce((sum, o) => sum + (Number(o.totalAmount) || 0), 0);
+            weeklyChart.push({ name: dayNames[day.getDay()], sales: daySales });
+        }
+
+        // 7. Total Merchants (unique buyers)
+        const totalMerchants = await prisma.wholesaleOrder.groupBy({
+            by: ['tenantId'],
+            where: { distributorId }
+        });
+
         return successResponse(res, {
             totalRevenue,
             activeOrders,
             productsCount,
-            lowStockCount
+            lowStockCount,
+            recentOrders,
+            weeklyChart,
+            totalMerchants: totalMerchants.length
         }, "Dashboard stats retrieved");
     } catch (error) {
         return errorResponse(res, "Failed to fetch dashboard stats", 500, error);
@@ -591,6 +637,111 @@ const deleteDiscount = async (req, res) => {
     }
 };
 
+// =======================
+// ACQUISITION MAP
+// =======================
+
+const getAcquisitionMap = async (req, res) => {
+    try {
+        const distributorId = await getDistributorId(req);
+        if (!distributorId) return errorResponse(res, "Not a distributor", 403);
+
+        const { type } = req.query; // 'all' (default), 'active', 'leads'
+
+        // Get all merchants (tenants with OWNER role, excluding admins/distributors)
+        let whereClause = {
+            users: {
+                some: { role: { in: ['OWNER', 'STORE_MANAGER', 'CASHIER'] } },
+                none: { role: { in: ['ADMIN', 'SUPER_ADMIN', 'DISTRIBUTOR'] } }
+            }
+        };
+
+        if (type === 'active') {
+            whereClause.OR = [
+                { wholesaleOrders: { some: { distributorId } } },
+                { distributorRelations: { some: { distributorId } } }
+            ];
+        } else if (type === 'leads') {
+            whereClause.wholesaleOrders = { none: { distributorId } };
+        }
+
+        const merchants = await prisma.tenant.findMany({
+            where: whereClause,
+            include: {
+                users: { select: { name: true, email: true }, take: 1 },
+                stores: {
+                    select: {
+                        id: true,
+                        name: true,
+                        location: true,
+                        latitude: true,
+                        longitude: true,
+                        category: true,
+                        waNumber: true,
+                        createdAt: true
+                    },
+                    take: 1
+                },
+                _count: {
+                    select: { wholesaleOrders: { where: { distributorId } } }
+                },
+                distributorRelations: { where: { distributorId } }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        // Format for map display
+        const mapData = merchants.map(m => {
+            const store = m.stores[0];
+            const relation = m.distributorRelations?.[0];
+            const hasOrdered = m._count.wholesaleOrders > 0;
+
+            return {
+                id: m.id,
+                name: m.users[0]?.name || m.name || 'Unknown',
+                email: m.users[0]?.email || null,
+                storeName: store?.name || '-',
+                location: store?.location || '-',
+                latitude: store?.latitude || null,
+                longitude: store?.longitude || null,
+                category: store?.category || 'Umum',
+                phone: store?.waNumber || null,
+                totalOrders: m._count.wholesaleOrders,
+                creditLimit: relation?.creditLimit || 0,
+                isActive: hasOrdered || !!relation,
+                joinDate: store?.createdAt || m.createdAt
+            };
+        });
+
+        // Stats
+        const total = mapData.length;
+        const withCoords = mapData.filter(m => m.latitude && m.longitude).length;
+        const active = mapData.filter(m => m.isActive).length;
+        const leads = mapData.filter(m => !m.isActive).length;
+
+        // Group by location
+        const byLocation = {};
+        mapData.forEach(m => {
+            const loc = m.location || 'Unknown';
+            byLocation[loc] = (byLocation[loc] || 0) + 1;
+        });
+
+        // Group by category
+        const byCategory = {};
+        mapData.forEach(m => {
+            const cat = m.category || 'Umum';
+            byCategory[cat] = (byCategory[cat] || 0) + 1;
+        });
+
+        return successResponse(res, {
+            merchants: mapData,
+            stats: { total, withCoords, active, leads, byLocation, byCategory }
+        }, "Acquisition map data retrieved");
+    } catch (error) {
+        return errorResponse(res, "Failed to fetch acquisition map data", 500, error);
+    }
+};
+
 module.exports = {
     getProfile,
     updateProfile,
@@ -610,5 +761,6 @@ module.exports = {
     createDiscount,
     updateDiscount,
     deleteDiscount,
-    updateCustomerCredit
+    updateCustomerCredit,
+    getAcquisitionMap
 };

@@ -67,6 +67,9 @@ router.put('/orders/:id/status', isDistributor, controller.updateOrderStatus);
 router.get('/customers', isDistributor, controller.getCustomers);
 router.put('/customers/:id/credit', isDistributor, controller.updateCustomerCredit);
 
+// Acquisition Map
+router.get('/acquisition-map', isDistributor, controller.getAcquisitionMap);
+
 // Shipments
 router.get('/shipments', isDistributor, controller.getShipments);
 
@@ -75,5 +78,26 @@ router.get('/discounts', isDistributor, controller.getDiscounts);
 router.post('/discounts', isDistributor, controller.createDiscount);
 router.put('/discounts/:id', isDistributor, controller.updateDiscount);
 router.delete('/discounts/:id', isDistributor, controller.deleteDiscount);
+
+// Subscription & Billing (Enterprise SaaS)
+const subscriptionCtrl = require('../controllers/distributorSubscriptionController');
+router.get('/subscription/plan', isDistributor, subscriptionCtrl.getPlanInfo);
+router.get('/subscription/billing', isDistributor, subscriptionCtrl.getBillingHistory);
+router.get('/subscription/usage', isDistributor, subscriptionCtrl.getUsageAnalytics);
+router.get('/subscription/plans', isDistributor, subscriptionCtrl.getAvailablePlans);
+
+// Warehouse Management
+const warehouseCtrl = require('../controllers/distributorWarehouseController');
+router.get('/warehouses', isDistributor, warehouseCtrl.getWarehouses);
+router.post('/warehouses', isDistributor, warehouseCtrl.createWarehouse);
+router.put('/warehouses/:id', isDistributor, warehouseCtrl.updateWarehouse);
+router.delete('/warehouses/:id', isDistributor, warehouseCtrl.deleteWarehouse);
+
+// Forecasting
+router.get('/forecasting', isDistributor, warehouseCtrl.getForecasting);
+
+// External Sales (Outside Ecosystem)
+router.get('/external-sales', isDistributor, warehouseCtrl.getExternalSales);
+router.post('/external-sales', isDistributor, warehouseCtrl.createExternalSale);
 
 module.exports = router;
