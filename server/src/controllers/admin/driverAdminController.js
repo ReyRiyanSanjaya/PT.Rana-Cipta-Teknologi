@@ -412,6 +412,14 @@ const broadcastToDrivers = async (req, res) => {
             console.warn('Socket broadcast failed:', e.message);
         }
 
+        // Send FCM push notification to all drivers topic
+        try {
+            const { sendToTopic } = require('../../utils/pushNotification');
+            await sendToTopic('drivers', { title, body: message }, { type: 'broadcast' });
+        } catch (e) {
+            console.warn('FCM broadcast failed:', e.message);
+        }
+
         return successResponse(res, { driversNotified: driverCount }, 'Broadcast sent to drivers');
     } catch (error) {
         return errorResponse(res, 'Failed to broadcast', 500, error);

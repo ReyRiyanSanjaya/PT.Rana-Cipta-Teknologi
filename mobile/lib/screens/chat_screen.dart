@@ -241,6 +241,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
   void _initSocket() {
     final rt = RealtimeService();
+    rt.joinChatRoom(widget.roomId); // [FIX] Join the socket room to receive messages
     _chatSub = rt.chatMessageStream.listen((data) {
       if (!mounted) return;
       // Only add if it's for this room
@@ -286,6 +287,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
   @override
   void dispose() {
+    RealtimeService().leaveChatRoom(widget.roomId); // [FIX] Leave the socket room
     _chatSub?.cancel();
     _typingSub?.cancel();
     _statusSub?.cancel();

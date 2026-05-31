@@ -8,6 +8,11 @@ import 'package:mobile_driver/providers/driver_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:mobile_driver/screens/navigation_screen.dart';
+import 'package:mobile_driver/screens/trip_summary_screen.dart';
+import 'package:mobile_driver/screens/trip_chat_screen.dart';
+import 'package:mobile_driver/screens/voice_call_screen.dart';
+import 'package:mobile_driver/data/driver_api_service.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class DriverTripExecutionScreen extends StatefulWidget {
@@ -34,20 +39,25 @@ class _DriverTripExecutionScreenState extends State<DriverTripExecutionScreen> {
     const LatLng(-6.230, 106.825),
   ];
 
+  bool _navigatedToSummary = false;
+
   @override
   Widget build(BuildContext context) {
     return Selector<DriverProvider, Map<String, dynamic>?>(
       selector: (_, prov) => prov.activeTrip,
       builder: (context, trip, child) {
-        if (trip == null) {
+        if (trip == null && !_navigatedToSummary) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            Navigator.pop(context);
+            if (mounted) Navigator.pop(context);
           });
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
+        if (trip == null) {
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
 
         String step = trip['currentStep'] ?? 'PICKUP';
-        final prov = Provider.of<DriverProvider>(context, listen: false); // Only for method calls
+        final prov = Provider.of<DriverProvider>(context, listen: false);
         
         return Scaffold(
           backgroundColor: ThemeConfig.beigeBackground,
@@ -199,7 +209,7 @@ class _DriverTripExecutionScreenState extends State<DriverTripExecutionScreen> {
                             ),
                           ),
                           Text(
-                            step == 'ON_TRIP' ? trip['destination'] : trip['origin'],
+                            step == 'ON_TRIP' ? (trip['destination'] ?? trip['destAddress'] ?? '') : (trip['origin'] ?? trip['originAddress'] ?? ''),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600),
@@ -408,6 +418,9 @@ class _DriverTripExecutionScreenState extends State<DriverTripExecutionScreen> {
                     const SizedBox(height: 24),
                     _buildCustomerInfo(trip),
                     const SizedBox(height: 24),
+                    // Photo proof button (visible at ARRIVED steps)
+                    if (step == 'ARRIVED_PICKUP' || step == 'ARRIVED_DEST')
+                      _buildPhotoProofButton(trip, step),
                     _buildExecutionButton(prov, step),
                   ],
                 ),
@@ -491,7 +504,7 @@ class _DriverTripExecutionScreenState extends State<DriverTripExecutionScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(trip['customerName'] ?? 'Rana User', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w700)),
+              Text(trip['customerName'] ?? trip['customer'] ?? 'Rana User', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w700)),
               const SizedBox(height: 4),
               Row(
                 children: [
@@ -507,9 +520,29 @@ class _DriverTripExecutionScreenState extends State<DriverTripExecutionScreen> {
             ],
           ),
         ),
-        _buildCircularAction(Icons.chat_bubble_rounded, Colors.blue),
+        _buildCircularAction(Icons.chat_bubble_rounded, Colors.blue, onTap: () {
+          final requestId = Provider.of<DriverProvider>(context, listen: false).activeTrip?['id']?.toString();
+          if (requestId != null) {
+            Navigator.push(context, MaterialPageRoute(
+              builder: (_) => TripChatScreen(
+                requestId: requestId,
+                customerName: trip['customer'] ?? trip['customerName'] ?? 'Pelanggan',
+              ),
+            ));
+          }
+        }),
         const SizedBox(width: 12),
-        _buildCircularAction(Icons.phone_rounded, Colors.green),
+        _buildCircularAction(Icons.phone_rounded, Colors.green, onTap: () {
+          final requestId = Provider.of<DriverProvider>(context, listen: false).activeTrip?['id']?.toString();
+          if (requestId != null) {
+            Navigator.push(context, MaterialPageRoute(
+              builder: (_) => VoiceCallScreen(
+                orderId: requestId,
+                peerName: trip['customer'] ?? trip['customerName'] ?? 'Pelanggan',
+              ),
+            ));
+          }
+        }),
       ],
     );
   }
@@ -526,6 +559,63 @@ class _DriverTripExecutionScreenState extends State<DriverTripExecutionScreen> {
         child: Icon(icon, color: color, size: 22),
       ),
     );
+  }
+
+  Widget _buildPhotoProofButton(Map<String, dynamic> trip, String step) {
+    final isPickup = step == 'ARRIVED_PICKUP';
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      child: OutlinedButton.icon(
+        onPressed: () => _takeProofPhoto(trip, isPickup ? 'pickup' : 'delivery'),
+        icon: const Icon(Icons.camera_alt_rounded, size: 20),
+        label: Text(
+          isPickup ? 'FOTO BUKTI PICKUP' : 'FOTO BUKTI PENGANTARAN',
+          style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.blue,
+          side: const BorderSide(color: Colors.blue),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _takeProofPhoto(Map<String, dynamic> trip, String type) async {
+    try {
+      final picker = ImagePicker();
+      final photo = await picker.pickImage(source: ImageSource.camera, maxWidth: 1024, imageQuality: 80);
+      if (photo == null) return;
+
+      final requestId = trip['id']?.toString();
+      if (requestId == null) return;
+
+      // Show uploading indicator
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Mengupload foto bukti...'), duration: Duration(seconds: 2)),
+        );
+      }
+
+      await DriverApiService().uploadProof(requestId, photo.path, type);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Foto bukti $type berhasil diupload ✓'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal upload: $e')),
+        );
+      }
+    }
   }
 
   Widget _buildExecutionButton(DriverProvider prov, String step) {
@@ -551,7 +641,17 @@ class _DriverTripExecutionScreenState extends State<DriverTripExecutionScreen> {
           if (step == 'PICKUP') prov.updateTripStep('ARRIVED_PICKUP');
           else if (step == 'ARRIVED_PICKUP') prov.updateTripStep('ON_TRIP');
           else if (step == 'ON_TRIP') prov.updateTripStep('ARRIVED_DEST');
-          else if (step == 'ARRIVED_DEST') prov.updateTripStep('COMPLETED');
+          else if (step == 'ARRIVED_DEST') {
+            // Save trip data before it gets cleared
+            final tripData = Map<String, dynamic>.from(prov.activeTrip ?? {});
+            _navigatedToSummary = true;
+            prov.updateTripStep('COMPLETED');
+            // Navigate to trip summary
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => TripSummaryScreen(tripData: tripData)),
+            );
+          }
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: color,

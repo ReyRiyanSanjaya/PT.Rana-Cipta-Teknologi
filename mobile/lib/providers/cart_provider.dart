@@ -172,7 +172,10 @@ class CartProvider extends ChangeNotifier {
         (_) => CartItem(
           productId: existing.productId,
           name: existing.name,
+          sku: existing.sku,
+          imageUrl: existing.imageUrl,
           price: existing.price,
+          basePrice: existing.basePrice,
           quantity: validQuantity,
           maxStock: existing.maxStock,
         ),

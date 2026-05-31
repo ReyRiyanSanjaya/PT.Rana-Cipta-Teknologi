@@ -149,20 +149,23 @@ class _FeatureGridState extends State<FeatureGrid> {
         List<dynamic> menuItems = _processMenuItems(snapshot);
         
         final width = MediaQuery.of(context).size.width;
-        int crossAxisCount = width <= 360 ? 3 : 4;
+        int crossAxisCount = width <= 320 ? 3 : (width <= 360 ? 3 : 4);
         int itemsToShow = crossAxisCount * 2;
         bool hasMore = menuItems.length > itemsToShow;
+        final horizontalPadding = width <= 320 ? 12.0 : (width <= 360 ? 16.0 : 24.0);
+        final gridSpacing = width <= 320 ? 10.0 : (width <= 360 ? 14.0 : 20.0);
+        final crossSpacing = width <= 320 ? 8.0 : (width <= 360 ? 12.0 : 16.0);
         
         List<dynamic> displayedItems = _getDisplayedItems(menuItems, itemsToShow, hasMore);
 
         return GridView.builder(
           physics: const NeverScrollableScrollPhysics(),
           shrinkWrap: true,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 8),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: crossAxisCount,
-              mainAxisSpacing: 20,
-              crossAxisSpacing: 16,
+              mainAxisSpacing: gridSpacing,
+              crossAxisSpacing: crossSpacing,
               childAspectRatio: _calculateAspectRatio(width)),
           itemCount: displayedItems.length,
           itemBuilder: (ctx, i) {
@@ -247,7 +250,8 @@ class _FeatureGridState extends State<FeatureGrid> {
   double _calculateAspectRatio(double width) {
     if (width >= 1100) return 0.9;
     if (width >= 800) return 0.85;
-    if (width <= 360) return 0.95;
+    if (width <= 320) return 1.05;
+    if (width <= 360) return 0.98;
     return 0.8;
   }
 
@@ -338,6 +342,12 @@ class _FeatureGridState extends State<FeatureGrid> {
   }
 
   Widget _buildIconStack(int i, IconData icon, Color color, String key, String route) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmall = screenWidth <= 360;
+    final iconPadding = isSmall ? 12.0 : 16.0;
+    final iconSize = isSmall ? 22.0 : 28.0;
+    final borderRadius = isSmall ? 18.0 : 24.0;
+
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -345,9 +355,9 @@ class _FeatureGridState extends State<FeatureGrid> {
           scale: _pressedMenuIndex == i ? 0.98 : 1.0,
           duration: const Duration(milliseconds: 120),
           child: Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(iconPadding),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(borderRadius),
               gradient: LinearGradient(
                 colors: [Theme.of(context).colorScheme.surface, color.withOpacity(0.10)],
               ),
@@ -357,7 +367,7 @@ class _FeatureGridState extends State<FeatureGrid> {
               ],
               border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.14)),
             ),
-            child: Icon(icon, color: color, size: 28),
+            child: Icon(icon, color: color, size: iconSize),
           ),
         ),
         _buildBadge(key, route),
@@ -391,17 +401,17 @@ class _FeatureGridState extends State<FeatureGrid> {
   }
 
   Widget _buildLabel(String label, ColorScheme colorScheme) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final fontSize = screenWidth <= 320 ? 10.5 : (screenWidth <= 360 ? 11.5 : 13.0);
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Flexible(
           child: Text(label,
-            style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600, height: 1.2),
+            style: GoogleFonts.outfit(fontSize: fontSize, fontWeight: FontWeight.w600, height: 1.2),
             textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis,
           ),
         ),
-        const SizedBox(width: 4),
-        Icon(Icons.chevron_right, size: 14, color: colorScheme.onSurface.withOpacity(0.3)),
       ],
     );
   }

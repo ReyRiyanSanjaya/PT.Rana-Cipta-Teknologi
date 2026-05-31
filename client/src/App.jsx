@@ -35,6 +35,7 @@ const Careers = lazy(() => import('./pages/Careers'));
 const CareersAdmin = lazy(() => import('./pages/admin/CareersAdmin'));
 const DistributorInfo = lazy(() => import('./pages/DistributorInfo'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+const TableMenu = lazy(() => import('./pages/TableMenu'));
 
 // Placeholders for other routes
 const Placeholder = ({ title }) => (
@@ -96,6 +97,7 @@ function App() {
                         <Route path="/contact" element={<Contact />} />
                         <Route path="/careers" element={<Careers />} />
                         <Route path="/distributor" element={<DistributorInfo />} />
+                        <Route path="/table/:qrCode" element={<TableMenu />} />
                         <Route path="/login" element={<Login />} />
                         <Route path="/register" element={<Register />} />
 

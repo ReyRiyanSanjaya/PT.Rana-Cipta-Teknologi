@@ -8,6 +8,15 @@ router.get('/announcements', systemController.getActiveAnnouncements);
 router.get('/app-menus', systemController.getAppMenus);
 router.get('/app-menus/maintenance', systemController.getAppMenuMaintenancePublic);
 router.get('/careers/openings', systemController.getCareersOpenings);
+router.get('/merchant-categories', (req, res) => {
+    const { getAllCategories, getCategoryConfig } = require('../utils/merchantCategory');
+    const { successResponse } = require('../utils/response');
+    const category = req.query.category;
+    if (category) {
+        return successResponse(res, getCategoryConfig(category));
+    }
+    return successResponse(res, getAllCategories());
+});
 
 // Protected System Info
 const verifyToken = require('../middleware/auth');

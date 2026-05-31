@@ -66,6 +66,10 @@ class ApiService {
   String? _token;
   String? get token => _token; // [NEW] Getter
 
+  /// Convenience getter for auth options (used by screens calling dio directly)
+  Options get authOptions =>
+      Options(headers: {'Authorization': 'Bearer $_token'});
+
   void setToken(String token) {
     _token = token;
     _dio.options.headers['Authorization'] =

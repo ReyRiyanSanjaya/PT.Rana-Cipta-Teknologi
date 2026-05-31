@@ -133,6 +133,7 @@ model User {
   postComments    CommunityComment[]
   postLikes       CommunityPostLike[]
   distributor     Distributor?
+  gameScores      GameScore[]
 }
 
 enum UserRole {
@@ -357,6 +358,7 @@ model Store {
   ppobTransactions  PpobTransaction[] // [NEW]
   flashSales        FlashSale[] // [FIX] Added relation
   products          Product[]
+  tables            DineTable[]
 }
 
 // [NEW] Withdrawal Request
@@ -562,9 +564,11 @@ model Transaction {
   createdAt     DateTime          @default(now())
 
   // Reporting Metadata
-  customerName String?
-  notes        String?
-  shiftId      String?
+  customerName  String?
+  customerPhone String?
+  notes         String?
+  shiftId       String?
+  source        String?  // POS, MARKET, DINE_IN
 
   tenant           Tenant            @relation(fields: [tenantId], references: [id])
   store            Store             @relation(fields: [storeId], references: [id])
@@ -1057,6 +1061,116 @@ model BlogPost {
 }
 
 // ================================
+// GAMES & LEADERBOARD
+// ================================
+
+model GameScore {
+  id        String   @id @default(uuid())
+  userId    String
+  tenantId  String?
+  gameId    String   // e.g. "snake", "tetris", "match3", "tts"
+  score     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, gameId])
+  @@index([gameId, score])
+}
+
+// ================================
+// TABLE MANAGEMENT (Cafe/Restaurant)
+// ================================
+
+model DineTable {
+  id        String      @id @default(uuid())
+  storeId   String
+  number    Int         // Table number (1, 2, 3...)
+  name      String?     // Optional name ("VIP 1", "Outdoor A")
+  capacity  Int         @default(4)
+  qrCode    String      @unique // Unique QR identifier for this table
+  status    TableStatus @default(AVAILABLE)
+  posX      Float?      // Position on floor plan (optional)
+  posY      Float?
+  isActive  Boolean     @default(true)
+  createdAt DateTime    @default(now())
+
+  store    Store          @relation(fields: [storeId], references: [id])
+  sessions TableSession[]
+
+  @@unique([storeId, number])
+  @@index([storeId, status])
+}
+
+enum TableStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+  CLEANING
+}
+
+model TableSession {
+  id            String             @id @default(uuid())
+  tableId       String
+  storeId       String
+  guestName     String?
+  guestCount    Int                @default(1)
+  status        TableSessionStatus @default(ACTIVE)
+  paymentStatus TablePaymentStatus @default(UNPAID)
+  paymentMethod String?            // CASH, QRIS, TRANSFER, CARD
+  paidAmount    Float              @default(0)
+  startedAt     DateTime           @default(now())
+  closedAt      DateTime?
+  totalAmount   Float              @default(0)
+
+  table  DineTable    @relation(fields: [tableId], references: [id])
+  orders TableOrder[]
+
+  @@index([storeId, status])
+  @@index([storeId, paymentStatus])
+}
+
+enum TableSessionStatus {
+  ACTIVE
+  REQUESTING_BILL
+  CLOSED
+}
+
+enum TablePaymentStatus {
+  UNPAID
+  PENDING_VERIFICATION
+  PAID
+  REFUNDED
+}
+
+model TableOrder {
+  id            String           @id @default(uuid())
+  sessionId     String
+  storeId       String
+  productId     String
+  productName   String
+  quantity      Int
+  price         Float
+  notes         String?
+  status        TableOrderStatus @default(PENDING)
+  orderedAt     DateTime         @default(now())
+  preparedAt    DateTime?
+
+  session TableSession @relation(fields: [sessionId], references: [id])
+
+  @@index([sessionId, status])
+  @@index([storeId, status])
+}
+
+enum TableOrderStatus {
+  PENDING
+  PREPARING
+  SERVED
+  CANCELLED
+}
+
+// ================================
 // DRIVER & RIDE-HAILING
 // ================================
 
@@ -1086,7 +1200,9 @@ model Driver {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
-  serviceRequests ServiceRequest[]
+  serviceRequests    ServiceRequest[]
+  transactions       DriverTransaction[]
+  withdrawals        DriverWithdrawal[]
 }
 
 enum DriverStatus {
@@ -1140,6 +1256,61 @@ enum ServiceStatus {
   IN_TRANSIT
   COMPLETED
   CANCELLED
+}
+
+// ================================
+// DRIVER WALLET & TRANSACTIONS
+// ================================
+
+model DriverTransaction {
+  id          String                @id @default(uuid())
+  driverId    String
+  type        DriverTransactionType
+  amount      Float
+  description String?
+  referenceId String?               // ServiceRequest ID or Withdrawal ID
+  createdAt   DateTime              @default(now())
+
+  driver Driver @relation(fields: [driverId], references: [id])
+
+  @@index([driverId, createdAt])
+}
+
+enum DriverTransactionType {
+  TRIP_EARNING
+  BONUS
+  TIP
+  WITHDRAWAL
+  TOP_UP
+  PENALTY
+  ADJUSTMENT
+}
+
+model DriverWithdrawal {
+  id            String                  @id @default(uuid())
+  driverId      String
+  amount        Float
+  fee           Float                   @default(0)
+  netAmount     Float                   @default(0)
+  bankName      String
+  accountNumber String
+  accountHolder String?
+  status        DriverWithdrawalStatus  @default(PENDING)
+  note          String?
+  processedAt   DateTime?
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  driver Driver @relation(fields: [driverId], references: [id])
+
+  @@index([driverId, status])
+}
+
+enum DriverWithdrawalStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  REJECTED
 }
 
 

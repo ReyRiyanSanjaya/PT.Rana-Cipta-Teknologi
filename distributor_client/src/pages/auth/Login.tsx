@@ -54,6 +54,27 @@ const Login = () => {
             }
 
             login(user, token);
+
+            // Fetch permissions/sub-role after login
+            try {
+                const permRes = await client.get('/distributor/team/my-permissions', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const perm = permRes.data.data;
+                useAuthStore.getState().setPermissions(
+                    perm.subRole || 'OWNER',
+                    perm.label || 'Owner',
+                    perm.permissions || ['*'],
+                    perm.isOwner || false,
+                    perm.position || null,
+                    perm.manager || null,
+                    perm.subordinateCount || 0
+                );
+            } catch (e) {
+                // If permissions endpoint fails, default to full access
+                useAuthStore.getState().setPermissions('OWNER', 'Owner', ['*'], true, null, null, 0);
+            }
+
             navigate('/dashboard');
         } catch (err: any) {
             setError(err.response?.data?.message || 'Login failed');
@@ -199,12 +220,12 @@ const Login = () => {
                             <button
                                 type="button"
                                 onClick={() => {
-                                    setEmail('super@rana.com');
+                                    setEmail('distributor@rana.com');
                                     setPassword('password123');
                                 }}
                                 className="w-full py-3 bg-teal-500/20 text-teal-400 font-bold rounded-2xl border border-teal-500/30 hover:bg-teal-500/30 transition-all duration-300"
                             >
-                                Isi Otomatis Akun Demo (Super Admin)
+                                Isi Otomatis Akun Demo (Distributor)
                             </button>
 
                             <p className="text-center text-slate-400 text-sm">

@@ -12,6 +12,7 @@ import 'package:rana_market/screens/voucher_screen.dart';
 import 'package:rana_market/screens/address_screen.dart';
 import 'package:rana_market/screens/help_center_screen.dart';
 import 'package:rana_market/screens/loyalty_exchange_screen.dart';
+import 'package:rana_market/screens/ride_history_screen.dart';
 
 
 class ProfileScreen extends StatefulWidget {
@@ -373,14 +374,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
            _buildActionIcon(Icons.receipt_long_rounded, 'Pesanan', Colors.blue, scale, onTap: () {
              Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersScreen()));
            }),
+           _buildActionIcon(Icons.directions_bike_rounded, 'Ride', Colors.purple, scale, onTap: () {
+             Navigator.push(context, MaterialPageRoute(builder: (_) => const RideHistoryScreen()));
+           }),
            _buildActionIcon(Icons.favorite_rounded, 'Favorit', Colors.red, scale, onTap: () {
              Navigator.push(context, MaterialPageRoute(builder: (_) => const MarketFavoritesScreen()));
            }),
            _buildActionIcon(Icons.discount_rounded, 'Voucher', Colors.orange, scale, onTap: () {
              Navigator.push(context, MaterialPageRoute(builder: (_) => const VoucherScreen()));
-           }),
-           _buildActionIcon(Icons.location_on_rounded, 'Alamat', Colors.green, scale, onTap: () {
-             Navigator.push(context, MaterialPageRoute(builder: (_) => const AddressScreen()));
            }),
         ]
      ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.2);

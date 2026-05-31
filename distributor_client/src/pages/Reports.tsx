@@ -511,7 +511,7 @@ export default function Reports() {
               <CardTitle>Recent Transactions</CardTitle>
               <CardDescription>Latest orders from your merchants</CardDescription>
            </div>
-           <Button variant="outline" size="sm" className="gap-2" onClick={() => window.location.href='/distributor/orders'}>
+           <Button variant="outline" size="sm" className="gap-2" onClick={() => window.location.href='/orders'}>
              View All
            </Button>
         </CardHeader>

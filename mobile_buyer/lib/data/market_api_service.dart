@@ -524,4 +524,166 @@ class MarketApiService {
       throw _toApiException(e, fallback: 'Gagal mendapatkan informasi produk');
     }
   }
+
+  // ==================== RIDE / SERVICE REQUESTS ====================
+
+  /// Create a ride/send/food service request
+  Future<Map<String, dynamic>> createServiceRequest({
+    required String type,
+    required double originLat,
+    required double originLng,
+    required String originAddress,
+    required double destLat,
+    required double destLng,
+    required String destAddress,
+    required double price,
+    String paymentMethod = 'CASH',
+    String? notes,
+  }) async {
+    try {
+      final response = await _dio.post('/service-requests', data: {
+        'type': type,
+        'originLat': originLat,
+        'originLng': originLng,
+        'originAddress': originAddress,
+        'destLat': destLat,
+        'destLng': destLng,
+        'destAddress': destAddress,
+        'price': price,
+        'paymentMethod': paymentMethod,
+        if (notes != null) 'notes': notes,
+      });
+      if (_isSuccess(response.data)) {
+        return Map<String, dynamic>.from(response.data['data'] ?? {});
+      }
+      throw Exception(_messageFromBody(response.data, fallback: 'Gagal membuat pesanan'));
+    } catch (e) {
+      throw _toApiException(e, fallback: 'Gagal membuat pesanan ride');
+    }
+  }
+
+  /// Get service request status (with driver info)
+  Future<Map<String, dynamic>> getServiceRequestStatus(String requestId) async {
+    try {
+      final response = await _dio.get('/service-requests/$requestId');
+      if (_isSuccess(response.data)) {
+        return Map<String, dynamic>.from(response.data['data'] ?? {});
+      }
+      throw Exception(_messageFromBody(response.data, fallback: 'Gagal memuat status'));
+    } catch (e) {
+      throw _toApiException(e, fallback: 'Gagal memuat status pesanan');
+    }
+  }
+
+  /// Cancel a service request
+  Future<Map<String, dynamic>> cancelServiceRequest(String requestId) async {
+    try {
+      final response = await _dio.put('/service-requests/$requestId/cancel');
+      if (_isSuccess(response.data)) {
+        return Map<String, dynamic>.from(response.data['data'] ?? {});
+      }
+      throw Exception(_messageFromBody(response.data, fallback: 'Gagal membatalkan'));
+    } catch (e) {
+      throw _toApiException(e, fallback: 'Gagal membatalkan pesanan');
+    }
+  }
+
+  /// Get ride order history for the current user
+  Future<List<dynamic>> getRideHistory() async {
+    try {
+      final response = await _dio.get('/service-requests/my-rides');
+      if (_isSuccess(response.data)) {
+        return response.data['data'] ?? [];
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Get Ride History Error: $e');
+      return [];
+    }
+  }
+
+  /// Calculate ride price from server
+  Future<Map<String, dynamic>> calculateRidePrice({
+    required String type,
+    required double originLat,
+    required double originLng,
+    required double destLat,
+    required double destLng,
+  }) async {
+    try {
+      final response = await _dio.post('/service-requests/calculate-price', data: {
+        'type': type,
+        'originLat': originLat,
+        'originLng': originLng,
+        'destLat': destLat,
+        'destLng': destLng,
+      });
+      if (_isSuccess(response.data)) {
+        return Map<String, dynamic>.from(response.data['data'] ?? {});
+      }
+      return {};
+    } catch (e) {
+      debugPrint('Calculate Price Error: $e');
+      return {};
+    }
+  }
+
+  /// Rate a driver after trip completion
+  Future<void> rateDriver(String requestId, double rating, {String? comment}) async {
+    try {
+      await _dio.post('/driver/rate/$requestId', data: {
+        'rating': rating,
+        if (comment != null) 'comment': comment,
+      });
+    } catch (e) {
+      debugPrint('Rate Driver Error: $e');
+    }
+  }
+
+  /// Give tip to driver
+  Future<void> giveTip(String requestId, double amount) async {
+    try {
+      await _dio.post('/service-requests/$requestId/tip', data: {
+        'amount': amount,
+      });
+    } catch (e) {
+      throw _toApiException(e, fallback: 'Gagal mengirim tip');
+    }
+  }
+
+  /// Get ETA for active trip
+  Future<Map<String, dynamic>> getETA(String requestId) async {
+    try {
+      final response = await _dio.get('/service-requests/$requestId/eta');
+      if (_isSuccess(response.data)) {
+        return Map<String, dynamic>.from(response.data['data'] ?? {});
+      }
+      return {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  /// Get or create trip chat room (buyer side)
+  Future<Map<String, dynamic>> getTripChatRoom(String requestId) async {
+    try {
+      final response = await _dio.get('/driver/trip-chat/$requestId');
+      if (_isSuccess(response.data)) {
+        return Map<String, dynamic>.from(response.data['data'] ?? {});
+      }
+      return {};
+    } catch (e) {
+      debugPrint('Get Trip Chat Error: $e');
+      return {};
+    }
+  }
+
+  /// Send chat message
+  Future<void> sendChatMessage(String roomId, String content) async {
+    try {
+      await _dio.post('/chat/rooms/$roomId/messages', data: {'content': content});
+    } catch (e) {
+      debugPrint('Send Message Error: $e');
+    }
+  }
 }

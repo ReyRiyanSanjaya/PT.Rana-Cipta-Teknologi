@@ -35,7 +35,7 @@ class SalesSummaryCard extends StatelessWidget {
             trendRaw.map((e) => (e as num).toDouble()).toList();
 
         return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: EdgeInsets.symmetric(horizontal: ThemeConfig.responsivePadding(context, base: 24)),
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -139,9 +139,10 @@ class SalesSummaryCard extends StatelessWidget {
       required Color color,
       required Color bgColor}) {
     final colorScheme = Theme.of(context).colorScheme;
+    final scale = ThemeConfig.fontScale(context);
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(scale < 1.0 ? 8 : 12),
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(14),
@@ -156,18 +157,22 @@ class SalesSummaryCard extends StatelessWidget {
             Text(
               label,
               style: GoogleFonts.outfit(
-                fontSize: 12,
+                fontSize: 11 * scale,
                 fontWeight: FontWeight.w500,
                 color: color,
               ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: GoogleFonts.outfit(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: colorScheme.onSurface,
+            const SizedBox(height: 4),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                style: GoogleFonts.outfit(
+                  fontSize: 15 * scale,
+                  fontWeight: FontWeight.w700,
+                  color: colorScheme.onSurface,
+                ),
               ),
             ),
           ],

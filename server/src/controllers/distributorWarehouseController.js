@@ -394,6 +394,231 @@ const createExternalSale = async (req, res) => {
     }
 };
 
+// =======================
+// WAREHOUSE STOCK MANAGEMENT
+// =======================
+
+/**
+ * GET /distributor/warehouses/stock
+ * Full inventory list with stock levels, value, and movement history
+ */
+const getWarehouseStock = async (req, res) => {
+    try {
+        const distributorId = await getDistributorId(req);
+        if (!distributorId) return errorResponse(res, "Not a distributor", 403);
+
+        const { search, category, stockStatus, sort = 'name' } = req.query;
+
+        const where = { distributorId, isActive: true };
+        if (search) where.name = { contains: search, mode: 'insensitive' };
+        if (category) where.wholesaleCategoryId = category;
+
+        let products = await prisma.wholesaleProduct.findMany({
+            where,
+            include: { wholesaleCategory: { select: { name: true } } },
+            orderBy: sort === 'stock_asc' ? { stockQuantity: 'asc' } : sort === 'stock_desc' ? { stockQuantity: 'desc' } : { name: 'asc' }
+        });
+
+        // Filter by stock status
+        if (stockStatus === 'low') products = products.filter(p => p.stockQuantity > 0 && p.stockQuantity <= 10);
+        else if (stockStatus === 'out') products = products.filter(p => p.stockQuantity <= 0);
+        else if (stockStatus === 'healthy') products = products.filter(p => p.stockQuantity > 10);
+
+        // Calculate stock value
+        const stockData = products.map(p => {
+            const basePrice = Array.isArray(p.pricingTiers) && p.pricingTiers.length > 0 ? p.pricingTiers[0].price : 0;
+            return {
+                id: p.id,
+                name: p.name,
+                unit: p.unit,
+                category: p.wholesaleCategory?.name || 'Uncategorized',
+                stockQuantity: p.stockQuantity,
+                moq: p.moq,
+                basePrice,
+                stockValue: p.stockQuantity * basePrice,
+                status: p.stockQuantity <= 0 ? 'OUT_OF_STOCK' : p.stockQuantity <= 10 ? 'LOW' : 'HEALTHY',
+                updatedAt: p.updatedAt
+            };
+        });
+
+        // Summary stats
+        const totalItems = stockData.length;
+        const totalUnits = stockData.reduce((s, p) => s + p.stockQuantity, 0);
+        const totalValue = stockData.reduce((s, p) => s + p.stockValue, 0);
+        const outOfStock = stockData.filter(p => p.status === 'OUT_OF_STOCK').length;
+        const lowStock = stockData.filter(p => p.status === 'LOW').length;
+
+        return successResponse(res, {
+            products: stockData,
+            summary: { totalItems, totalUnits, totalValue, outOfStock, lowStock }
+        }, "Warehouse stock retrieved");
+    } catch (error) {
+        return errorResponse(res, "Failed to fetch warehouse stock", 500, error);
+    }
+};
+
+/**
+ * POST /distributor/warehouses/stock/adjust
+ * Adjust stock: IN (restock), OUT (manual deduction), CORRECTION
+ */
+const adjustStock = async (req, res) => {
+    try {
+        const distributorId = await getDistributorId(req);
+        if (!distributorId) return errorResponse(res, "Not a distributor", 403);
+
+        const { productId, type, quantity, reason } = req.body;
+        // type: 'IN' (restock), 'OUT' (deduction), 'CORRECTION' (set exact)
+
+        if (!productId || !type || quantity === undefined) {
+            return errorResponse(res, "productId, type, and quantity are required", 400);
+        }
+
+        const product = await prisma.wholesaleProduct.findFirst({ where: { id: productId, distributorId } });
+        if (!product) return errorResponse(res, "Product not found", 404);
+
+        let newStock = product.stockQuantity;
+        if (type === 'IN') newStock += parseInt(quantity);
+        else if (type === 'OUT') {
+            newStock -= parseInt(quantity);
+            if (newStock < 0) return errorResponse(res, "Insufficient stock", 400);
+        }
+        else if (type === 'CORRECTION') newStock = parseInt(quantity);
+        else return errorResponse(res, "Invalid type. Use IN, OUT, or CORRECTION", 400);
+
+        const updated = await prisma.wholesaleProduct.update({
+            where: { id: productId },
+            data: { stockQuantity: newStock }
+        });
+
+        return successResponse(res, {
+            productId,
+            productName: product.name,
+            previousStock: product.stockQuantity,
+            adjustment: type === 'CORRECTION' ? `Set to ${quantity}` : `${type} ${quantity}`,
+            newStock,
+            reason: reason || null,
+            timestamp: new Date()
+        }, "Stock adjusted successfully");
+    } catch (error) {
+        return errorResponse(res, "Failed to adjust stock", 500, error);
+    }
+};
+
+/**
+ * POST /distributor/warehouses/stock/bulk-adjust
+ * Bulk stock adjustment for multiple products
+ */
+const bulkAdjustStock = async (req, res) => {
+    try {
+        const distributorId = await getDistributorId(req);
+        if (!distributorId) return errorResponse(res, "Not a distributor", 403);
+
+        const { adjustments } = req.body;
+        // adjustments: [{ productId, type, quantity, reason }]
+
+        if (!Array.isArray(adjustments) || adjustments.length === 0) {
+            return errorResponse(res, "adjustments array is required", 400);
+        }
+
+        const results = [];
+        for (const adj of adjustments) {
+            const product = await prisma.wholesaleProduct.findFirst({ where: { id: adj.productId, distributorId } });
+            if (!product) {
+                results.push({ productId: adj.productId, success: false, error: 'Not found' });
+                continue;
+            }
+
+            let newStock = product.stockQuantity;
+            if (adj.type === 'IN') newStock += parseInt(adj.quantity);
+            else if (adj.type === 'OUT') newStock = Math.max(0, newStock - parseInt(adj.quantity));
+            else if (adj.type === 'CORRECTION') newStock = parseInt(adj.quantity);
+
+            await prisma.wholesaleProduct.update({
+                where: { id: adj.productId },
+                data: { stockQuantity: newStock }
+            });
+
+            results.push({
+                productId: adj.productId,
+                productName: product.name,
+                success: true,
+                previousStock: product.stockQuantity,
+                newStock
+            });
+        }
+
+        return successResponse(res, results, `${results.filter(r => r.success).length}/${adjustments.length} adjustments applied`);
+    } catch (error) {
+        return errorResponse(res, "Failed to bulk adjust stock", 500, error);
+    }
+};
+
+/**
+ * GET /distributor/warehouses/stock/movements
+ * Stock movement history (based on orders in/out)
+ */
+const getStockMovements = async (req, res) => {
+    try {
+        const distributorId = await getDistributorId(req);
+        if (!distributorId) return errorResponse(res, "Not a distributor", 403);
+
+        const { days = 30 } = req.query;
+        const since = new Date();
+        since.setDate(since.getDate() - parseInt(days));
+
+        // Get recent orders (outgoing stock)
+        const outgoingOrders = await prisma.wholesaleOrder.findMany({
+            where: {
+                distributorId,
+                createdAt: { gte: since },
+                status: { in: ['PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED'] }
+            },
+            include: {
+                items: { include: { wholesaleProduct: { select: { name: true, unit: true } } } },
+                tenant: { select: { name: true } }
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 50
+        });
+
+        // Format as movements
+        const movements = [];
+        outgoingOrders.forEach(order => {
+            order.items.forEach(item => {
+                movements.push({
+                    id: `${order.id}-${item.id}`,
+                    date: order.createdAt,
+                    type: order.paymentMethod === 'EXTERNAL' ? 'SALE_EXTERNAL' : 'SALE_ECOSYSTEM',
+                    productName: item.wholesaleProduct?.name || 'Unknown',
+                    unit: item.wholesaleProduct?.unit || '-',
+                    quantity: item.quantity,
+                    reference: order.orderNumber,
+                    customer: order.paymentMethod === 'EXTERNAL'
+                        ? (typeof order.shippingAddress === 'object' ? order.shippingAddress.customerName : 'External')
+                        : (order.tenant?.name || 'Merchant'),
+                    amount: item.subtotal
+                });
+            });
+        });
+
+        // Sort by date desc
+        movements.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+        // Summary
+        const totalOut = movements.reduce((s, m) => s + m.quantity, 0);
+        const totalValue = movements.reduce((s, m) => s + m.amount, 0);
+        const ecosystemSales = movements.filter(m => m.type === 'SALE_ECOSYSTEM').length;
+        const externalSales = movements.filter(m => m.type === 'SALE_EXTERNAL').length;
+
+        return successResponse(res, {
+            movements: movements.slice(0, 50),
+            summary: { totalOut, totalValue, ecosystemSales, externalSales, period: `${days} days` }
+        }, "Stock movements retrieved");
+    } catch (error) {
+        return errorResponse(res, "Failed to fetch stock movements", 500, error);
+    }
+};
+
 module.exports = {
     getWarehouses,
     createWarehouse,
@@ -401,5 +626,9 @@ module.exports = {
     deleteWarehouse,
     getForecasting,
     getExternalSales,
-    createExternalSale
+    createExternalSale,
+    getWarehouseStock,
+    adjustStock,
+    bulkAdjustStock,
+    getStockMovements
 };

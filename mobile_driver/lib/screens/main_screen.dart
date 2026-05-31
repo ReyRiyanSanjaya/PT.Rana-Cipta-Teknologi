@@ -3,8 +3,6 @@ import 'package:mobile_driver/config/theme_config.dart';
 import 'package:mobile_driver/screens/driver_dashboard_screen.dart';
 import 'package:mobile_driver/screens/driver_wallet_screen.dart';
 import 'package:mobile_driver/screens/profile_screen.dart';
-import 'package:mobile_driver/providers/driver_provider.dart';
-import 'package:provider/provider.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -24,14 +22,9 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final driverProv = Provider.of<DriverProvider>(context);
-    
-    // Always show bottom nav for better UX, or you can keep the logic
-    bool showBottomNav = true;
-
     return Scaffold(
       body: _screens[_currentIndex],
-      bottomNavigationBar: showBottomNav ? Container(
+      bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
@@ -71,7 +64,7 @@ class _MainScreenState extends State<MainScreen> {
             ),
           ],
         ),
-      ) : null,
+      ),
     );
   }
 }

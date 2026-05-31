@@ -115,6 +115,26 @@ class RealtimeService {
       );
     });
 
+    s.on('orders:new', (payload) {
+      if (payload is! Map) return;
+      final data = Map<String, dynamic>.from(payload);
+      for (final handler
+          in List<TransactionEventHandler>.from(_transactionListeners)) {
+        unawaited(Future<void>.microtask(() => handler(data)));
+      }
+      _transactionsController.add(data);
+
+      final customerName = data['customerName'] ?? 'Pelanggan';
+      final total = data['totalAmount'];
+      final totalStr = total != null ? ' - Rp${total.toString()}' : '';
+
+      NotificationService().showNotification(
+        id: DateTime.now().millisecondsSinceEpoch % 100000,
+        title: '🔔 Pesanan Baru Masuk!',
+        body: 'Dari $customerName$totalStr. Segera proses pesanan.',
+      );
+    });
+
     s.on('maintenance:update', (payload) async {
       try {
         final map = await ApiService().fetchMenuMaintenance();
@@ -124,7 +144,7 @@ class RealtimeService {
     s.on('app_menus:update', (_) {
       _menusUpdateController.add(null);
     });
-    s.on('chat:message', (payload) {
+    s.on('chat:new_message', (payload) {
       if (payload is Map) {
         _chatMessageController.add(Map<String, dynamic>.from(payload));
       }
@@ -138,6 +158,48 @@ class RealtimeService {
       if (payload is Map) {
         _chatStatusController.add(Map<String, dynamic>.from(payload));
       }
+    });
+
+    // Table Management Events (Cafe/Restaurant)
+    s.on('table:new_order', (payload) {
+      if (payload is! Map) return;
+      final data = Map<String, dynamic>.from(payload);
+      _transactionsController.add(data);
+
+      final tableNum = data['tableNumber'] ?? '?';
+      NotificationService().showNotification(
+        id: DateTime.now().millisecondsSinceEpoch % 100000,
+        title: '🍽️ Pesanan Meja $tableNum',
+        body: 'Pesanan baru dari meja $tableNum. Segera siapkan!',
+      );
+    });
+
+    s.on('table:bill_requested', (payload) {
+      if (payload is! Map) return;
+      final data = Map<String, dynamic>.from(payload);
+      _transactionsController.add(data);
+
+      final tableNum = data['tableNumber'] ?? '?';
+      NotificationService().showNotification(
+        id: DateTime.now().millisecondsSinceEpoch % 100000,
+        title: '💰 Minta Bill - Meja $tableNum',
+        body: 'Pelanggan meja $tableNum meminta bill.',
+      );
+    });
+
+    s.on('table:session_opened', (payload) {
+      if (payload is! Map) return;
+      _transactionsController.add(Map<String, dynamic>.from(payload));
+    });
+
+    s.on('table:session_closed', (payload) {
+      if (payload is! Map) return;
+      _transactionsController.add(Map<String, dynamic>.from(payload));
+    });
+
+    s.on('table:order_updated', (payload) {
+      if (payload is! Map) return;
+      _transactionsController.add(Map<String, dynamic>.from(payload));
     });
 
     _initialized = true;
@@ -168,6 +230,16 @@ class RealtimeService {
     });
   }
 
+  void joinChatRoom(String roomId) {
+    final s = _ensureConnected();
+    s.emit('join_chat_room', roomId);
+  }
+
+  void leaveChatRoom(String roomId) {
+    final s = _ensureConnected();
+    s.emit('leave_chat_room', roomId);
+  }
+
   void emitDeliveryStatus(String roomId, String messageId, String status) {
     final s = _ensureConnected();
     s.emit('chat:status', {'roomId': roomId, 'messageId': messageId, 'status': status});
@@ -189,9 +261,6 @@ class RealtimeService {
     _socket?.dispose();
     _socket = null;
     _initialized = false;
-    _maintenanceController.close();
-    _menusUpdateController.close();
-    _transactionsController.close();
     _connSub?.cancel();
     _connSub = null;
   }

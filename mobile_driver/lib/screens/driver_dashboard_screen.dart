@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:mobile_driver/config/theme_config.dart';
 import 'package:mobile_driver/providers/driver_provider.dart';
+import 'package:mobile_driver/services/socket_service.dart';
 import 'package:mobile_driver/screens/driver_trip_execution_screen.dart';
 import 'package:mobile_driver/screens/driver_wallet_screen.dart';
 import 'package:mobile_driver/screens/set_destination_screen.dart';
@@ -18,6 +20,9 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:mobile_driver/widgets/glassmorphism_card.dart';
 import 'package:mobile_driver/services/telematics_service.dart';
 import 'package:mobile_driver/services/ai_voice_assistant.dart';
+import 'package:mobile_driver/data/driver_api_service.dart';
+import 'package:mobile_driver/screens/notifications_screen.dart';
+import 'package:mobile_driver/widgets/new_order_overlay.dart';
 
 class DriverDashboardScreen extends StatefulWidget {
   const DriverDashboardScreen({super.key});
@@ -29,6 +34,7 @@ class DriverDashboardScreen extends StatefulWidget {
 class _DriverDashboardScreenState extends State<DriverDashboardScreen> with TickerProviderStateMixin {
   late ScrollController _scrollController;
   double _scrollOffset = 0;
+  StreamSubscription? _orderStreamSub;
 
   @override
   void initState() {
@@ -39,7 +45,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> with Tick
           _scrollOffset = _scrollController.offset;
         });
       });
-      
+
     // Initialize advanced safety and AI features
     TelematicsService().startMonitoring(context);
     AiVoiceAssistant().startListening((command) {
@@ -51,10 +57,29 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> with Tick
         prov.rejectTrip(prov.activeRequests.first);
       }
     });
+
+    // Listen for new orders and show modal notification
+    _orderStreamSub = SocketService().newDriverOrderStream.listen((orderData) {
+      if (!mounted) return;
+      final prov = Provider.of<DriverProvider>(context, listen: false);
+      if (prov.status != DriverStatus.online) return;
+      if (prov.activeTrip != null) return;
+
+      showNewOrderModal(
+        context,
+        orderData,
+        onAccept: () => prov.acceptTrip(orderData),
+        onReject: () => prov.rejectTrip(orderData),
+      );
+    });
+
+    // Load heat map data
+    _loadHotspots();
   }
 
   @override
   void dispose() {
+    _orderStreamSub?.cancel();
     TelematicsService().stopMonitoring();
     AiVoiceAssistant().stopListening();
     _scrollController.dispose();
@@ -62,14 +87,31 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> with Tick
   }
 
 
-  final List<LatLng> _heatPoints = [
-    const LatLng(-6.210, 106.810),
-    const LatLng(-6.215, 106.820),
-    const LatLng(-6.220, 106.815),
-    const LatLng(-6.205, 106.825),
-  ];
+  final List<LatLng> _heatPoints = [];
+  final List<double> _surgeRates = [];
 
-  final List<double> _surgeRates = [1.8, 1.5, 1.2, 1.5];
+  void _loadHotspots() async {
+    try {
+      final hotspots = await DriverApiService().getHotspots();
+      if (mounted && hotspots.isNotEmpty) {
+        setState(() {
+          _heatPoints.clear();
+          _surgeRates.clear();
+          for (final h in hotspots) {
+            final lat = (h['lat'] as num?)?.toDouble();
+            final lng = (h['lng'] as num?)?.toDouble();
+            final surge = (h['surge'] as num?)?.toDouble() ?? 1.0;
+            if (lat != null && lng != null) {
+              _heatPoints.add(LatLng(lat, lng));
+              _surgeRates.add(surge);
+            }
+          }
+        });
+      }
+    } catch (_) {}
+  }
+
+  bool _tripScreenPushed = false;
 
   @override
   Widget build(BuildContext context) {
@@ -81,9 +123,12 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> with Tick
         children: [
           Consumer<DriverProvider>(
             builder: (context, prov, child) {
-              if (prov.activeTrip != null) {
+              if (prov.activeTrip != null && !_tripScreenPushed) {
+                _tripScreenPushed = true;
                 WidgetsBinding.instance.addPostFrameCallback((_) {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const DriverTripExecutionScreen()));
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const DriverTripExecutionScreen())).then((_) {
+                    _tripScreenPushed = false;
+                  });
                 });
               }
               if (prov.isOnline) return _buildBackgroundMap();
@@ -261,7 +306,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> with Tick
             child: Column(
               children: [
                 const SizedBox(height: 40),
-                Lottie.asset('assets/animations/offline.json', height: 150),
+                Lottie.network('https://assets5.lottiefiles.com/packages/lf20_qpwbiyxf.json', height: 150),
                 const SizedBox(height: 16),
                 Text('Anda Sedang Offline', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
@@ -416,7 +461,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> with Tick
                           ],
                         ),
                       ),
-                      Text('Rp${ThemeConfig.formatCurrency(req['price'])}', 
+                      Text('Rp${ThemeConfig.formatCurrency((req['price'] as num).toDouble())}', 
                            style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w900, color: ThemeConfig.brandColor)),
                     ],
                   ),
@@ -424,9 +469,9 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> with Tick
                     padding: EdgeInsets.symmetric(vertical: 20),
                     child: Divider(height: 1, color: Colors.black12),
                   ),
-                  _buildLocationRow(Icons.radio_button_checked_rounded, Colors.green, req['origin']),
+                  _buildLocationRow(Icons.radio_button_checked_rounded, Colors.green, req['origin'] ?? req['originAddress'] ?? '-'),
                   const SizedBox(height: 16),
-                  _buildLocationRow(Icons.location_on_rounded, Colors.red, req['destination']),
+                  _buildLocationRow(Icons.location_on_rounded, Colors.red, req['destination'] ?? req['destAddress'] ?? '-'),
                   const SizedBox(height: 28),
                   Row(
                     children: [
@@ -464,7 +509,6 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> with Tick
           ],
         ),
       ),
-        ),
       ),
     ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.2, end: 0, curve: Curves.easeOutQuart);
   }
@@ -484,62 +528,60 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> with Tick
   }
 
   Widget _buildHistorySection(double scale) {
-    final List<Map<String, dynamic>> fakeHistory = [
-      {
-        'id': 'TR-001',
-        'type': 'RIDE',
-        'destination': 'Grand Indonesia',
-        'price': 25000.0,
-        'time': '10:30 AM'
-      },
-      {
-        'id': 'TR-002',
-        'type': 'DELIVERY',
-        'destination': 'KFC, Mall Ambassador',
-        'price': 15000.0,
-        'time': '11:15 AM'
-      },
-    ];
+    return Consumer<DriverProvider>(
+      builder: (context, prov, _) {
+        return FutureBuilder<Map<String, dynamic>>(
+          future: DriverApiService().getTripHistory(limit: 5),
+          builder: (context, snapshot) {
+            final trips = (snapshot.data?['trips'] as List<dynamic>?) ?? [];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('RIWAYAT TERAKHIR', 
-             style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.2, color: Colors.grey.shade700)),
-        const SizedBox(height: 16),
-        if (fakeHistory.isEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(28),
-            ),
-            child: Column(
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.history_rounded, size: 48, color: Colors.grey.shade300),
-                const SizedBox(height: 12),
-                Text('Belum ada riwayat trip hari ini', 
-                     style: TextStyle(color: Colors.grey.shade50, fontWeight: FontWeight.w500)),
+                Text('RIWAYAT TERAKHIR',
+                    style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.2, color: Colors.grey.shade700)),
+                const SizedBox(height: 16),
+                if (trips.isEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(28),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(Icons.history_rounded, size: 48, color: Colors.grey.shade300),
+                        const SizedBox(height: 12),
+                        Text('Belum ada riwayat trip',
+                            style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.w500)),
+                      ],
+                    ),
+                  )
+                else
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: trips.length,
+                    itemBuilder: (context, index) {
+                      final item = Map<String, dynamic>.from(trips[index]);
+                      return _buildHistoryCard(item, scale);
+                    },
+                  ),
               ],
-            ),
-          )
-        else
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: fakeHistory.length,
-            itemBuilder: (context, index) {
-              final item = fakeHistory[index];
-              return _buildHistoryCard(item, scale);
-            },
-          ),
-      ],
+            );
+          },
+        );
+      },
     );
   }
 
   Widget _buildHistoryCard(Map<String, dynamic> item, double scale) {
     final isRide = item['type'] == 'RIDE';
+    final destination = item['destination'] ?? item['destAddress'] ?? 'Trip';
+    final price = (item['price'] as num?)?.toDouble() ?? 0;
+    final time = item['time'] ?? _formatTime(item['updatedAt'] ?? item['createdAt']);
+
     return GlassmorphismCard(
       blur: 10,
       opacity: Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.9,
@@ -572,19 +614,31 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> with Tick
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item['destination'], 
+                Text(destination, 
                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), 
                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                Text(item['time'], style: const TextStyle(color: Color(0xFF9E9E9E), fontSize: 12)),
+                Text(time, style: const TextStyle(color: Color(0xFF9E9E9E), fontSize: 12)),
               ],
             ),
           ),
-          Text('Rp${ThemeConfig.formatCurrency(item['price'])}', 
+          Text('Rp${ThemeConfig.formatCurrency(price)}', 
                style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w700, color: ThemeConfig.textPrimary)),
         ],
       ),
       ),
     );
+  }
+
+  String _formatTime(dynamic dateValue) {
+    if (dateValue == null) return '-';
+    try {
+      final dt = DateTime.parse(dateValue.toString()).toLocal();
+      final hour = dt.hour.toString().padLeft(2, '0');
+      final minute = dt.minute.toString().padLeft(2, '0');
+      return '$hour:$minute';
+    } catch (_) {
+      return '-';
+    }
   }
 
   Widget _buildBackgroundMap() {
@@ -626,8 +680,8 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> with Tick
     return Consumer<DriverProvider>(
       builder: (context, driverProv, child) {
         final List<Widget> carouselItems = [
-          _buildImageSliderItem('https://images.unsplash.com/photo-1593950315186-76a92975b60c?q=80&w=800&auto=format&fit=crop', 'Pendapatan Hari Ini', 'Rp${ThemeConfig.formatCurrency(driverProv.balance)}'),
-          _buildImageSliderItem('https://images.unsplash.com/photo-1619451334792-150fd785ee74?q=80&w=800&auto=format&fit=crop', 'Trip Hari Ini', '${driverProv.completedTrips} Trip'),
+          _buildImageSliderItem('https://images.unsplash.com/photo-1593950315186-76a92975b60c?q=80&w=800&auto=format&fit=crop', 'Pendapatan Hari Ini', 'Rp${ThemeConfig.formatCurrency(driverProv.todayEarnings)}'),
+          _buildImageSliderItem('https://images.unsplash.com/photo-1619451334792-150fd785ee74?q=80&w=800&auto=format&fit=crop', 'Trip Hari Ini', '${driverProv.todayTrips} Trip'),
           _buildImageSliderItem('https://images.unsplash.com/photo-1549463010-14ec32869353?q=80&w=800&auto=format&fit=crop', 'Rating Anda', '${driverProv.rating} ★'),
         ];
 
@@ -681,7 +735,9 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> with Tick
           ),
           leading: IconButton(
             icon: Icon(Icons.notifications_outlined, color: _scrollOffset > 150 ? Colors.black : Colors.white),
-            onPressed: () {},
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen()));
+            },
           ),
           actions: [
             IconButton(

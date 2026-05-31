@@ -227,9 +227,13 @@ export const addComment = async (postId, content) => {
     }
 };
 
-export const getLeaderboard = async () => {
-    // Not implemented backend yet
-    return [];
+export const getLeaderboard = async (gameId = 'snake') => {
+    try {
+        const res = await api.get('/games/leaderboard', { params: { gameId, limit: 10 } });
+        return res.data?.data || [];
+    } catch (e) {
+        return [];
+    }
 };
 
 export const getUserStats = async (username) => {

@@ -336,7 +336,14 @@ class _DriverRegistrationScreenState extends State<DriverRegistrationScreen> {
           label: 'Password',
           icon: Icons.lock_outline,
           obscureText: true,
-          validator: (v) => v!.length < 6 ? 'Password minimal 6 karakter' : null,
+          validator: (v) {
+            if (v == null || v.isEmpty) return 'Password harus diisi';
+            if (v.length < 8) return 'Password minimal 8 karakter';
+            if (!RegExp(r'[A-Z]').hasMatch(v)) return 'Harus ada huruf besar';
+            if (!RegExp(r'[a-z]').hasMatch(v)) return 'Harus ada huruf kecil';
+            if (!RegExp(r'[0-9]').hasMatch(v)) return 'Harus ada angka';
+            return null;
+          },
         ),
         const SizedBox(height: 20),
         _buildModernField(

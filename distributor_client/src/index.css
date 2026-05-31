@@ -27,6 +27,20 @@
 
 /* Modern Scrollbar Styles */
 @layer utilities {
+
+  /* Leaflet Map Fixes */
+  .leaflet-container {
+    font-family: inherit;
+    z-index: 1;
+  }
+  .leaflet-popup-content-wrapper {
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  }
+  .leaflet-popup-content {
+    margin: 10px 12px;
+  }
+
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;

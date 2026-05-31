@@ -34,13 +34,16 @@ class ProductCard extends StatelessWidget {
     final initial = productName.isNotEmpty
         ? productName.substring(0, 1).toUpperCase()
         : '?';
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth <= 360;
+    final scale = ThemeConfig.fontScale(context);
 
     return TapScale(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(isSmallScreen ? 14 : 20),
           border: Border.all(
             color: quantity > 0
                 ? Theme.of(context).colorScheme.primary
@@ -62,20 +65,20 @@ class ProductCard extends StatelessWidget {
                           .colorScheme
                           .surface
                           .withOpacity(0.7),
-                      borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(
-                              18)), // Match outer - border width
+                      borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(isSmallScreen ? 12 : 18)),
                     ),
                     child: hasImage
                         ? ClipRRect(
-                            borderRadius: const BorderRadius.vertical(
-                                top: Radius.circular(18)),
+                            borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(isSmallScreen ? 12 : 18)),
                             child: Image.network(imageUrl!,
                                 fit: BoxFit.cover,
+                                cacheWidth: 200,
                                 errorBuilder: (_, __, ___) => Center(
                                     child: Text(initial,
                                         style: GoogleFonts.poppins(
-                                    fontSize: 32 * ThemeConfig.tabletScale(context, mobile: 1.0),
+                                    fontSize: 28 * scale,
                                             fontWeight: FontWeight.bold,
                                             color: Theme.of(context)
                                                 .colorScheme
@@ -85,7 +88,7 @@ class ProductCard extends StatelessWidget {
                         : Center(
                             child: Text(initial,
                                 style: GoogleFonts.poppins(
-                                    fontSize: 32 * ThemeConfig.tabletScale(context, mobile: 1.0),
+                                    fontSize: 28 * scale,
                                     fontWeight: FontWeight.bold,
                                     color: Theme.of(context)
                                         .colorScheme
@@ -94,21 +97,21 @@ class ProductCard extends StatelessWidget {
                   ),
                   if (quantity > 0)
                     Positioned(
-                      right: 8,
-                      top: 8,
+                      right: 6,
+                      top: 6,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
+                        padding: EdgeInsets.symmetric(
+                            horizontal: isSmallScreen ? 5 : 8, vertical: isSmallScreen ? 2 : 4),
                         decoration: BoxDecoration(
                           color: ThemeConfig.brandColor,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
                           "${quantity}x",
                           style: GoogleFonts.poppins(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
-                              fontSize: 12 * ThemeConfig.tabletScale(context, mobile: 1.0)),
+                              fontSize: 11 * scale),
                         ),
                       ).animate().scale(duration: 200.ms),
                     ),
@@ -118,33 +121,34 @@ class ProductCard extends StatelessWidget {
             Expanded(
               flex: 4,
               child: Padding(
-                padding: const EdgeInsets.all(10),
+                padding: EdgeInsets.all(isSmallScreen ? 6 : 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
                     Text(
                       productName,
-                      maxLines: 1,
+                      maxLines: isSmallScreen ? 1 : 2,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.poppins(
                           fontWeight: FontWeight.w600,
-                          fontSize: 13 * ThemeConfig.tabletScale(context, mobile: 1.0),
+                          fontSize: 12 * scale,
+                          height: 1.2,
                           color: Theme.of(context).colorScheme.onSurface),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 2),
                     Text(
                       currency.format(product['sellingPrice'] ?? 0),
                       style: GoogleFonts.poppins(
                           color: Theme.of(context).colorScheme.primary,
                           fontWeight: FontWeight.bold,
-                          fontSize: 13 * ThemeConfig.tabletScale(context, mobile: 1.0)),
+                          fontSize: 12 * scale),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       'Stok: ${product['stock'] ?? 0}',
                       style: GoogleFonts.poppins(
-                        fontSize: 10 * ThemeConfig.tabletScale(context, mobile: 1.0),
+                        fontSize: 9 * scale,
                         color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       ),
                     ),

@@ -93,11 +93,91 @@ router.post('/warehouses', isDistributor, warehouseCtrl.createWarehouse);
 router.put('/warehouses/:id', isDistributor, warehouseCtrl.updateWarehouse);
 router.delete('/warehouses/:id', isDistributor, warehouseCtrl.deleteWarehouse);
 
+// Warehouse Stock Management
+router.get('/warehouses/stock', isDistributor, warehouseCtrl.getWarehouseStock);
+router.post('/warehouses/stock/adjust', isDistributor, warehouseCtrl.adjustStock);
+router.post('/warehouses/stock/bulk-adjust', isDistributor, warehouseCtrl.bulkAdjustStock);
+router.get('/warehouses/stock/movements', isDistributor, warehouseCtrl.getStockMovements);
+
 // Forecasting
 router.get('/forecasting', isDistributor, warehouseCtrl.getForecasting);
 
 // External Sales (Outside Ecosystem)
 router.get('/external-sales', isDistributor, warehouseCtrl.getExternalSales);
 router.post('/external-sales', isDistributor, warehouseCtrl.createExternalSale);
+
+// Enterprise Features
+const enterpriseCtrl = require('../controllers/distributorEnterpriseController');
+
+// Piutang (Accounts Receivable)
+router.get('/receivables', isDistributor, enterpriseCtrl.getReceivables);
+router.put('/receivables/:orderId/pay', isDistributor, enterpriseCtrl.markAsPaid);
+
+// Notifications
+router.get('/notifications', isDistributor, enterpriseCtrl.getNotifications);
+router.put('/notifications/:id/read', isDistributor, enterpriseCtrl.markNotificationRead);
+router.put('/notifications/read-all', isDistributor, enterpriseCtrl.markAllNotificationsRead);
+router.post('/notifications/send', isDistributor, enterpriseCtrl.sendNotificationToMerchant);
+
+// Storefront / Katalog
+router.get('/storefront', isDistributor, enterpriseCtrl.getStorefront);
+
+// Retur & Klaim
+router.get('/returns', isDistributor, enterpriseCtrl.getReturns);
+router.put('/returns/:orderId/process', isDistributor, enterpriseCtrl.processReturn);
+
+// Sales KPI & Target
+router.get('/kpi', isDistributor, enterpriseCtrl.getSalesKPI);
+
+// Loyalty Program
+router.get('/loyalty', isDistributor, enterpriseCtrl.getLoyaltyProgram);
+
+// Invoice
+router.get('/invoice/:orderId', isDistributor, enterpriseCtrl.generateInvoice);
+
+// Team Management (Multi-User)
+const teamCtrl = require('../controllers/distributorTeamController');
+router.get('/team', isDistributor, teamCtrl.getTeamMembers);
+router.post('/team/invite', isDistributor, teamCtrl.inviteTeamMember);
+router.put('/team/:userId/role', isDistributor, teamCtrl.updateMemberRole);
+router.put('/team/:userId/toggle', isDistributor, teamCtrl.toggleMemberStatus);
+router.delete('/team/:userId', isDistributor, teamCtrl.removeMember);
+router.get('/team/my-permissions', isDistributor, teamCtrl.getMyPermissions);
+router.get('/team/activity', isDistributor, teamCtrl.getTeamActivity);
+
+// DMS - Distributor Management System
+const dmsCtrl = require('../controllers/distributorDmsController');
+
+// Accounting / Jurnal Keuangan
+const accountingCtrl = require('../controllers/distributorAccountingController');
+router.get('/accounting/accounts', isDistributor, accountingCtrl.getAccounts);
+router.post('/accounting/accounts', isDistributor, accountingCtrl.createAccount);
+router.get('/accounting/journals', isDistributor, accountingCtrl.getJournals);
+router.post('/accounting/journals', isDistributor, accountingCtrl.createJournal);
+router.get('/accounting/profit-loss', isDistributor, accountingCtrl.getProfitLoss);
+router.get('/accounting/balance-sheet', isDistributor, accountingCtrl.getBalanceSheet);
+router.get('/accounting/cashflow', isDistributor, accountingCtrl.getCashflow);
+
+router.get('/dms/hierarchy', isDistributor, dmsCtrl.getHierarchy);
+router.post('/dms/hierarchy', isDistributor, dmsCtrl.addToHierarchy);
+router.delete('/dms/hierarchy/:userId', isDistributor, dmsCtrl.removeFromHierarchy);
+router.get('/dms/territories', isDistributor, dmsCtrl.getTerritories);
+router.post('/dms/territories', isDistributor, dmsCtrl.createTerritory);
+router.put('/dms/territories/:id', isDistributor, dmsCtrl.updateTerritory);
+router.delete('/dms/territories/:id', isDistributor, dmsCtrl.deleteTerritory);
+
+// SFA - Sales Force Automation
+router.get('/sfa/dashboard', isDistributor, dmsCtrl.getSfaDashboard);
+router.get('/sfa/visits', isDistributor, dmsCtrl.getVisits);
+router.post('/sfa/visits', isDistributor, dmsCtrl.createVisit);
+router.put('/sfa/visits/:id/checkin', isDistributor, dmsCtrl.checkInVisit);
+router.put('/sfa/visits/:id/checkout', isDistributor, dmsCtrl.checkOutVisit);
+router.put('/sfa/visits/:id/cancel', isDistributor, dmsCtrl.cancelVisit);
+router.get('/sfa/targets', isDistributor, dmsCtrl.getSalesTargets);
+router.post('/sfa/targets', isDistributor, dmsCtrl.setSalesTarget);
+router.get('/sfa/route-plans', isDistributor, dmsCtrl.getRoutePlans);
+router.post('/sfa/route-plans', isDistributor, dmsCtrl.createRoutePlan);
+router.delete('/sfa/route-plans/:id', isDistributor, dmsCtrl.deleteRoutePlan);
+router.get('/sfa/leaderboard', isDistributor, dmsCtrl.getLeaderboard);
 
 module.exports = router;

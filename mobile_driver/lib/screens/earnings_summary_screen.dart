@@ -1,44 +1,89 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:fl_chart/fl_chart.dart';
-
-import 'package:flutter/material.dart';
 import 'package:mobile_driver/config/theme_config.dart';
+import 'package:mobile_driver/data/driver_api_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 
-class EarningsSummaryScreen extends StatelessWidget {
+class EarningsSummaryScreen extends StatefulWidget {
   const EarningsSummaryScreen({super.key});
+
+  @override
+  State<EarningsSummaryScreen> createState() => _EarningsSummaryScreenState();
+}
+
+class _EarningsSummaryScreenState extends State<EarningsSummaryScreen> {
+  String _selectedPeriod = 'week';
+  Map<String, dynamic> _earnings = {};
+  Map<String, dynamic> _stats = {};
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    final api = DriverApiService();
+
+    final results = await Future.wait([
+      api.getEarnings(period: _selectedPeriod),
+      api.getDriverStats(),
+    ]);
+
+    if (mounted) {
+      setState(() {
+        _earnings = results[0] as Map<String, dynamic>;
+        _stats = results[1] as Map<String, dynamic>;
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: ThemeConfig.beigeBackground,
       appBar: AppBar(
-        title: Text('Ringkasan Pendapatan', 
-          style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: ThemeConfig.brandColor)),
+        title: Text('Ringkasan Pendapatan',
+            style: GoogleFonts.outfit(
+                fontWeight: FontWeight.bold, color: ThemeConfig.brandColor)),
         backgroundColor: ThemeConfig.beigeBackground,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, size: 20, color: ThemeConfig.brandColor),
+          icon: const Icon(Icons.arrow_back_ios_new,
+              size: 20, color: ThemeConfig.brandColor),
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildPeriodSelector(),
-            const SizedBox(height: 24),
-            _buildTotalEarningsCard(),
-            const SizedBox(height: 24),
-            _buildEarningsChart(),
-            const SizedBox(height: 24),
-            _buildStatsGrid(),
-          ],
+      body: RefreshIndicator(
+        onRefresh: _loadData,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildPeriodSelector(),
+              const SizedBox(height: 24),
+              _isLoading
+                  ? const SizedBox(
+                      height: 200,
+                      child: Center(child: CircularProgressIndicator()))
+                  : Column(
+                      children: [
+                        _buildTotalEarningsCard(),
+                        const SizedBox(height: 24),
+                        _buildEarningsChart(),
+                        const SizedBox(height: 24),
+                        _buildStatsGrid(),
+                      ],
+                    ),
+            ],
+          ),
         ),
       ),
     );
@@ -56,38 +101,60 @@ class EarningsSummaryScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(child: _buildSelectorChip('Minggu Ini', isActive: true)),
-          Expanded(child: _buildSelectorChip('Bulan Ini')),
-          Expanded(child: _buildSelectorChip('Pilih Tanggal')),
+          Expanded(child: _buildSelectorChip('Hari Ini', 'today')),
+          Expanded(child: _buildSelectorChip('Minggu Ini', 'week')),
+          Expanded(child: _buildSelectorChip('Bulan Ini', 'month')),
         ],
       ),
     );
   }
 
-  Widget _buildSelectorChip(String label, {bool isActive = false}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        color: isActive ? ThemeConfig.brandColor : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Center(
-        child: Text(label, 
-          style: TextStyle(
-            fontWeight: isActive ? FontWeight.bold : FontWeight.normal, 
-            fontSize: 13,
-            color: isActive ? Colors.white : Colors.grey.shade600
-          )),
+  Widget _buildSelectorChip(String label, String value) {
+    final isActive = _selectedPeriod == value;
+    return GestureDetector(
+      onTap: () {
+        setState(() => _selectedPeriod = value);
+        _loadData();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: isActive ? ThemeConfig.brandColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Text(label,
+              style: TextStyle(
+                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                fontSize: 13,
+                color: isActive ? Colors.white : Colors.grey.shade600,
+              )),
+        ),
       ),
     );
   }
 
   Widget _buildTotalEarningsCard() {
+    final totalEarnings = (_earnings['totalEarnings'] as num?)?.toDouble() ?? 0;
+    final totalTrips = (_earnings['totalTrips'] as num?)?.toInt() ?? 0;
+
+    String periodLabel;
+    switch (_selectedPeriod) {
+      case 'today':
+        periodLabel = 'Hari Ini';
+        break;
+      case 'month':
+        periodLabel = 'Bulan Ini';
+        break;
+      default:
+        periodLabel = 'Minggu Ini';
+    }
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [ThemeConfig.brandColor, const Color(0xFFD32F2F)],
+        gradient: const LinearGradient(
+          colors: [ThemeConfig.brandColor, Color(0xFFD32F2F)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -103,11 +170,15 @@ class EarningsSummaryScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Total Pendapatan (Minggu Ini)', 
-            style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 14, fontWeight: FontWeight.w500)),
+          Text('Total Pendapatan ($periodLabel)',
+              style: TextStyle(
+                  color: Colors.white.withOpacity(0.8),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500)),
           const SizedBox(height: 8),
-          Text('Rp1.250.000', 
-            style: GoogleFonts.outfit(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
+          Text('Rp${ThemeConfig.formatCurrency(totalEarnings)}',
+              style: GoogleFonts.outfit(
+                  color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
           const SizedBox(height: 20),
           Container(
             height: 1,
@@ -118,9 +189,11 @@ class EarningsSummaryScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildBreakdownItem('Tarif', 'Rp1.100.000'),
-              _buildBreakdownItem('Insentif', 'Rp100.000'),
-              _buildBreakdownItem('Tip', 'Rp50.000'),
+              _buildBreakdownItem('Total Trip', '$totalTrips'),
+              _buildBreakdownItem('Rata-rata/Trip',
+                  totalTrips > 0
+                      ? 'Rp${ThemeConfig.formatCurrency(totalEarnings / totalTrips)}'
+                      : 'Rp0'),
             ],
           ),
         ],
@@ -132,80 +205,120 @@ class EarningsSummaryScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12)),
-        Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+        Text(label,
+            style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12)),
+        Text(value,
+            style: const TextStyle(
+                color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
       ],
     );
   }
 
   Widget _buildEarningsChart() {
+    final dailyEarnings =
+        (_earnings['dailyEarnings'] as Map<String, dynamic>?) ?? {};
+
+    if (dailyEarnings.isEmpty) {
+      return Container(
+        height: 200,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Center(
+          child: Text('Belum ada data grafik',
+              style: TextStyle(color: Colors.grey.shade500)),
+        ),
+      );
+    }
+
+    // Sort by date and build chart data
+    final sortedKeys = dailyEarnings.keys.toList()..sort();
+    final barGroups = <BarChartGroupData>[];
+    double maxY = 1;
+
+    for (int i = 0; i < sortedKeys.length && i < 7; i++) {
+      final val = (dailyEarnings[sortedKeys[i]] as num).toDouble();
+      if (val > maxY) maxY = val;
+      barGroups.add(BarChartGroupData(
+        x: i,
+        barRods: [
+          BarChartRodData(
+            toY: val,
+            color: ThemeConfig.brandColor,
+            width: 16,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+          ),
+        ],
+      ));
+    }
+
     return Container(
       height: 200,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)
+        ],
       ),
       child: BarChart(
         BarChartData(
           alignment: BarChartAlignment.spaceAround,
-          maxY: 300000,
-          barTouchData: BarTouchData(enabled: true),
+          maxY: maxY * 1.2,
+          barTouchData: BarTouchData(
+            enabled: true,
+            touchTooltipData: BarTouchTooltipData(
+              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                return BarTooltipItem(
+                  'Rp${ThemeConfig.formatCurrency(rod.toY)}',
+                  const TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                );
+              },
+            ),
+          ),
           titlesData: FlTitlesData(
             show: true,
-            bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: _bottomTitles)),
-            leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  final idx = value.toInt();
+                  if (idx >= 0 && idx < sortedKeys.length) {
+                    try {
+                      final dt = DateTime.parse(sortedKeys[idx]);
+                      return SideTitleWidget(
+                        axisSide: meta.axisSide,
+                        space: 4,
+                        child: Text(DateFormat('dd').format(dt),
+                            style: const TextStyle(color: Colors.grey, fontSize: 10)),
+                      );
+                    } catch (_) {}
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
+            ),
+            leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           ),
-          gridData: FlGridData(show: false),
+          gridData: const FlGridData(show: false),
           borderData: FlBorderData(show: false),
-          barGroups: _chartGroups(),
+          barGroups: barGroups,
         ),
       ),
     );
   }
 
-  List<BarChartGroupData> _chartGroups() {
-    return [
-      _makeGroupData(0, 150000), _makeGroupData(1, 200000), _makeGroupData(2, 180000),
-      _makeGroupData(3, 250000), _makeGroupData(4, 120000), _makeGroupData(5, 280000),
-      _makeGroupData(6, 70000),
-    ];
-  }
-
-  BarChartGroupData _makeGroupData(int x, double y) {
-    return BarChartGroupData(
-      x: x,
-      barRods: [
-        BarChartRodData(
-          toY: y,
-          color: ThemeConfig.brandColor,
-          width: 16,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-        ),
-      ],
-    );
-  }
-
-  Widget _bottomTitles(double value, TitleMeta meta) {
-    const style = TextStyle(color: Colors.grey, fontSize: 10);
-    String text;
-    switch (value.toInt()) {
-      case 0: text = 'Sen'; break;
-      case 1: text = 'Sel'; break;
-      case 2: text = 'Rab'; break;
-      case 3: text = 'Kam'; break;
-      case 4: text = 'Jum'; break;
-      case 5: text = 'Sab'; break;
-      case 6: text = 'Min'; break;
-      default: text = ''; break;
-    }
-    return SideTitleWidget(axisSide: meta.axisSide, space: 4.0, child: Text(text, style: style));
-  }
-
   Widget _buildStatsGrid() {
+    final todayTrips = (_stats['todayTrips'] as num?)?.toInt() ?? 0;
+    final totalTrips = (_stats['totalTrips'] as num?)?.toInt() ?? 0;
+    final rating = (_stats['rating'] as num?)?.toDouble() ?? 0;
+
     return GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
@@ -214,21 +327,24 @@ class EarningsSummaryScreen extends StatelessWidget {
       mainAxisSpacing: 16,
       childAspectRatio: 1.8,
       children: [
-        _buildStatCard('Total Trip', '85', Icons.directions_bike, Colors.orange),
-        _buildStatCard('Jam Online', '42.5 Jam', Icons.timer, Colors.blue),
-        _buildStatCard('Penerimaan', '95%', Icons.check_circle, Colors.green),
-        _buildStatCard('Penyelesaian', '98%', Icons.flag, Colors.purple),
+        _buildStatCard('Trip Hari Ini', '$todayTrips', Icons.directions_bike, Colors.orange),
+        _buildStatCard('Total Trip', '$totalTrips', Icons.flag, Colors.blue),
+        _buildStatCard('Rating', '$rating ★', Icons.star, Colors.amber),
+        _buildStatCard('Status', _stats['status'] ?? 'OFFLINE', Icons.circle, Colors.green),
       ],
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+      String label, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -236,7 +352,8 @@ class EarningsSummaryScreen extends StatelessWidget {
           Icon(icon, color: color, size: 24),
           const Spacer(),
           Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
-          Text(value, style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
+          Text(value,
+              style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
         ],
       ),
     );

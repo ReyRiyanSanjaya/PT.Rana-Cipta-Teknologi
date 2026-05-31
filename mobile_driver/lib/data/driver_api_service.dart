@@ -8,7 +8,6 @@ class DriverApiService {
 
   late Dio _dio;
 
-  // Uses ApiConfig for base URL resolution
   final String _baseUrl = ApiConfig.baseUrl;
 
   DriverApiService._internal() {
@@ -18,8 +17,10 @@ class DriverApiService {
       receiveTimeout: ApiConfig.receiveTimeout,
     ));
 
+    // Add retry interceptor for network resilience
+    _dio.interceptors.add(_RetryInterceptor(_dio));
     _dio.interceptors
-        .add(LogInterceptor(responseBody: true, requestBody: true));
+        .add(LogInterceptor(responseBody: !ApiConfig.isProduction, requestBody: !ApiConfig.isProduction));
   }
 
   Dio get dio => _dio;
@@ -75,10 +76,12 @@ class DriverApiService {
     }
   }
 
+  // ==================== AUTH ====================
+
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
       final response = await _dio.post('/auth/login',
-          data: {'email': email, 'password': password, 'role': 'DRIVER'});
+          data: {'email': email, 'password': password});
 
       if (_isSuccess(response.data)) {
         return Map<String, dynamic>.from(response.data['data'] ?? {});
@@ -114,7 +117,7 @@ class DriverApiService {
     try {
       final Map<String, dynamic> fields = Map.from(data);
       final List<String> fileKeys = ['ktp_image', 'sim_image', 'stnk_image', 'selfie_image'];
-      
+
       for (var key in fileKeys) {
         fields.remove(key);
       }
@@ -127,7 +130,8 @@ class DriverApiService {
           if (kIsWeb) {
             formData.files.add(MapEntry(
               key,
-              MultipartFile.fromBytes(fileData as Uint8List, filename: '${key}_${DateTime.now().millisecondsSinceEpoch}.jpg'),
+              MultipartFile.fromBytes(fileData as Uint8List,
+                  filename: '${key}_${DateTime.now().millisecondsSinceEpoch}.jpg'),
             ));
           } else {
             formData.files.add(MapEntry(
@@ -150,130 +154,187 @@ class DriverApiService {
     }
   }
 
+  // ==================== DRIVER PROFILE ====================
+
   Future<Map<String, dynamic>> getDriverProfile() async {
     try {
       final response = await _dio.get('/driver/profile');
       if (_isSuccess(response.data)) {
         return Map<String, dynamic>.from(response.data['data'] ?? {});
       }
-      throw Exception(_messageFromBody(response.data, fallback: 'Gagal ambil profil'));
+      throw Exception(
+          _messageFromBody(response.data, fallback: 'Gagal ambil profil'));
     } catch (e) {
       throw _toApiException(e, fallback: 'Gagal ambil profil');
     }
   }
 
-  Future<List<dynamic>> getNearbyStores(double lat, double long,
-      {double? radiusKm}) async {
+  Future<Map<String, dynamic>> updateDriverProfile(Map<String, dynamic> data) async {
     try {
-      final response = await _dio.get(
-        '/market/nearby',
-        queryParameters: {
-          'lat': lat,
-          'long': long,
-          if (radiusKm != null) 'radius': radiusKm,
-        },
-      );
-
-      if (_isSuccess(response.data)) return response.data['data'] ?? [];
-      throw Exception(_messageFromBody(response.data,
-          fallback: 'Gagal memuat toko terdekat'));
-    } catch (e) {
-      debugPrint('Nearby Error: $e');
-      return []; // Return empty on error for fail-soft
-    }
-  }
-
-  Future<Map<String, dynamic>> getStoreReviews(String storeId,
-      {int page = 1, int limit = 10}) async {
-    try {
-      final response = await _dio.get(
-        '/market/store/$storeId/reviews',
-        queryParameters: {'page': page, 'limit': limit},
-      );
+      final response = await _dio.put('/driver/profile', data: data);
       if (_isSuccess(response.data)) {
         return Map<String, dynamic>.from(response.data['data'] ?? {});
       }
-      return {};
+      throw Exception(
+          _messageFromBody(response.data, fallback: 'Gagal update profil'));
     } catch (e) {
-      debugPrint('Store Reviews Error: $e');
-      return {};
+      throw _toApiException(e, fallback: 'Gagal update profil');
     }
   }
 
-  Future<Map<String, dynamic>> getStoreCatalog(String storeId,
-      {String? search}) async {
-    try {
-      final response = await _dio.get(
-        '/market/store/$storeId/catalog',
-        queryParameters: {
-          if (search != null && search.trim().isNotEmpty) 'search': search
-        },
-      );
-      if (_isSuccess(response.data)) {
-        return Map<String, dynamic>.from(response.data['data'] ?? {});
-      }
-      throw Exception(_messageFromBody(response.data,
-          fallback: 'Gagal memuat katalog toko'));
-    } catch (e) {
-      throw _toApiException(e, fallback: 'Gagal memuat katalog toko');
-    }
-  }
+  // ==================== DRIVER STATUS & LOCATION ====================
 
-  Future<Map<String, dynamic>> createOrder(
-      {required String storeId,
-      required List<Map<String, dynamic>> items,
-      required String customerName,
-      required String customerPhone,
-      required String deliveryAddress,
-      required String fulfillmentType,
-      double deliveryFee = 0}) async {
+  Future<Map<String, dynamic>> updateDriverStatus(String status,
+      {double? latitude, double? longitude}) async {
     try {
-      final response = await _dio.post('/market/order', data: {
-        'storeId': storeId,
-        'items': items,
-        'customerName': customerName,
-        'customerPhone': customerPhone,
-        'deliveryAddress': deliveryAddress,
-        'fulfillmentType': fulfillmentType,
-        'deliveryFee': deliveryFee
+      final response = await _dio.put('/driver/status', data: {
+        'status': status,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
       });
-
-      if (!_isSuccess(response.data)) {
-        throw Exception(
-            _messageFromBody(response.data, fallback: 'Gagal membuat pesanan'));
-      }
-      return Map<String, dynamic>.from(response.data['data'] ?? {});
-    } catch (e) {
-      throw _toApiException(e, fallback: 'Gagal membuat pesanan');
-    }
-  }
-
-  Future<Map<String, dynamic>> getPaymentInfo() async {
-    try {
-      final response = await _dio.get('/market/config/payment');
       if (_isSuccess(response.data)) {
         return Map<String, dynamic>.from(response.data['data'] ?? {});
       }
-      throw Exception(_messageFromBody(response.data,
-          fallback: 'Gagal memuat konfigurasi pembayaran'));
+      throw Exception(
+          _messageFromBody(response.data, fallback: 'Gagal update status'));
     } catch (e) {
-      throw _toApiException(e, fallback: 'Gagal memuat konfigurasi pembayaran');
+      throw _toApiException(e, fallback: 'Gagal update status');
     }
   }
 
-  Future<Map<String, dynamic>> confirmPayment(String orderId) async {
+  Future<void> updateLocation(double latitude, double longitude) async {
     try {
-      final response =
-          await _dio.post('/market/order/confirm', data: {'orderId': orderId});
-      if (!_isSuccess(response.data)) {
-        throw Exception(_messageFromBody(response.data,
-            fallback: 'Gagal konfirmasi pembayaran'));
-      }
-      return Map<String, dynamic>.from(response.data['data'] ?? {});
+      await _dio.put('/driver/location', data: {
+        'latitude': latitude,
+        'longitude': longitude,
+      });
     } catch (e) {
-      throw _toApiException(e, fallback: 'Gagal konfirmasi pembayaran');
+      debugPrint('Update Location Error: $e');
     }
   }
+
+  // ==================== WALLET & EARNINGS ====================
+
+  Future<Map<String, dynamic>> getWallet() async {
+    try {
+      final response = await _dio.get('/driver/wallet');
+      if (_isSuccess(response.data)) {
+        return Map<String, dynamic>.from(response.data['data'] ?? {});
+      }
+      return {'balance': 0, 'transactions': []};
+    } catch (e) {
+      debugPrint('Get Wallet Error: $e');
+      return {'balance': 0, 'transactions': []};
+    }
+  }
+
+  Future<Map<String, dynamic>> getEarnings({String period = 'week'}) async {
+    try {
+      final response = await _dio.get('/driver/earnings',
+          queryParameters: {'period': period});
+      if (_isSuccess(response.data)) {
+        return Map<String, dynamic>.from(response.data['data'] ?? {});
+      }
+      return {'totalEarnings': 0, 'totalTrips': 0, 'dailyEarnings': {}};
+    } catch (e) {
+      debugPrint('Get Earnings Error: $e');
+      return {'totalEarnings': 0, 'totalTrips': 0, 'dailyEarnings': {}};
+    }
+  }
+
+  // ==================== STATS ====================
+
+  Future<Map<String, dynamic>> getDriverStats() async {
+    try {
+      final response = await _dio.get('/driver/stats');
+      if (_isSuccess(response.data)) {
+        return Map<String, dynamic>.from(response.data['data'] ?? {});
+      }
+      return {};
+    } catch (e) {
+      debugPrint('Get Stats Error: $e');
+      return {};
+    }
+  }
+
+  // ==================== TRIPS ====================
+
+  Future<Map<String, dynamic>> getTripHistory({int page = 1, int limit = 20}) async {
+    try {
+      final response = await _dio.get('/driver/trips',
+          queryParameters: {'page': page, 'limit': limit});
+      if (_isSuccess(response.data)) {
+        return Map<String, dynamic>.from(response.data['data'] ?? {});
+      }
+      return {'trips': [], 'pagination': {}};
+    } catch (e) {
+      debugPrint('Get Trip History Error: $e');
+      return {'trips': [], 'pagination': {}};
+    }
+  }
+
+  Future<Map<String, dynamic>?> getActiveTrip() async {
+    try {
+      final response = await _dio.get('/driver/active-trip');
+      if (_isSuccess(response.data)) {
+        final data = response.data['data'];
+        if (data == null) return null;
+        return Map<String, dynamic>.from(data);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Get Active Trip Error: $e');
+      return null;
+    }
+  }
+
+  Future<List<dynamic>> getAvailableRequests(
+      {double? latitude, double? longitude}) async {
+    try {
+      final response = await _dio.get('/driver/available-requests',
+          queryParameters: {
+            if (latitude != null) 'latitude': latitude,
+            if (longitude != null) 'longitude': longitude,
+          });
+      if (_isSuccess(response.data)) {
+        return response.data['data'] ?? [];
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Get Available Requests Error: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> acceptRequest(String requestId) async {
+    try {
+      final response = await _dio.post('/driver/accept/$requestId');
+      if (_isSuccess(response.data)) {
+        return Map<String, dynamic>.from(response.data['data'] ?? {});
+      }
+      throw Exception(
+          _messageFromBody(response.data, fallback: 'Gagal menerima pesanan'));
+    } catch (e) {
+      throw _toApiException(e, fallback: 'Gagal menerima pesanan');
+    }
+  }
+
+  Future<Map<String, dynamic>> updateTripStatus(
+      String requestId, String status) async {
+    try {
+      final response = await _dio
+          .put('/driver/trip/$requestId/status', data: {'status': status});
+      if (_isSuccess(response.data)) {
+        return Map<String, dynamic>.from(response.data['data'] ?? {});
+      }
+      throw Exception(
+          _messageFromBody(response.data, fallback: 'Gagal update status trip'));
+    } catch (e) {
+      throw _toApiException(e, fallback: 'Gagal update status trip');
+    }
+  }
+
+  // ==================== NOTIFICATIONS ====================
 
   Future<List<dynamic>> getNotifications() async {
     try {
@@ -293,202 +354,207 @@ class DriverApiService {
     }
   }
 
-  Future<List<dynamic>> getFlashSaleProducts(double lat, double long,
-      {String? storeId}) async {
+  // ==================== WALLET TRANSACTIONS ====================
+
+  Future<Map<String, dynamic>> getWalletTransactions({int page = 1, int limit = 20}) async {
     try {
-      final params = <String, dynamic>{};
-      if (storeId != null) params['storeId'] = storeId;
-
-      final response =
-          await _dio.get('/market/flashsales', queryParameters: params);
-      if (!_isSuccess(response.data)) return [];
-
-      final sales = response.data['data'] as List<dynamic>;
-      final allProducts = <Map<String, dynamic>>[];
-
-      for (final sale in sales) {
-        if (sale is! Map) continue;
-        final storeName = sale['store']?['name'] ?? 'Toko';
-        final storeAddress = sale['store']?['location'];
-        final storeLat = sale['store']?['latitude'];
-        final storeLong = sale['store']?['longitude'];
-        final storeId = sale['storeId'];
-        final endAt = sale['endAt']; // Get endAt from flash sale
-        final items = sale['items'] as List<dynamic>? ?? [];
-
-        for (final item in items) {
-          if (item is! Map) continue;
-          final product = item['product'];
-          if (product is! Map) continue;
-
-          final originalPrice = (product['sellingPrice'] as num).toDouble();
-          final salePrice = (item['salePrice'] as num).toDouble();
-
-          final map = <String, dynamic>{
-            'id': item['productId'], // Use productId as the ID for navigation
-            'name': product['name'],
-            'imageUrl': product['imageUrl'],
-            'originalPrice': originalPrice,
-            'sellingPrice': salePrice,
-            'discountPercentage': originalPrice > 0
-                ? ((originalPrice - salePrice) / originalPrice * 100).round()
-                : 0,
-            'storeId': storeId,
-            'storeName': storeName,
-            'storeAddress': storeAddress,
-            'storeLat': storeLat,
-            'storeLong': storeLong,
-            'flashSaleEndAt': endAt, // Add endAt to product map
-            // Add other fields needed for ProductDetailScreen if missing
-            'description': product['description'] ?? '',
-            'stock': item['saleStock'] ?? 0, // Flash sale stock
-          };
-
-          allProducts.add(map);
-        }
-      }
-
-      allProducts.shuffle();
-      return allProducts;
-    } catch (e) {
-      debugPrint('Flash Sale Error: $e');
-      return [];
-    }
-  }
-
-  Future<Map<String, dynamic>> cancelOrder(String orderId) async {
-    try {
-      final response = await _dio.delete('/market/order/$orderId');
-      if (!_isSuccess(response.data)) {
-        throw Exception(
-            _messageFromBody(response.data, fallback: 'Gagal membatalkan pesanan'));
-      }
-      return Map<String, dynamic>.from(response.data['data'] ?? {});
-    } catch (e) {
-      throw _toApiException(e, fallback: 'Gagal membatalkan pesanan');
-    }
-  }
-
-  Future<bool> checkPurchased(String productId, String phone) async {
-    try {
-      final response = await _dio.get('/market/order/check-purchased',
-          queryParameters: {'productId': productId, 'phone': phone});
+      final response = await _dio.get('/driver/wallet/transactions',
+          queryParameters: {'page': page, 'limit': limit});
       if (_isSuccess(response.data)) {
-        return response.data['data']?['hasPurchased'] == true;
+        return Map<String, dynamic>.from(response.data['data'] ?? {});
       }
-      return false;
+      return {'balance': 0, 'transactions': [], 'pagination': {}};
     } catch (e) {
-      debugPrint('CheckPurchased Error: $e');
-      return false;
+      debugPrint('Get Wallet Transactions Error: $e');
+      return {'balance': 0, 'transactions': [], 'pagination': {}};
     }
   }
 
-  Future<List<dynamic>> getMyOrders({String? phone}) async {
+  Future<Map<String, dynamic>> requestWithdrawal({
+    required double amount,
+    required String bankName,
+    required String accountNumber,
+    String? accountHolder,
+  }) async {
     try {
-      final normalized = phone?.toString().trim();
-      if (normalized == null || normalized.isEmpty) return [];
-      final response = await _dio
-          .get('/market/orders', queryParameters: {'phone': normalized});
-      return response.data['data'] ?? [];
-    } catch (e) {
-      return [];
-    }
-  }
-
-  Future<List<dynamic>> getRecommendations(String phone, {double? lat, double? long}) async {
-    try {
-      final response = await _dio.get('/market/product/recommendations', queryParameters: {
-        if (phone.isNotEmpty) 'phone': phone,
-        if (lat != null) 'lat': lat,
-        if (long != null) 'long': long,
+      final response = await _dio.post('/driver/wallet/withdraw', data: {
+        'amount': amount,
+        'bankName': bankName,
+        'accountNumber': accountNumber,
+        if (accountHolder != null) 'accountHolder': accountHolder,
       });
+      if (_isSuccess(response.data)) {
+        return Map<String, dynamic>.from(response.data['data'] ?? {});
+      }
+      throw Exception(
+          _messageFromBody(response.data, fallback: 'Gagal mengajukan penarikan'));
+    } catch (e) {
+      throw _toApiException(e, fallback: 'Gagal mengajukan penarikan');
+    }
+  }
+
+  Future<List<dynamic>> getWithdrawalHistory() async {
+    try {
+      final response = await _dio.get('/driver/wallet/withdrawals');
       if (_isSuccess(response.data)) {
         return response.data['data'] ?? [];
       }
       return [];
     } catch (e) {
-      debugPrint('Recommendations API Error: $e');
+      debugPrint('Get Withdrawals Error: $e');
       return [];
     }
   }
 
-  Future<Map<String, dynamic>> getAppConfig() async {
+  // ==================== LEADERBOARD & COMMUNITY ====================
+
+  Future<List<dynamic>> getHotspots() async {
     try {
-      final response = await _dio.get('/system/config');
+      final response = await _dio.get('/driver/hotspots');
       if (_isSuccess(response.data)) {
-        return response.data['data'];
+        return response.data['data'] ?? [];
       }
-      return {};
+      return [];
     } catch (e) {
-      debugPrint('Config Error: $e');
-      return {};
+      debugPrint('Get Hotspots Error: $e');
+      return [];
     }
   }
 
-  // --- Chat Features ---
+  // ==================== TRIP CHAT ====================
 
-  Future<Map<String, dynamic>> getStoreChatUser(String storeId) async {
+  /// Get or create chat room for a trip
+  Future<Map<String, dynamic>> getTripChatRoom(String requestId) async {
     try {
-      final response = await _dio.get('/market/store/$storeId/chat-user');
+      final response = await _dio.get('/driver/trip-chat/$requestId');
       if (_isSuccess(response.data)) {
         return Map<String, dynamic>.from(response.data['data'] ?? {});
       }
-      throw Exception('Gagal mendapatkan informasi chat toko');
+      throw Exception(_messageFromBody(response.data, fallback: 'Gagal membuat chat'));
     } catch (e) {
-      throw _toApiException(e, fallback: 'Gagal mendapatkan informasi chat toko');
+      throw _toApiException(e, fallback: 'Gagal membuat chat');
     }
   }
 
-  Future<List<dynamic>> getChatRooms() async {
-    try {
-      final response = await _dio.get('/chat/rooms');
-      return response.data as List<dynamic>? ?? [];
-    } catch (e) {
-      debugPrint('GetRooms Error: $e');
-      return [];
-    }
-  }
-
-  Future<Map<String, dynamic>> createChatRoom(String otherUserId, String name) async {
-    try {
-      final response = await _dio.post('/chat/rooms', data: {
-        'type': 'private',
-        'name': name,
-        'memberIds': [otherUserId]
-      });
-      return Map<String, dynamic>.from(response.data ?? {});
-    } catch (e) {
-      throw _toApiException(e, fallback: 'Gagal membuat ruang chat');
-    }
-  }
-
+  /// Get chat messages for a room
   Future<List<dynamic>> getChatMessages(String roomId) async {
     try {
       final response = await _dio.get('/chat/rooms/$roomId/messages');
-      return response.data as List<dynamic>? ?? [];
+      if (response.data is List) return response.data;
+      return [];
     } catch (e) {
-      debugPrint('GetMessages Error: $e');
+      debugPrint('Get Chat Messages Error: $e');
       return [];
     }
   }
 
-  Future<void> sendMessage(String roomId, String content) async {
+  /// Send a chat message
+  Future<void> sendChatMessage(String roomId, String content) async {
     try {
       await _dio.post('/chat/rooms/$roomId/messages', data: {'content': content});
     } catch (e) {
-      debugPrint('SendMessage Error: $e');
+      debugPrint('Send Chat Message Error: $e');
     }
   }
 
-  Future<Map<String, dynamic>> getProduct(String id) async {
+  // ==================== PHOTO PROOF ====================
+
+  /// Upload proof photo for pickup/delivery
+  Future<Map<String, dynamic>> uploadProof(String requestId, String filePath, String type) async {
     try {
-      final response = await _dio.get('/market/product/$id');
+      final formData = FormData.fromMap({
+        'type': type,
+        'photo': await MultipartFile.fromFile(filePath, filename: 'proof_${DateTime.now().millisecondsSinceEpoch}.jpg'),
+      });
+      final response = await _dio.post('/driver/proof/$requestId', data: formData);
       if (_isSuccess(response.data)) {
         return Map<String, dynamic>.from(response.data['data'] ?? {});
       }
-      throw Exception('Gagal mendapatkan informasi produk');
+      throw Exception(_messageFromBody(response.data, fallback: 'Gagal upload foto'));
     } catch (e) {
-      throw _toApiException(e, fallback: 'Gagal mendapatkan informasi produk');
+      throw _toApiException(e, fallback: 'Gagal upload foto bukti');
     }
+  }
+
+  Future<List<dynamic>> getLeaderboard({String type = 'trips', String period = 'week'}) async {
+    try {
+      final response = await _dio.get('/driver/leaderboard',
+          queryParameters: {'type': type, 'period': period});
+      if (_isSuccess(response.data)) {
+        return response.data['data'] ?? [];
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Get Leaderboard Error: $e');
+      return [];
+    }
+  }
+
+  Future<List<dynamic>> getCommunityPosts({int page = 1}) async {
+    try {
+      final response = await _dio.get('/driver/community',
+          queryParameters: {'page': page, 'limit': 20});
+      if (_isSuccess(response.data)) {
+        return response.data['data'] ?? [];
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Get Community Posts Error: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> createCommunityPost(String content, {String? title}) async {
+    try {
+      final response = await _dio.post('/driver/community', data: {
+        'content': content,
+        if (title != null) 'title': title,
+      });
+      if (_isSuccess(response.data)) {
+        return Map<String, dynamic>.from(response.data['data'] ?? {});
+      }
+      throw Exception(_messageFromBody(response.data, fallback: 'Gagal membuat post'));
+    } catch (e) {
+      throw _toApiException(e, fallback: 'Gagal membuat post');
+    }
+  }
+}
+
+/// Retry interceptor for automatic retry on network failures
+class _RetryInterceptor extends Interceptor {
+  final Dio _dio;
+  static const int _maxRetries = 2;
+  static const Duration _retryDelay = Duration(seconds: 2);
+
+  _RetryInterceptor(this._dio);
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) async {
+    // Only retry on connection/timeout errors, not on 4xx client errors
+    if (_shouldRetry(err)) {
+      final retryCount = (err.requestOptions.extra['retryCount'] as int?) ?? 0;
+
+      if (retryCount < _maxRetries) {
+        debugPrint('[Retry] Attempt ${retryCount + 1}/$_maxRetries for ${err.requestOptions.path}');
+        await Future.delayed(_retryDelay * (retryCount + 1));
+
+        try {
+          err.requestOptions.extra['retryCount'] = retryCount + 1;
+          final response = await _dio.fetch(err.requestOptions);
+          return handler.resolve(response);
+        } catch (e) {
+          // Fall through to original error
+        }
+      }
+    }
+
+    return handler.next(err);
+  }
+
+  bool _shouldRetry(DioException err) {
+    return err.type == DioExceptionType.connectionTimeout ||
+        err.type == DioExceptionType.receiveTimeout ||
+        err.type == DioExceptionType.connectionError ||
+        (err.type == DioExceptionType.unknown && err.error != null);
   }
 }

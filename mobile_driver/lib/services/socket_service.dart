@@ -3,11 +3,15 @@ import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:mobile_driver/config/api_config.dart';
 
-class SocketService extends ChangeNotifier {
+class SocketService {
+  static final SocketService _instance = SocketService._internal();
+  factory SocketService() => _instance;
+  SocketService._internal();
+
   io.Socket? _socket;
   bool _isConnected = false;
-
   String? _currentToken;
+
   final _chatMessageController =
       StreamController<Map<String, dynamic>>.broadcast();
   final _typingController =
@@ -24,8 +28,7 @@ class SocketService extends ChangeNotifier {
       _orderStatusController.stream;
   Stream<Map<String, dynamic>> get chatMessageStream =>
       _chatMessageController.stream;
-  Stream<Map<String, dynamic>> get typingStream =>
-      _typingController.stream;
+  Stream<Map<String, dynamic>> get typingStream => _typingController.stream;
   Stream<Map<String, dynamic>> get onlineCountStream =>
       _onlineCountController.stream;
   Stream<Map<String, dynamic>> get newDriverOrderStream =>
@@ -36,6 +39,7 @@ class SocketService extends ChangeNotifier {
 
     if (_socket != null) {
       if (_socket!.connected) _socket!.disconnect();
+      _socket!.dispose();
     }
 
     _currentToken = token;
@@ -53,17 +57,17 @@ class SocketService extends ChangeNotifier {
 
     _socket!.onConnect((_) {
       _isConnected = true;
-      notifyListeners();
+      debugPrint('[Socket] Connected');
     });
 
     _socket!.onDisconnect((_) {
       _isConnected = false;
-      notifyListeners();
+      debugPrint('[Socket] Disconnected');
     });
 
     _socket!.onConnectError((err) {
       _isConnected = false;
-      notifyListeners();
+      debugPrint('[Socket] Connection Error: $err');
     });
 
     _socket!.on('order_status', (data) {
@@ -90,8 +94,10 @@ class SocketService extends ChangeNotifier {
       }
     });
 
+    // Listen for new orders dispatched to drivers
     _socket!.on('new_order_driver', (data) {
       if (data is Map) {
+        debugPrint('[Socket] New order received: ${data['id']}');
         _newDriverOrderController.add(Map<String, dynamic>.from(data));
       }
     });
@@ -112,7 +118,8 @@ class SocketService extends ChangeNotifier {
   }
 
   void setTyping(String roomId, bool isTyping) {
-    _emitWhenConnected('chat:typing', {'roomId': roomId, 'isTyping': isTyping});
+    _emitWhenConnected(
+        'chat:typing', {'roomId': roomId, 'isTyping': isTyping});
   }
 
   void emitLocationUpdate(double lat, double lng, {String? orderId}) {
@@ -125,22 +132,26 @@ class SocketService extends ChangeNotifier {
   }
 
   void _emitWhenConnected(String event, dynamic data) {
-    if (_socket != null) {
-      if (_socket!.connected) {
-        _socket!.emit(event, data);
-      } else {
-        _socket!.onConnect((_) {
-          _socket!.emit(event, data);
-        });
-      }
+    if (_socket != null && _socket!.connected) {
+      _socket!.emit(event, data);
     }
+  }
+
+  /// Emit raw event (for WebRTC signaling)
+  void emitRaw(String event, dynamic data) {
+    _emitWhenConnected(event, data);
+  }
+
+  /// Listen to raw socket event (for WebRTC signaling)
+  void onRaw(String event, Function(dynamic) callback) {
+    _socket?.on(event, callback);
   }
 
   void disconnect() {
     _socket?.disconnect();
+    _socket?.dispose();
     _socket = null;
     _isConnected = false;
     _currentToken = null;
-    notifyListeners();
   }
 }

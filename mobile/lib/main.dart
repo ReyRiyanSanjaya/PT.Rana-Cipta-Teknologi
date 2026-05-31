@@ -68,10 +68,11 @@ Future<void> main() async {
 class RanaApp extends StatelessWidget {
   const RanaApp({super.key});
 
+  static final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+
   @override
   Widget build(BuildContext context) {
-    final navigatorKey = GlobalKey<NavigatorState>();
-    OverlayNavigation().register(navigatorKey);
+    OverlayNavigation().register(_navigatorKey);
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
@@ -89,7 +90,7 @@ class RanaApp extends StatelessWidget {
           theme: ThemeConfig.lightTheme,
           darkTheme: ThemeConfig.darkTheme,
           themeMode: theme.mode,
-          navigatorKey: navigatorKey,
+          navigatorKey: _navigatorKey,
           home: const AuthWrapper(),
         ),
       ),

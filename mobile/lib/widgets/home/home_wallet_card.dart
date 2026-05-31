@@ -414,13 +414,14 @@ class HomeWalletCard extends StatelessWidget {
     required IconData icon,
     required String label,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.14),
+        color: colorScheme.primary.withOpacity(0.08),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.white.withOpacity(0.22),
+          color: colorScheme.primary.withOpacity(0.22),
           width: 0.8,
         ),
       ),
@@ -430,13 +431,13 @@ class HomeWalletCard extends StatelessWidget {
           Icon(
             icon,
             size: 13,
-            color: Colors.white.withOpacity(0.88),
+            color: colorScheme.primary,
           ),
           const SizedBox(width: 6),
           Text(
             label,
             style: GoogleFonts.outfit(
-              color: Colors.white.withOpacity(0.92),
+              color: colorScheme.onSurface.withOpacity(0.8),
               fontSize: 10.5,
               fontWeight: FontWeight.w600,
             ),

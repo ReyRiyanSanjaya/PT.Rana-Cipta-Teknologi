@@ -12,13 +12,17 @@ class ApiConfig {
   static const String _apiBaseUrlOverride =
       String.fromEnvironment('API_BASE_URL', defaultValue: '');
 
-  // [USER CONFIG] Ganti IP ini dengan IP Laptop Anda jika testing di HP Fisik
+  // [CONFIG] Ganti IP ini dengan IP Laptop Anda jika testing di HP Fisik
   static const String _localIp = '192.168.1.x';
   static const String _devUrlLan = 'http://$_localIp:4000/api';
 
-  // Timeouts
-  static const Duration connectTimeout = Duration(seconds: 10);
-  static const Duration receiveTimeout = Duration(seconds: 10);
+  // Timeouts - production-grade
+  static const Duration connectTimeout = Duration(seconds: 15);
+  static const Duration receiveTimeout = Duration(seconds: 15);
+
+  // Retry config
+  static const int maxRetries = 3;
+  static const Duration retryDelay = Duration(seconds: 2);
 
   // Resolver
   static String get baseUrl {
@@ -52,4 +56,6 @@ class ApiConfig {
     }
     return url;
   }
+
+  static bool get isProduction => _isProduction;
 }

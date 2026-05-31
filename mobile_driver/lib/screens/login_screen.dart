@@ -2,10 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:mobile_driver/config/theme_config.dart';
 import 'package:mobile_driver/providers/auth_provider.dart';
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:mobile_driver/config/theme_config.dart';
-import 'package:mobile_driver/providers/auth_provider.dart';
 import 'package:mobile_driver/screens/driver_registration_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -31,13 +27,11 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     setState(() => _isLoading = true);
-    final navigator = Navigator.of(context);
 
     try {
       await Provider.of<AuthProvider>(context, listen: false)
           .login(_emailCtrl.text, _passCtrl.text);
-      if (!mounted) return;
-      navigator.pop(true);
+      // Navigation is handled by Consumer<AuthProvider> in main.dart
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
