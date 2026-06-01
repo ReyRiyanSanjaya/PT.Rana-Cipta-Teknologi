@@ -197,7 +197,7 @@ export default function Layout() {
                 { icon: Users, label: 'Mitra Toko', path: '/merchants', module: 'customers' },
                 { icon: Map, label: 'Peta Akuisisi', path: '/acquisition-map', module: 'acquisition-map' },
                 { icon: Award, label: 'Loyalty', path: '/loyalty', module: 'customers' },
-                { icon: Tag, label: 'Promosi', path: '/discounts', module: 'orders' },
+                { icon: Tag, label: 'Promosi', path: '/promotions', module: 'orders' },
                 { icon: Truck, label: 'Pengiriman', path: '/shipments', module: 'shipments' },
                 { icon: RotateCcw, label: 'Retur', path: '/returns', module: 'returns' },
             ]
@@ -206,6 +206,10 @@ export default function Layout() {
             title: 'Analitik & Bisnis',
             items: [
                 { icon: Target, label: 'Target & KPI', path: '/kpi', module: 'kpi' },
+                { icon: BarChart3, label: 'KPI Dashboard', path: '/kpi-dashboard', module: 'kpi' },
+                { icon: TrendingUp, label: 'Sales Analytics', path: '/sales-analytics', module: 'sales' },
+                { icon: Package, label: 'Produk Analytics', path: '/product-analytics', module: 'reports' },
+                { icon: Users, label: 'Performa Merchant', path: '/merchant-performance', module: 'customers' },
                 { icon: TrendingUp, label: 'Forecasting', path: '/forecasting', module: 'reports' },
                 { icon: BookOpen, label: 'Akuntansi', path: '/accounting', module: 'receivables' },
                 { icon: BarChart3, label: 'Laporan', path: '/reports', module: 'reports' },
@@ -216,6 +220,7 @@ export default function Layout() {
             title: 'DMS & SFA',
             items: [
                 { icon: Navigation, label: 'Sales Force', path: '/sfa', module: 'kpi' },
+                { icon: Receipt, label: 'Order Kunjungan', path: '/sfa-orders', module: 'sales' },
                 { icon: Network, label: 'Organisasi', path: '/dms', module: 'kpi' },
                 { icon: Users, label: 'Tim & Akses', path: '/team', module: '*' },
                 { icon: Trophy, label: 'Leaderboard', path: '/sfa-leaderboard', module: 'kpi' },

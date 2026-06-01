@@ -14,6 +14,7 @@ import 'package:rana_merchant/screens/settings_screen.dart';
 import 'package:rana_merchant/screens/stock_opname_screen.dart';
 import 'package:rana_merchant/screens/support_screen.dart';
 import 'package:rana_merchant/screens/wholesale_main_screen.dart';
+import 'package:rana_merchant/screens/sales_rep_screen.dart';
 import 'package:rana_merchant/screens/marketing_screen.dart';
 import 'package:rana_merchant/screens/flash_sales_screen.dart';
 import 'package:rana_merchant/screens/promo_hub_screen.dart';
@@ -75,6 +76,7 @@ class _FeatureGridState extends State<FeatureGrid> {
       case 'SUPPORT': return Icons.support_agent;
       case 'SETTINGS': return Icons.settings;
       case 'KULAKAN': return Icons.storefront;
+      case 'SALES_REP': return Icons.support_agent;
       case 'PPOB': return Icons.payment;
       case 'WALLET': return Icons.account_balance_wallet;
       case 'SCAN': return Icons.qr_code_scanner;
@@ -121,6 +123,7 @@ class _FeatureGridState extends State<FeatureGrid> {
       case 'support': return const SupportScreen();
       case 'settings': return const SettingsScreen();
       case 'kulakan': return const WholesaleMainScreen();
+      case 'sales_rep': return const SalesRepScreen();
       case 'ppob': return const PpobScreen();
       case 'orders': return const OrderListScreen();
       case 'game': return const GameScreen();
@@ -188,6 +191,7 @@ class _FeatureGridState extends State<FeatureGrid> {
         {'label': 'Pegawai', 'key': 'EMPLOYEE', 'route': '/employee'},
         {'label': 'Stok', 'key': 'STOCK', 'route': '/stock'},
         {'label': 'Kulakan', 'key': 'KULAKAN', 'route': '/kulakan'},
+        {'label': 'Sales Rep', 'key': 'SALES_REP', 'route': '/sales_rep'},
         {'label': 'Promosi', 'key': 'PROMO', 'route': '/promo'},
         {'label': 'Bantuan', 'key': 'SUPPORT', 'route': '/support'},
         {'label': 'PPOB', 'key': 'PPOB', 'route': '/ppob'},

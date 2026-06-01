@@ -16,18 +16,27 @@ class BuyerBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.8),
+        color: isDark
+            ? const Color(0xFF1A1A2E).withValues(alpha: 0.9)
+            : Colors.white.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: ThemeConfig.brandColor.withValues(alpha: 0.2),
+            color: isDark
+                ? Colors.black.withValues(alpha: 0.4)
+                : ThemeConfig.brandColor.withValues(alpha: 0.2),
             blurRadius: 30,
             offset: const Offset(0, 10),
           ),
         ],
+        border: isDark
+            ? Border.all(color: const Color(0xFF2A2A3E), width: 0.5)
+            : null,
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(32),

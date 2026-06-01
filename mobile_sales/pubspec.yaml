@@ -1,0 +1,49 @@
+name: rana_sales
+description: Aplikasi Sales Force untuk tim sales distributor Rana Market.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management
+  provider: ^6.0.5
+
+  # Networking
+  dio: ^5.3.3
+
+  # Local Storage
+  shared_preferences: ^2.5.4
+
+  # UI
+  google_fonts: ^6.1.0
+  lucide_icons: ^0.257.0
+  fl_chart: ^0.68.0
+  flutter_animate: ^4.5.2
+  shimmer: ^3.0.0
+  intl: ^0.20.2
+
+  # Location
+  geolocator: ^10.1.0
+  geocoding: ^2.1.1
+
+  # Maps
+  flutter_map: ^8.0.0
+  latlong2: ^0.9.1
+
+  # Utils
+  url_launcher: ^6.3.2
+  permission_handler: ^11.0.1
+  image_picker: ^1.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true

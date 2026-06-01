@@ -38,3 +38,4 @@ android/local.properties
 *.log
 akun.txt
 .env
+.env.ecosystem

@@ -6,6 +6,7 @@ import { NotificationProvider } from './context/NotificationContext';
 import { ToastProvider } from './components/Toast';
 import AIAssistant from './components/AIAssistant'; // [NEW]
 import BottomNav from './components/BottomNav'; // [NEW]
+import DashboardBottomNav from './components/DashboardBottomNav'; // [UX]
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const ProfitLoss = lazy(() => import('./pages/ProfitLoss'));
@@ -193,6 +194,7 @@ function App() {
                 </Suspense>
                 <AIAssistant bottomOffset={floatingBottomOffset} />
                 <BottomNav onLayoutChange={handleBottomNavLayout} />
+                <DashboardBottomNav />
             </Router>
             </ToastProvider>
             </NotificationProvider>

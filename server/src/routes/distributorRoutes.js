@@ -73,11 +73,20 @@ router.get('/acquisition-map', isDistributor, controller.getAcquisitionMap);
 // Shipments
 router.get('/shipments', isDistributor, controller.getShipments);
 
-// Discounts
+// Discounts (legacy - kept for backward compatibility)
 router.get('/discounts', isDistributor, controller.getDiscounts);
 router.post('/discounts', isDistributor, controller.createDiscount);
 router.put('/discounts/:id', isDistributor, controller.updateDiscount);
 router.delete('/discounts/:id', isDistributor, controller.deleteDiscount);
+
+// Promotions (extended - supports BUY_X_GET_Y, BUNDLE, etc.)
+const promoCtrl = require('../controllers/distributorPromoController');
+router.get('/promotions', isDistributor, promoCtrl.getPromotions);
+router.post('/promotions', isDistributor, promoCtrl.createPromotion);
+router.put('/promotions/:id', isDistributor, promoCtrl.updatePromotion);
+router.delete('/promotions/:id', isDistributor, promoCtrl.deletePromotion);
+router.get('/promotions/active/:distributorId', promoCtrl.getActivePromosForMerchant);
+router.post('/promotions/apply', authenticateToken, promoCtrl.applyPromoToOrder);
 
 // Subscription & Billing (Enterprise SaaS)
 const subscriptionCtrl = require('../controllers/distributorSubscriptionController');
@@ -129,6 +138,12 @@ router.put('/returns/:orderId/process', isDistributor, enterpriseCtrl.processRet
 // Sales KPI & Target
 router.get('/kpi', isDistributor, enterpriseCtrl.getSalesKPI);
 
+// AI KPI Target Generator
+const kpiCtrl = require('../controllers/distributorKpiController');
+router.post('/kpi/generate', isDistributor, kpiCtrl.generateKpiTargets);
+router.get('/kpi/company-target', isDistributor, kpiCtrl.getCompanyTarget);
+router.put('/kpi/company-target', isDistributor, kpiCtrl.setCompanyTarget);
+
 // Loyalty Program
 router.get('/loyalty', isDistributor, enterpriseCtrl.getLoyaltyProgram);
 
@@ -166,6 +181,20 @@ router.post('/dms/territories', isDistributor, dmsCtrl.createTerritory);
 router.put('/dms/territories/:id', isDistributor, dmsCtrl.updateTerritory);
 router.delete('/dms/territories/:id', isDistributor, dmsCtrl.deleteTerritory);
 
+// Sales Analytics & Visit Orders
+const salesCtrl = require('../controllers/distributorSalesController');
+router.get('/sales/analytics', isDistributor, salesCtrl.getSalesAnalytics);
+router.get('/sales/all-orders', isDistributor, salesCtrl.getAllOrders);
+router.post('/sales/visit-order', isDistributor, salesCtrl.createVisitOrder);
+router.get('/sales/merchant-performance', isDistributor, salesCtrl.getMerchantPerformance);
+router.get('/sales/rep-info/:tenantId', authenticateToken, salesCtrl.getSalesRepForMerchant);
+
+// Merchant self-lookup for their sales rep (uses token's tenantId)
+router.get('/sales/rep-info-me', authenticateToken, async (req, res) => {
+    req.params.tenantId = req.user.tenantId;
+    return salesCtrl.getSalesRepForMerchant(req, res);
+});
+
 // SFA - Sales Force Automation
 router.get('/sfa/dashboard', isDistributor, dmsCtrl.getSfaDashboard);
 router.get('/sfa/visits', isDistributor, dmsCtrl.getVisits);
@@ -178,6 +207,12 @@ router.post('/sfa/targets', isDistributor, dmsCtrl.setSalesTarget);
 router.get('/sfa/route-plans', isDistributor, dmsCtrl.getRoutePlans);
 router.post('/sfa/route-plans', isDistributor, dmsCtrl.createRoutePlan);
 router.delete('/sfa/route-plans/:id', isDistributor, dmsCtrl.deleteRoutePlan);
+
+// AI Route Plan Generator
+const routePlannerCtrl = require('../controllers/distributorRoutePlannerController');
+router.post('/sfa/route-plans/generate', isDistributor, routePlannerCtrl.generateRoutePlan);
+router.get('/sfa/route-plans/waitlist', isDistributor, routePlannerCtrl.getWaitlist);
+
 router.get('/sfa/leaderboard', isDistributor, dmsCtrl.getLeaderboard);
 
 module.exports = router;

@@ -369,8 +369,12 @@ const DashboardLayout = ({ children }) => {
 
             {/* Mobile sidebar backdrop */}
             {isMobileMenuOpen && (
-                <div 
-                    className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[-1] md:hidden"
+                <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[-1] md:hidden"
                     onClick={() => setIsMobileMenuOpen(false)}
                     aria-hidden="true"
                 />
@@ -688,7 +692,7 @@ const DashboardLayout = ({ children }) => {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5, delay: 0.2 }}
-                        className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6"
+                        className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-6"
                     >
                         {children}
                     </motion.div>

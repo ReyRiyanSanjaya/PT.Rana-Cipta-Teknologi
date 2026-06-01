@@ -45,6 +45,47 @@ class ThemeConfig {
     return amount.toStringAsFixed(0).replaceAll(RegExp(r'\B(?=(\d{3})+(?!\d))'), '.');
   }
 
+  /// Returns adaptive card color based on theme brightness
+  static Color cardColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xFF1A1A2E)
+        : Colors.white;
+  }
+
+  /// Returns adaptive subtle border color
+  static Color borderColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xFF2A2A3E)
+        : Colors.grey.shade200;
+  }
+
+  /// Returns adaptive text color for secondary text
+  static Color secondaryTextColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xFF94A3B8)
+        : const Color(0xFF64748B);
+  }
+
+  /// Returns adaptive shadow for cards
+  static List<BoxShadow> cardShadow(BuildContext context) {
+    if (Theme.of(context).brightness == Brightness.dark) {
+      return [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.3),
+          blurRadius: 12,
+          offset: const Offset(0, 4),
+        ),
+      ];
+    }
+    return [
+      BoxShadow(
+        color: Colors.black.withOpacity(0.04),
+        blurRadius: 16,
+        offset: const Offset(0, 6),
+      ),
+    ];
+  }
+
   static bool isTablet(BuildContext context) {
     final size = MediaQuery.of(context).size;
     return size.shortestSide >= 600;
@@ -152,35 +193,105 @@ class ThemeConfig {
         seedColor: brandColor,
         brightness: Brightness.dark,
         primary: brandColor,
-        surface: const Color(0xFF1E1E1E),
-        surfaceContainerHighest: const Color(0xFF121212),
+        surface: const Color(0xFF1A1A2E),
+        surfaceContainerHighest: const Color(0xFF0F0F1A),
       ),
-      scaffoldBackgroundColor: const Color(0xFF121212),
+      scaffoldBackgroundColor: const Color(0xFF0F0F1A),
       textTheme: GoogleFonts.poppinsTextTheme().apply(
-        bodyColor: Colors.white.withOpacity(0.7),
+        bodyColor: const Color(0xFFE2E8F0),
         displayColor: Colors.white,
       ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFF121212),
+        backgroundColor: Color(0xFF0F0F1A),
         elevation: 0,
+        scrolledUnderElevation: 0.5,
         foregroundColor: brandColor,
         iconTheme: IconThemeData(color: brandColor),
+        titleTextStyle: TextStyle(
+          color: brandColor,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          fontFamily: fontFamily,
+        ),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusLarge),
-          side: BorderSide(color: Colors.white.withOpacity(0.1)),
+          side: const BorderSide(color: Color(0xFF2A2A3E)),
         ),
-        color: const Color(0xFF1E1E1E),
+        color: const Color(0xFF1A1A2E),
       ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: const Color(0xFF1A1A2E),
+        indicatorColor: brandColor.withOpacity(0.15),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const IconThemeData(color: brandColor, size: 26);
+          }
+          return IconThemeData(color: Colors.grey.shade600, size: 26);
+        }),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const TextStyle(color: brandColor, fontWeight: FontWeight.w600, fontSize: 11);
+          }
+          return TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w500, fontSize: 11);
+        }),
+      ),
+      dividerColor: const Color(0xFF2A2A3E),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFF2C2C2C),
+        fillColor: const Color(0xFF1A1A2E),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusLarge),
-          borderSide: BorderSide.none,
+          borderSide: const BorderSide(color: Color(0xFF2A2A3E)),
         ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusLarge),
+          borderSide: const BorderSide(color: Color(0xFF2A2A3E)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusLarge),
+          borderSide: const BorderSide(color: brandColor, width: 1.5),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+            horizontal: paddingMedium, vertical: paddingMedium),
+        hintStyle: TextStyle(color: Colors.grey.shade600),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: brandColor,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radiusMedium),
+          ),
+          padding: const EdgeInsets.symmetric(
+              vertical: paddingMedium, horizontal: paddingLarge),
+          elevation: 0,
+        ),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(radiusXLarge)),
+        ),
+        surfaceTintColor: Colors.transparent,
+      ),
+      dialogTheme: DialogTheme(
+        backgroundColor: const Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radiusXLarge)),
+        surfaceTintColor: Colors.transparent,
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFF2A2A3E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radiusMedium)),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: const Color(0xFF1A1A2E),
+        selectedColor: brandColor.withOpacity(0.2),
+        side: const BorderSide(color: Color(0xFF2A2A3E)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radiusSmall)),
       ),
     );
   }

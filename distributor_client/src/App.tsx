@@ -30,6 +30,12 @@ import DmsHierarchy from './pages/DmsHierarchy';
 import SfaLeaderboard from './pages/SfaLeaderboard';
 import SfaRoutes from './pages/SfaRoutes';
 import Accounting from './pages/Accounting';
+import SalesAnalytics from './pages/SalesAnalytics';
+import MerchantPerformance from './pages/MerchantPerformance';
+import SalesVisitOrder from './pages/SalesVisitOrder';
+import ProductAnalytics from './pages/ProductAnalytics';
+import KpiDashboard from './pages/KpiDashboard';
+import Promotions from './pages/Promotions';
 
 function App() {
   return (
@@ -50,6 +56,7 @@ function App() {
           <Route path="merchants" element={<Merchants />} />
           <Route path="acquisition-map" element={<AcquisitionMap />} />
           <Route path="discounts" element={<Discounts />} />
+          <Route path="promotions" element={<Promotions />} />
           <Route path="shipments" element={<Shipments />} />
           <Route path="warehouses" element={<WarehouseManagement />} />
           <Route path="warehouse-stock" element={<WarehouseStock />} />
@@ -66,6 +73,11 @@ function App() {
           <Route path="sfa" element={<SfaDashboard />} />
           <Route path="sfa-leaderboard" element={<SfaLeaderboard />} />
           <Route path="sfa-routes" element={<SfaRoutes />} />
+          <Route path="sfa-orders" element={<SalesVisitOrder />} />
+          <Route path="sales-analytics" element={<SalesAnalytics />} />
+          <Route path="product-analytics" element={<ProductAnalytics />} />
+          <Route path="kpi-dashboard" element={<KpiDashboard />} />
+          <Route path="merchant-performance" element={<MerchantPerformance />} />
           <Route path="dms" element={<DmsHierarchy />} />
           <Route path="settings" element={<Settings />} />
         </Route>
