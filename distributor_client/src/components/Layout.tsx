@@ -17,7 +17,22 @@ import {
     User as UserIcon,
     Box,
     Truck,
-    Tag
+    Tag,
+    Map,
+    Crown,
+    Warehouse,
+    TrendingUp,
+    Receipt,
+    Boxes,
+    DollarSign,
+    RotateCcw,
+    Target,
+    Award,
+    Network,
+    Navigation,
+    Trophy,
+    Route,
+    BookOpen
 } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import { useAuthStore } from '../store/authStore';
@@ -150,17 +165,84 @@ export default function Layout() {
         return <Navigate to="/login" replace />;
     }
 
-    const NAV_ITEMS = [
-        { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-        { icon: Package, label: 'Produk', path: '/products' },
-        { icon: ShoppingCart, label: 'Pesanan', path: '/orders', badge: unreadCount > 0 ? unreadCount : undefined },
-        { icon: Box, label: 'Inventaris', path: '/inventory' },
-        { icon: Users, label: 'Mitra Toko', path: '/merchants' }, // Changed from Stores to Merchants for clarity
-        { icon: Tag, label: 'Promosi', path: '/discounts' },
-        { icon: Truck, label: 'Pengiriman', path: '/shipments' },
-        { icon: BarChart3, label: 'Laporan', path: '/reports' },
-        { icon: Settings, label: 'Pengaturan', path: '/settings' },
+    // Permission check - server already resolves based on org position + department
+    const canAccess = (module: string) => {
+        if (!user.permissions || user.permissions.length === 0) return true;
+        if (user.permissions.includes('*')) return true;
+        return user.permissions.includes(module);
+    };
+
+    const NAV_SECTIONS = [
+        {
+            title: 'Menu Utama',
+            items: [
+                { icon: LayoutDashboard, label: 'Dashboard', path: '/', module: 'dashboard' },
+                { icon: ShoppingCart, label: 'Pesanan', path: '/orders', badge: unreadCount > 0 ? unreadCount : undefined, module: 'orders' },
+                { icon: Receipt, label: 'Penjualan', path: '/sales', module: 'sales' },
+                { icon: DollarSign, label: 'Piutang', path: '/receivables', module: 'receivables' },
+            ]
+        },
+        {
+            title: 'Produk & Gudang',
+            items: [
+                { icon: Package, label: 'Produk', path: '/products', module: 'products' },
+                { icon: Box, label: 'Inventaris', path: '/inventory', module: 'inventory' },
+                { icon: Warehouse, label: 'Gudang', path: '/warehouses', module: 'warehouses' },
+                { icon: Boxes, label: 'Stok Gudang', path: '/warehouse-stock', module: 'warehouse-stock' },
+            ]
+        },
+        {
+            title: 'Merchant & Akuisisi',
+            items: [
+                { icon: Users, label: 'Mitra Toko', path: '/merchants', module: 'customers' },
+                { icon: Map, label: 'Peta Akuisisi', path: '/acquisition-map', module: 'acquisition-map' },
+                { icon: Award, label: 'Loyalty', path: '/loyalty', module: 'customers' },
+                { icon: Tag, label: 'Promosi', path: '/promotions', module: 'orders' },
+                { icon: Truck, label: 'Pengiriman', path: '/shipments', module: 'shipments' },
+                { icon: RotateCcw, label: 'Retur', path: '/returns', module: 'returns' },
+            ]
+        },
+        {
+            title: 'Analitik & Bisnis',
+            items: [
+                { icon: Target, label: 'Target & KPI', path: '/kpi', module: 'kpi' },
+                { icon: BarChart3, label: 'KPI Dashboard', path: '/kpi-dashboard', module: 'kpi' },
+                { icon: TrendingUp, label: 'Sales Analytics', path: '/sales-analytics', module: 'sales' },
+                { icon: Package, label: 'Produk Analytics', path: '/product-analytics', module: 'reports' },
+                { icon: Users, label: 'Performa Merchant', path: '/merchant-performance', module: 'customers' },
+                { icon: TrendingUp, label: 'Forecasting', path: '/forecasting', module: 'reports' },
+                { icon: BookOpen, label: 'Akuntansi', path: '/accounting', module: 'receivables' },
+                { icon: BarChart3, label: 'Laporan', path: '/reports', module: 'reports' },
+                { icon: Crown, label: 'Subscription', path: '/subscription', module: 'subscription' },
+            ]
+        },
+        {
+            title: 'DMS & SFA',
+            items: [
+                { icon: Navigation, label: 'Sales Force', path: '/sfa', module: 'kpi' },
+                { icon: Receipt, label: 'Order Kunjungan', path: '/sfa-orders', module: 'sales' },
+                { icon: Network, label: 'Organisasi', path: '/dms', module: 'kpi' },
+                { icon: Users, label: 'Tim & Akses', path: '/team', module: '*' },
+                { icon: Trophy, label: 'Leaderboard', path: '/sfa-leaderboard', module: 'kpi' },
+                { icon: Route, label: 'Route Plan', path: '/sfa-routes', module: 'kpi' },
+            ]
+        },
+        {
+            title: 'Sistem',
+            items: [
+                { icon: Settings, label: 'Pengaturan', path: '/settings', module: 'dashboard' },
+            ]
+        },
     ];
+
+    // Filter sections based on user permissions
+    const filteredSections = NAV_SECTIONS.map(section => ({
+        ...section,
+        items: section.items.filter(item => canAccess(item.module))
+    })).filter(section => section.items.length > 0);
+
+    // Flat list for search/command palette
+    const NAV_ITEMS = filteredSections.flatMap(s => s.items);
 
     const isPathActive = (itemPath: string) => {
         if (location.pathname === itemPath) return true;
@@ -172,7 +254,7 @@ export default function Layout() {
     const pageLabel = activeNavItem?.label || 'Distributor Portal';
 
     const displayName = user?.name || 'Distributor';
-    const roleLabel = 'Distributor Principal';
+    const roleLabel = user?.position?.title || user?.subRoleLabel || 'Distributor';
     const initials = displayName.substring(0, 2).toUpperCase();
 
     const filteredCommands = commandQuery
@@ -222,21 +304,33 @@ export default function Layout() {
                                 visible: { transition: { staggerChildren: 0.03 } }
                             }}
                         >
-                            {NAV_ITEMS.map((item) => (
-                                <motion.div
-                                    key={item.path}
-                                    variants={{
-                                        hidden: { x: -20, opacity: 0 },
-                                        visible: { x: 0, opacity: 1 }
-                                    }}
-                                >
-                                    <SidebarItem
-                                        {...item}
-                                        active={isPathActive(item.path)}
-                                        collapsed={isSidebarCollapsed}
-                                        onClick={() => setIsMobileMenuOpen(false)}
-                                    />
-                                </motion.div>
+                            {filteredSections.map((section, sIdx) => (
+                                <div key={section.title} className={sIdx > 0 ? 'mt-4' : ''}>
+                                    {!isSidebarCollapsed && (
+                                        <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                            {section.title}
+                                        </p>
+                                    )}
+                                    {isSidebarCollapsed && sIdx > 0 && (
+                                        <div className="mx-auto w-6 border-t border-slate-200 dark:border-slate-700 my-2" />
+                                    )}
+                                    {section.items.map((item) => (
+                                        <motion.div
+                                            key={item.path}
+                                            variants={{
+                                                hidden: { x: -20, opacity: 0 },
+                                                visible: { x: 0, opacity: 1 }
+                                            }}
+                                        >
+                                            <SidebarItem
+                                                {...item}
+                                                active={isPathActive(item.path)}
+                                                collapsed={isSidebarCollapsed}
+                                                onClick={() => setIsMobileMenuOpen(false)}
+                                            />
+                                        </motion.div>
+                                    ))}
+                                </div>
                             ))}
                         </motion.nav>
                     </div>

@@ -82,92 +82,48 @@ const getDashboardStats = async (req, res) => {
         const startOfDay = new Date(`${date}T00:00:00.000Z`);
         const dayEnd = new Date(`${date}T23:59:59.999Z`);
 
-        // --- 1. FINANCIAL SUMMARY ---
-        let summary;
+        // --- ALWAYS calculate from real transactions for accuracy ---
+        const txnWhere = {
+            tenantId,
+            orderStatus: 'COMPLETED',
+            occurredAt: { gte: startOfDay, lte: dayEnd }
+        };
+        if (storeId) txnWhere.storeId = storeId;
 
-        if (storeId) {
-            // Specific Store
-            summary = await prisma.dailySalesSummary.findFirst({
-                where: { tenantId, storeId, date: startOfDay }
-            });
-        } else {
-            // Global (All Stores) - Aggregate
-            const agg = await prisma.dailySalesSummary.aggregate({
-                where: { tenantId, date: startOfDay },
-                _sum: { totalSales: true, totalTrans: true }
-            });
+        // Get transaction aggregate
+        const txnAgg = await prisma.transaction.aggregate({
+            where: txnWhere,
+            _sum: { totalAmount: true },
+            _count: { _all: true }
+        });
 
-            if (agg._sum.totalSales !== null) {
-                summary = {
-                    totalSales: agg._sum.totalSales,
-                    totalTrans: agg._sum.totalTrans,
-                };
-            }
-        }
+        const revenue = Number(txnAgg._sum.totalAmount) || 0;
+        const transCount = Number(txnAgg._count._all) || 0;
 
-        // Calculate COGS / Fallback if Summary Missing
-        let cogs = 0;
-        
-        // Query items for COGS calculation (needed in both cases)
+        // Get items for COGS and top products
         const items = await prisma.transactionItem.findMany({
             where: {
-                transaction: {
-                    tenantId,
-                    orderStatus: 'COMPLETED',
-                    storeId: storeId || undefined,
-                    occurredAt: { gte: startOfDay, lte: dayEnd }
-                }
+                transaction: txnWhere
             },
             select: {
                 quantity: true,
-                price: true, // Selling price
-                costPrice: true, // [FIX] Also select costPrice snapshot
-                basePrice: true, // Recorded base price at sale
+                price: true,
+                costPrice: true,
+                basePrice: true,
                 productId: true,
                 product: { select: { basePrice: true, name: true, sku: true } }
             }
         });
 
         // Calculate COGS
+        let cogs = 0;
         for (const it of items) {
             const bp = it.costPrice != null ? Number(it.costPrice) : (it.basePrice != null ? Number(it.basePrice) : Number(it.product?.basePrice || 0));
             cogs += bp * Number(it.quantity || 0);
         }
 
-        if (!summary) {
-            // Fallback: Calculate from transactions directly
-            const txnAgg = await prisma.transaction.aggregate({
-                where: {
-                    tenantId,
-                    orderStatus: 'COMPLETED',
-                    storeId: storeId || undefined,
-                    occurredAt: { gte: startOfDay, lte: dayEnd }
-                },
-                _sum: { totalAmount: true },
-                _count: { _all: true }
-            });
-            
-            const revenue = Number(txnAgg._sum.totalAmount) || 0;
-            const transCount = Number(txnAgg._count._all) || 0;
-
-            summary = {
-                totalSales: revenue,
-                totalTrans: transCount,
-                grossProfit: revenue - cogs,
-                netSales: revenue,
-                cogs: cogs
-            };
-        } else {
-            // If summary exists, just attach calculated COGS
-            summary.cogs = cogs;
-        }
-
-        // --- 2. TOP PRODUCTS (REALTIME CALCULATION) ---
-        // Calculate directly from today's transactions to ensure accuracy
-        // (Bypassing ProductSalesSummary which might be empty)
-        
+        // --- TOP PRODUCTS ---
         const productStats = new Map();
-
         for (const item of items) {
             const pid = item.productId;
             if (!productStats.has(pid)) {
@@ -184,16 +140,16 @@ const getDashboardStats = async (req, res) => {
         }
 
         const topProducts = Array.from(productStats.values())
-            .sort((a, b) => b.revenue - a.revenue) // Sort by Revenue High -> Low
+            .sort((a, b) => b.revenue - a.revenue)
             .slice(0, 5);
 
         // --- RESPONSE ---
         const financials = {
-            grossSales: Number(summary.grossSales ?? summary.totalSales ?? 0),
-            netSales: Number(summary.netSales ?? summary.totalSales ?? 0),
-            grossProfit: Number(summary.grossProfit ?? (Number(summary.totalSales || 0) - Number(summary.cogs || 0))),
-            transactionCount: Number(summary.transactionCount ?? summary.totalTrans ?? 0),
-            cogs: Number(summary.cogs ?? 0)
+            grossSales: revenue,
+            netSales: revenue,
+            grossProfit: revenue - cogs,
+            transactionCount: transCount,
+            cogs: cogs
         };
 
         return successResponse(res, { financials, topProducts });
@@ -219,27 +175,37 @@ const getProfitLoss = async (req, res) => {
         const start = new Date(`${startDate}T00:00:00.000Z`);
         const end = new Date(`${endDate}T23:59:59.999Z`);
 
-        // [FIX] Adjust for WIB (UTC+7)
-        // User wants Jan 10 00:00 WIB -> Jan 9 17:00 UTC
-        start.setHours(start.getHours() - 7);
-        end.setHours(end.getHours() - 7);
+        const txnWhere = {
+            tenantId,
+            orderStatus: 'COMPLETED',
+            occurredAt: { gte: start, lte: end }
+        };
+        if (storeId) txnWhere.storeId = storeId;
 
-        // Aggregate the Aggregates: Summing up DailySalesSummaries
-        const aggs = await prisma.dailySalesSummary.groupBy({
-            by: ['tenantId'],
-            where: {
-                tenantId,
-                storeId: storeId || undefined,
-                date: {
-                    gte: start,
-                    lte: end
-                }
-            },
-            _sum: {
-                totalSales: true,
-                totalTrans: true
+        // Get total revenue and transaction count
+        const txnAgg = await prisma.transaction.aggregate({
+            where: txnWhere,
+            _sum: { totalAmount: true },
+            _count: { _all: true }
+        });
+        const revenue = Number(txnAgg._sum.totalAmount) || 0;
+        const transCount = Number(txnAgg._count._all) || 0;
+
+        // Calculate COGS from transaction items
+        const periodItems = await prisma.transactionItem.findMany({
+            where: { transaction: txnWhere },
+            select: {
+                quantity: true,
+                costPrice: true,
+                basePrice: true,
+                product: { select: { basePrice: true } }
             }
         });
+        let cogs = 0;
+        for (const it of periodItems) {
+            const bp = it.costPrice != null ? Number(it.costPrice) : (it.basePrice != null ? Number(it.basePrice) : Number(it.product?.basePrice || 0));
+            cogs += bp * Number(it.quantity || 0);
+        }
 
         // Fetch Expenses (CashflowLog)
         const expenses = await prisma.cashflowLog.groupBy({
@@ -251,87 +217,81 @@ const getProfitLoss = async (req, res) => {
                 category: {
                     in: ['EXPENSE_OPERATIONAL', 'EXPENSE_PURCHASE', 'EXPENSE_PETTY', 'OTHER']
                 },
-                occurredAt: {
-                    gte: start,
-                    lte: end
-                }
+                occurredAt: { gte: start, lte: end }
             },
-            _sum: {
-                amount: true
-            }
-        });
+            _sum: { amount: true }
+        }).catch(() => []);
 
-        const totals = aggs[0]?._sum || {};
-
-        // Process Expenses
         const expenseMap = {};
         let totalExpenses = 0;
         expenses.forEach(e => {
-            const amt = Number(e._sum.amount);
+            const amt = Number(e._sum.amount) || 0;
             expenseMap[e.category] = amt;
             totalExpenses += amt;
         });
 
-        // Fallback: jika DailySalesSummary kosong, agregasi langsung dari transaksi
-        let revenue = totals.totalSales || 0;
-        let transCount = totals.totalTrans || 0;
-        if (!revenue && !transCount) {
-            const txnAgg = await prisma.transaction.aggregate({
-                where: {
-                    tenantId,
-                    orderStatus: 'COMPLETED',
-                    storeId: storeId || undefined,
-                    occurredAt: {
-                        gte: start,
-                        lte: end
-                    }
-                },
-                _sum: { totalAmount: true },
-                _count: { _all: true }
-            });
-            revenue = Number(txnAgg._sum.totalAmount) || 0;
-            transCount = Number(txnAgg._count._all) || 0;
-        }
-
-        // Calculate COGS (HPP) using transaction items in the period
-        const periodItems = await prisma.transactionItem.findMany({
-            where: {
-                transaction: {
-                    tenantId,
-                    orderStatus: 'COMPLETED',
-                    storeId: storeId || undefined,
-                    occurredAt: { gte: start, lte: end }
-                }
-            },
-            select: {
-                quantity: true,
-                costPrice: true, // [FIX] Also select costPrice snapshot
-                basePrice: true,
-                product: { select: { basePrice: true } }
-            }
-        });
-        let cogs = 0;
-        for (const it of periodItems) {
-            const bp = it.costPrice != null ? Number(it.costPrice) : (it.basePrice != null ? Number(it.basePrice) : Number(it.product?.basePrice || 0));
-            cogs += bp * Number(it.quantity || 0);
-        }
         const grossProfit = revenue - cogs;
         const netProfit = grossProfit - totalExpenses;
 
+        // --- Generate chartData (daily breakdown) ---
+        const transactions = await prisma.transaction.findMany({
+            where: txnWhere,
+            select: {
+                totalAmount: true,
+                occurredAt: true,
+                transactionItems: {
+                    select: {
+                        quantity: true,
+                        costPrice: true,
+                        basePrice: true,
+                        product: { select: { basePrice: true } }
+                    }
+                }
+            },
+            orderBy: { occurredAt: 'asc' }
+        });
+
+        // Group by date
+        const dailyMap = new Map();
+        for (const txn of transactions) {
+            const dateKey = txn.occurredAt.toISOString().split('T')[0];
+            if (!dailyMap.has(dateKey)) {
+                dailyMap.set(dateKey, { revenue: 0, cogs: 0 });
+            }
+            const day = dailyMap.get(dateKey);
+            day.revenue += Number(txn.totalAmount) || 0;
+            for (const item of txn.transactionItems) {
+                const bp = item.costPrice != null ? Number(item.costPrice) : (item.basePrice != null ? Number(item.basePrice) : Number(item.product?.basePrice || 0));
+                day.cogs += bp * Number(item.quantity || 0);
+            }
+        }
+
+        const chartData = Array.from(dailyMap.entries()).map(([date, vals]) => {
+            const d = new Date(date);
+            const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+            const label = `${d.getUTCDate()}/${d.getUTCMonth() + 1}`;
+            return {
+                name: label,
+                revenue: vals.revenue,
+                netProfit: vals.revenue - vals.cogs
+            };
+        });
+
         return successResponse(res, {
-            period: { start, end },
+            period: { start: startDate, end: endDate },
             pnl: {
                 revenue,
-                transCount,
+                transactionCount: transCount,
                 cogs,
                 grossProfit,
-                margin: revenue > 0 ? ((grossProfit / revenue) * 100).toFixed(2) : 0,
+                margin: revenue > 0 ? Number(((grossProfit / revenue) * 100).toFixed(2)) : 0,
                 taxCollected: 0,
                 discountsGiven: 0,
                 totalExpenses,
                 netProfit,
                 expenseBreakdown: expenseMap
-            }
+            },
+            chartData
         });
 
     } catch (error) {

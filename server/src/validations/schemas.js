@@ -34,10 +34,10 @@ const syncItemSchema = z.object({
     productId: z.string().uuid("Product ID tidak valid"),
     quantity: z.number().positive("Quantity harus lebih dari 0"),
     price: z.number().nonnegative("Harga tidak boleh negatif"),
-    productName: z.string().optional(),
-    productSku: z.string().optional(),
-    productImage: z.string().optional(),
-    basePrice: z.number().optional(),
+    productName: z.string().optional().nullable(),
+    productSku: z.string().optional().nullable(),
+    productImage: z.string().optional().nullable(),
+    basePrice: z.number().optional().nullable(),
 });
 
 const syncTransactionSchema = z.object({
@@ -48,8 +48,13 @@ const syncTransactionSchema = z.object({
     occurredAt: z.string().refine(val => !isNaN(Date.parse(val)), {
         message: "Format tanggal tidak valid"
     }),
-    cashierId: z.string().optional(),
-    storeId: z.string().optional(),
+    cashierId: z.string().optional().nullable(),
+    storeId: z.string().optional().nullable(),
+    tenantId: z.string().optional().nullable(),
+    subtotal: z.number().optional().nullable(),
+    tax: z.number().optional().nullable(),
+    amountPaid: z.number().optional().nullable(),
+    change: z.number().optional().nullable(),
 });
 
 // Wallet Schemas

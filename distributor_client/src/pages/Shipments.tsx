@@ -12,7 +12,7 @@ interface Shipment {
   tenant: {
     name: string;
     users: { name: string }[];
-    stores: { name: string; address: string }[];
+    stores: { name: string; location: string; waNumber: string }[];
   };
   updatedAt: string;
   status: string;
@@ -41,8 +41,8 @@ export default function Shipments() {
 
   const filteredShipments = shipments.filter(s => 
     s.orderNumber?.toLowerCase().includes(search.toLowerCase()) ||
-    s.tenant.name?.toLowerCase().includes(search.toLowerCase()) ||
-    s.tenant.stores[0]?.name.toLowerCase().includes(search.toLowerCase())
+    s.tenant?.name?.toLowerCase().includes(search.toLowerCase()) ||
+    s.tenant?.stores?.[0]?.name?.toLowerCase().includes(search.toLowerCase())
   );
 
   const getStatusVariant = (status: string) => {
@@ -120,7 +120,7 @@ export default function Shipments() {
                           <td className="p-4 align-middle text-slate-500 dark:text-slate-400">
                              <div className="flex items-center gap-2">
                                <MapPin className="h-3 w-3" />
-                               <span className="truncate max-w-[150px]">{item.tenant.stores?.[0]?.address || '-'}</span>
+                               <span className="truncate max-w-[150px]">{item.tenant.stores?.[0]?.location || '-'}</span>
                             </div>
                           </td>
                           <td className="p-4 align-middle">

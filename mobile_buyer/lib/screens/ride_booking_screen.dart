@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:rana_market/config/theme_config.dart';
+import 'package:rana_market/data/market_api_service.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -30,6 +32,7 @@ class _RideBookingScreenState extends State<RideBookingScreen> {
   String _selectedVehicle = 'RIDE'; // RIDE, CAR, SEND
   String _selectedPayment = 'RanaPay';
   String? _selectedPromo;
+  Map<String, dynamic>? _priceData; // Dynamic pricing from server
 
   final TextEditingController _originCtrl = TextEditingController(text: 'Lokasi Anda Saat Ini');
   final TextEditingController _destCtrl = TextEditingController();
@@ -72,6 +75,34 @@ class _RideBookingScreenState extends State<RideBookingScreen> {
       _destinationPosition = point;
       _destCtrl.text = 'Titik Peta (${point.latitude.toStringAsFixed(4)}, ${point.longitude.toStringAsFixed(4)})';
     });
+    _calculatePrice();
+  }
+
+  Future<void> _calculatePrice() async {
+    if (_currentPosition == null || _destinationPosition == null) return;
+    try {
+      final result = await MarketApiService().calculateRidePrice(
+        type: _selectedVehicle,
+        originLat: _currentPosition!.latitude,
+        originLng: _currentPosition!.longitude,
+        destLat: _destinationPosition!.latitude,
+        destLng: _destinationPosition!.longitude,
+      );
+      if (mounted && result.isNotEmpty) {
+        setState(() => _priceData = result);
+      }
+    } catch (_) {}
+  }
+
+  double _getDynamicPrice(String type, double fallback) {
+    if (_priceData == null || _destinationPosition == null) return fallback;
+    // Simple multiplier based on type relative to the calculated price
+    final basePrice = (_priceData!['price'] as num?)?.toDouble() ?? fallback;
+    if (type == _selectedVehicle) return basePrice;
+    // Approximate other types
+    if (type == 'CAR') return basePrice * 2.5;
+    if (type == 'SEND') return basePrice * 0.8;
+    return basePrice;
   }
 
   Future<void> _submitBooking() async {
@@ -81,30 +112,53 @@ class _RideBookingScreenState extends State<RideBookingScreen> {
     }
 
     setState(() => _isBooking = true);
-    
-    // Simulate API call and success
-    await Future.delayed(const Duration(seconds: 2));
 
-    if (mounted) {
-      setState(() => _isBooking = false);
-      
-      final orderData = {
-        'type': _selectedVehicle,
-        'originLat': _currentPosition!.latitude,
-        'originLng': _currentPosition!.longitude,
-        'originAddress': _originCtrl.text,
-        'destLat': _destinationPosition!.latitude,
-        'destLng': _destinationPosition!.longitude,
-        'destAddress': _destCtrl.text,
-        'price': 15000 + (_selectedVehicle == 'CAR' ? 20000 : 0),
-      };
+    try {
+      final price = (_priceData?['price'] as num?)?.toDouble() ??
+          (_selectedVehicle == 'CAR' ? 35000.0 : (_selectedVehicle == 'SEND' ? 12000.0 : 15000.0));
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => RideOrderTrackingScreen(orderData: orderData),
-        ),
+      final result = await MarketApiService().createServiceRequest(
+        type: _selectedVehicle == 'CAR' ? 'RIDE' : _selectedVehicle,
+        originLat: _currentPosition!.latitude,
+        originLng: _currentPosition!.longitude,
+        originAddress: _originCtrl.text,
+        destLat: _destinationPosition!.latitude,
+        destLng: _destinationPosition!.longitude,
+        destAddress: _destCtrl.text,
+        price: price,
+        paymentMethod: 'CASH',
       );
+
+      if (mounted) {
+        setState(() => _isBooking = false);
+
+        final orderData = {
+          'id': result['id'],
+          'type': _selectedVehicle,
+          'originLat': _currentPosition!.latitude,
+          'originLng': _currentPosition!.longitude,
+          'originAddress': _originCtrl.text,
+          'destLat': _destinationPosition!.latitude,
+          'destLng': _destinationPosition!.longitude,
+          'destAddress': _destCtrl.text,
+          'price': price,
+          'status': result['status'] ?? 'SEARCHING',
+        };
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => RideOrderTrackingScreen(orderData: orderData),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isBooking = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memesan: $e')),
+        );
+      }
     }
   }
 
@@ -287,9 +341,9 @@ class _RideBookingScreenState extends State<RideBookingScreen> {
               // Vehicle Selection Section
               Text('Pilih Kendaraan', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
-              _buildVehicleOption('RIDE', 'RanaRide', 'Motor • Perjalanan cepat & hemat', 15000),
-              _buildVehicleOption('CAR', 'RanaCar', 'Mobil • Nyaman & AC dingin', 35000),
-              _buildVehicleOption('SEND', 'RanaSend', 'Kurir • Kirim paket aman', 12000),
+              _buildVehicleOption('RIDE', 'RanaRide', 'Motor • Perjalanan cepat & hemat', _getDynamicPrice('RIDE', 15000)),
+              _buildVehicleOption('CAR', 'RanaCar', 'Mobil • Nyaman & AC dingin', _getDynamicPrice('CAR', 35000)),
+              _buildVehicleOption('SEND', 'RanaSend', 'Kurir • Kirim paket aman', _getDynamicPrice('SEND', 12000)),
               
               const SizedBox(height: 24),
               
@@ -448,18 +502,71 @@ class _LocationSearchOverlay extends StatefulWidget {
 
 class _LocationSearchOverlayState extends State<_LocationSearchOverlay> {
   final TextEditingController _searchCtrl = TextEditingController();
-  final List<Map<String, dynamic>> _dummyResults = [
-    {'name': 'Stasiun Tebet', 'address': 'Jl. Lapangan Ros Utara, Jakarta Selatan', 'lat': -6.2241, 'lng': 106.8584},
-    {'name': 'Mall Kota Kasablanka', 'address': 'Jl. Casablanca Raya Kav. 88, Jakarta Selatan', 'lat': -6.2235, 'lng': 106.8436},
-    {'name': 'Pacific Place Mall', 'address': 'Sudirman Central Business District, Jakarta', 'lat': -6.2248, 'lng': 106.8098},
-    {'name': 'Monumen Nasional', 'address': 'Gambir, Jakarta Pusat', 'lat': -6.1754, 'lng': 106.8272},
-    {'name': 'Bandara Soekarno-Hatta', 'address': 'Tangerang, Banten', 'lat': -6.1275, 'lng': 106.6537},
-  ];
+  List<Map<String, dynamic>> _results = [];
+  bool _isSearching = false;
+  Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
     _searchCtrl.text = widget.initialText == 'Lokasi Anda Saat Ini' ? '' : widget.initialText;
+    _searchCtrl.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      _searchPlaces(_searchCtrl.text);
+    });
+  }
+
+  Future<void> _searchPlaces(String query) async {
+    if (query.trim().length < 3) {
+      setState(() => _results = []);
+      return;
+    }
+
+    setState(() => _isSearching = true);
+
+    try {
+      // Use Nominatim (OpenStreetMap) for free geocoding
+      final dio = Dio();
+      final response = await dio.get(
+        'https://nominatim.openstreetmap.org/search',
+        queryParameters: {
+          'q': query,
+          'format': 'json',
+          'limit': 8,
+          'countrycodes': 'id', // Indonesia
+          'addressdetails': 1,
+        },
+        options: Options(headers: {'User-Agent': 'RanaMarket/1.0'}),
+      );
+
+      if (mounted) {
+        final data = response.data as List<dynamic>;
+        setState(() {
+          _results = data.map<Map<String, dynamic>>((item) {
+            return <String, dynamic>{
+              'name': item['display_name']?.toString().split(',').first ?? '',
+              'address': item['display_name'] ?? '',
+              'lat': double.tryParse(item['lat']?.toString() ?? '') ?? 0.0,
+              'lng': double.tryParse(item['lon']?.toString() ?? '') ?? 0.0,
+            };
+          }).toList();
+          _isSearching = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isSearching = false);
+    }
   }
 
   @override
@@ -484,33 +591,45 @@ class _LocationSearchOverlayState extends State<_LocationSearchOverlay> {
                     child: TextField(
                       controller: _searchCtrl,
                       autofocus: true,
-                      decoration: const InputDecoration(hintText: 'Cari lokasi...', border: InputBorder.none),
+                      decoration: const InputDecoration(hintText: 'Cari lokasi...', border: InputBorder.none, prefixIcon: Icon(Icons.search, size: 20)),
                     ),
                   ),
                 ),
               ],
             ),
           ),
+          if (_isSearching)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator()),
+            ),
           const Divider(height: 1),
           Expanded(
-            child: ListView.separated(
-              itemCount: _dummyResults.length,
-              separatorBuilder: (_, __) => const Divider(height: 1, indent: 70),
-              itemBuilder: (context, index) {
-                final item = _dummyResults[index];
-                return ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                  leading: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(color: Colors.blue.shade50, shape: BoxShape.circle),
-                    child: const Icon(Icons.location_on, color: Colors.blue, size: 20),
+            child: _results.isEmpty && !_isSearching
+                ? Center(
+                    child: Text(
+                      _searchCtrl.text.length < 3 ? 'Ketik minimal 3 huruf untuk mencari' : 'Tidak ditemukan',
+                      style: TextStyle(color: Colors.grey.shade500),
+                    ),
+                  )
+                : ListView.separated(
+                    itemCount: _results.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1, indent: 70),
+                    itemBuilder: (context, index) {
+                      final item = _results[index];
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                        leading: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(color: Colors.blue.shade50, shape: BoxShape.circle),
+                          child: const Icon(Icons.location_on, color: Colors.blue, size: 20),
+                        ),
+                        title: Text(item['name'], style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 15), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        subtitle: Text(item['address'], style: TextStyle(color: Colors.grey.shade600, fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
+                        onTap: () => widget.onSelected(item['name'], LatLng(item['lat'], item['lng'])),
+                      );
+                    },
                   ),
-                  title: Text(item['name'], style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
-                  subtitle: Text(item['address'], style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-                  onTap: () => widget.onSelected(item['name'], LatLng(item['lat'], item['lng'])),
-                );
-              },
-            ),
           ),
           // Set on map button
           Padding(

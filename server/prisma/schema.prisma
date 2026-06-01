@@ -115,6 +115,7 @@ model User {
   name         String
   email        String   @unique
   passwordHash String
+  avatarUrl    String?
   role         UserRole @default(CASHIER)
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
@@ -132,6 +133,7 @@ model User {
   postComments    CommunityComment[]
   postLikes       CommunityPostLike[]
   distributor     Distributor?
+  gameScores      GameScore[]
 }
 
 enum UserRole {
@@ -356,6 +358,7 @@ model Store {
   ppobTransactions  PpobTransaction[] // [NEW]
   flashSales        FlashSale[] // [FIX] Added relation
   products          Product[]
+  tables            DineTable[]
 }
 
 // [NEW] Withdrawal Request
@@ -389,6 +392,33 @@ model Announcement {
   target      String   @default("ALL") // ALL, PLAN, STATUS, STORE
   targetValue String? // e.g. "PREMIUM", "ACTIVE", or StoreID
   createdAt   DateTime @default(now())
+}
+
+model AppMenu {
+  id       String  @id @default(uuid())
+  key      String  @unique
+  label    String
+  icon     String?
+  route    String
+  order    Int     @default(0)
+  isActive Boolean @default(true)
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  action     String // CREATE, UPDATE, DELETE, LOGIN, LOGOUT
+  entity     String? // e.g. "User", "Withdrawal", "Subscription"
+  entityId   String?
+  oldValue   String? // JSON string of previous state
+  newValue   String? // JSON string of new state
+  ipAddress  String?
+  occurredAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([occurredAt])
 }
 
 model Supplier {
@@ -534,9 +564,11 @@ model Transaction {
   createdAt     DateTime          @default(now())
 
   // Reporting Metadata
-  customerName String?
-  notes        String?
-  shiftId      String?
+  customerName  String?
+  customerPhone String?
+  notes         String?
+  shiftId       String?
+  source        String?  // POS, MARKET, DINE_IN
 
   tenant           Tenant            @relation(fields: [tenantId], references: [id])
   store            Store             @relation(fields: [storeId], references: [id])
@@ -692,6 +724,19 @@ enum TopUpStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+// ================================
+// PLATFORM REVENUE TRACKING
+// ================================
+
+model PlatformRevenue {
+  id          String   @id @default(uuid())
+  amount      Float
+  source      String // SUBSCRIPTION, WITHDRAWAL_FEE, OTHER
+  description String?
+  referenceId String?
+  createdAt   DateTime @default(now())
 }
 
 // ================================
@@ -1016,6 +1061,116 @@ model BlogPost {
 }
 
 // ================================
+// GAMES & LEADERBOARD
+// ================================
+
+model GameScore {
+  id        String   @id @default(uuid())
+  userId    String
+  tenantId  String?
+  gameId    String   // e.g. "snake", "tetris", "match3", "tts"
+  score     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, gameId])
+  @@index([gameId, score])
+}
+
+// ================================
+// TABLE MANAGEMENT (Cafe/Restaurant)
+// ================================
+
+model DineTable {
+  id        String      @id @default(uuid())
+  storeId   String
+  number    Int         // Table number (1, 2, 3...)
+  name      String?     // Optional name ("VIP 1", "Outdoor A")
+  capacity  Int         @default(4)
+  qrCode    String      @unique // Unique QR identifier for this table
+  status    TableStatus @default(AVAILABLE)
+  posX      Float?      // Position on floor plan (optional)
+  posY      Float?
+  isActive  Boolean     @default(true)
+  createdAt DateTime    @default(now())
+
+  store    Store          @relation(fields: [storeId], references: [id])
+  sessions TableSession[]
+
+  @@unique([storeId, number])
+  @@index([storeId, status])
+}
+
+enum TableStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+  CLEANING
+}
+
+model TableSession {
+  id            String             @id @default(uuid())
+  tableId       String
+  storeId       String
+  guestName     String?
+  guestCount    Int                @default(1)
+  status        TableSessionStatus @default(ACTIVE)
+  paymentStatus TablePaymentStatus @default(UNPAID)
+  paymentMethod String?            // CASH, QRIS, TRANSFER, CARD
+  paidAmount    Float              @default(0)
+  startedAt     DateTime           @default(now())
+  closedAt      DateTime?
+  totalAmount   Float              @default(0)
+
+  table  DineTable    @relation(fields: [tableId], references: [id])
+  orders TableOrder[]
+
+  @@index([storeId, status])
+  @@index([storeId, paymentStatus])
+}
+
+enum TableSessionStatus {
+  ACTIVE
+  REQUESTING_BILL
+  CLOSED
+}
+
+enum TablePaymentStatus {
+  UNPAID
+  PENDING_VERIFICATION
+  PAID
+  REFUNDED
+}
+
+model TableOrder {
+  id            String           @id @default(uuid())
+  sessionId     String
+  storeId       String
+  productId     String
+  productName   String
+  quantity      Int
+  price         Float
+  notes         String?
+  status        TableOrderStatus @default(PENDING)
+  orderedAt     DateTime         @default(now())
+  preparedAt    DateTime?
+
+  session TableSession @relation(fields: [sessionId], references: [id])
+
+  @@index([sessionId, status])
+  @@index([storeId, status])
+}
+
+enum TableOrderStatus {
+  PENDING
+  PREPARING
+  SERVED
+  CANCELLED
+}
+
+// ================================
 // DRIVER & RIDE-HAILING
 // ================================
 
@@ -1045,7 +1200,9 @@ model Driver {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
-  serviceRequests ServiceRequest[]
+  serviceRequests    ServiceRequest[]
+  transactions       DriverTransaction[]
+  withdrawals        DriverWithdrawal[]
 }
 
 enum DriverStatus {
@@ -1101,3 +1258,172 @@ enum ServiceStatus {
   CANCELLED
 }
 
+// ================================
+// DRIVER WALLET & TRANSACTIONS
+// ================================
+
+model DriverTransaction {
+  id          String                @id @default(uuid())
+  driverId    String
+  type        DriverTransactionType
+  amount      Float
+  description String?
+  referenceId String?               // ServiceRequest ID or Withdrawal ID
+  createdAt   DateTime              @default(now())
+
+  driver Driver @relation(fields: [driverId], references: [id])
+
+  @@index([driverId, createdAt])
+}
+
+enum DriverTransactionType {
+  TRIP_EARNING
+  BONUS
+  TIP
+  WITHDRAWAL
+  TOP_UP
+  PENALTY
+  ADJUSTMENT
+}
+
+model DriverWithdrawal {
+  id            String                  @id @default(uuid())
+  driverId      String
+  amount        Float
+  fee           Float                   @default(0)
+  netAmount     Float                   @default(0)
+  bankName      String
+  accountNumber String
+  accountHolder String?
+  status        DriverWithdrawalStatus  @default(PENDING)
+  note          String?
+  processedAt   DateTime?
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  driver Driver @relation(fields: [driverId], references: [id])
+
+  @@index([driverId, status])
+}
+
+enum DriverWithdrawalStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  REJECTED
+}
+
+
+// ================================
+// AI MARKETING AUTOMATION
+// ================================
+
+model AiBrandingProfile {
+  id                   String   @id @default(uuid())
+  detectedBusinessType String?
+  brandingTone         String?  // professional, friendly, bold, minimal
+  primaryColor         String?
+  secondaryColor       String?
+  slogan               String?
+  ctaStyle             String?  // bold, subtle, urgent, friendly
+  targetAudience       String?
+  generatedByAi        Boolean  @default(true)
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model AiServiceAnalysis {
+  id                String   @id @default(uuid())
+  websiteTitle      String?
+  detectedServices  Json?    // Array of detected services
+  detectedKeywords  Json?    // Array of keywords
+  targetAudience    String?
+  businessCategory  String?
+  generatedStrategy Json?    // AI generated marketing strategy
+  rawAnalysis       Json?    // Full analysis data
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model AiCampaign {
+  id            String           @id @default(uuid())
+  title         String
+  subject       String
+  preheader     String?
+  content       String           @db.Text
+  template      String?          // template name/type
+  ctaText       String?
+  ctaUrl        String?
+  scheduleTime  DateTime?
+  sentAt        DateTime?
+  status        AiCampaignStatus @default(DRAFT)
+  recipientType String           @default("ALL") // ALL, MERCHANTS, BUYERS, DRIVERS
+  totalSent     Int              @default(0)
+  totalOpened   Int              @default(0)
+  totalClicked  Int              @default(0)
+  generatedByAi Boolean          @default(true)
+  aiScore       Float?           // AI confidence score
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+}
+
+enum AiCampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+}
+
+model AiMarketingConfig {
+  id                  String   @id @default(uuid())
+  isEnabled           Boolean  @default(false)
+  autoAnalyze         Boolean  @default(true)
+  autoBranding        Boolean  @default(true)
+  autoCampaign        Boolean  @default(true)
+  autoSchedule        Boolean  @default(true)
+  autoOptimize        Boolean  @default(true)
+  sendFrequency       String   @default("WEEKLY") // DAILY, WEEKLY, BIWEEKLY, MONTHLY
+  preferredSendHour   Int      @default(9) // 0-23
+  preferredSendDay    Int      @default(2) // 0=Sun, 1=Mon, ...
+  lastAnalyzedAt      DateTime?
+  lastCampaignSentAt  DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+// ================================
+// EMAIL RECIPIENT MANAGEMENT
+// ================================
+
+model EmailRecipient {
+  id        String   @id @default(uuid())
+  email     String
+  name      String?
+  category  String   @default("GENERAL") // MERCHANT, BUYER, DRIVER, DISTRIBUTOR, LEAD, GENERAL
+  tags      String[] // custom tags for segmentation
+  source    String?  // where they came from: REGISTER, IMPORT, MANUAL, LANDING
+  isActive  Boolean  @default(true)
+  isVerified Boolean @default(false)
+  unsubscribed Boolean @default(false)
+  metadata  Json?    // extra data (company, phone, etc)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([email])
+  @@index([category])
+  @@index([isActive, unsubscribed])
+}
+
+model EmailList {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  category    String   @default("GENERAL")
+  color       String?  // for UI display
+  recipientCount Int   @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

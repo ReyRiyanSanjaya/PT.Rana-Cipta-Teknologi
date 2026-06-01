@@ -33,16 +33,39 @@ dependencies:
   sensors_plus: ^4.0.0
   fl_chart: ^0.66.2
   image_picker: ^1.0.7
-  image_picker_for_web: ^3.0.1
-  flutter_mapbox_navigation: ^0.1.5
   carousel_slider: ^5.1.1
+  # Firebase
+  firebase_core: ^3.8.1
+  firebase_messaging: ^15.1.6
+  # WebRTC Voice Call
+  flutter_webrtc: ^0.12.4
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^2.0.0
+  flutter_launcher_icons: ^0.14.3
+  flutter_native_splash: ^2.4.4
+
+# App Icon Configuration
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+  adaptive_icon_background: "#E07A5F"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
+
+# Splash Screen Configuration
+flutter_native_splash:
+  color: "#FFF8F0"
+  image: "assets/splash/splash_logo.png"
+  android_12:
+    color: "#FFF8F0"
+    icon_background_color: "#E07A5F"
+    image: "assets/splash/splash_logo.png"
 
 flutter:
   uses-material-design: true
   assets:
-    - assets/images/
+    - assets/icon/
+    - assets/splash/

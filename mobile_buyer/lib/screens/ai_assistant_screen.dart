@@ -974,7 +974,7 @@ class _ReorderCards extends StatelessWidget {
                 colors: const [Color(0xFF667EEA), Color(0xFF764BA2)]),
             ]),
           ]),
-        ).animate().fadeIn(delay: 100.ms).slideX(begin: -0.1),
+        ),
       ).toList(),
     );
   }

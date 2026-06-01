@@ -14,6 +14,28 @@ import Shipments from './pages/Shipments';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import Discounts from './pages/Discounts';
+import AcquisitionMap from './pages/AcquisitionMap';
+import Subscription from './pages/Subscription';
+import WarehouseManagement from './pages/WarehouseManagement';
+import Forecasting from './pages/Forecasting';
+import Sales from './pages/Sales';
+import WarehouseStock from './pages/WarehouseStock';
+import Receivables from './pages/Receivables';
+import SalesKPI from './pages/SalesKPI';
+import Loyalty from './pages/Loyalty';
+import Returns from './pages/Returns';
+import TeamManagement from './pages/TeamManagement';
+import SfaDashboard from './pages/SfaDashboard';
+import DmsHierarchy from './pages/DmsHierarchy';
+import SfaLeaderboard from './pages/SfaLeaderboard';
+import SfaRoutes from './pages/SfaRoutes';
+import Accounting from './pages/Accounting';
+import SalesAnalytics from './pages/SalesAnalytics';
+import MerchantPerformance from './pages/MerchantPerformance';
+import SalesVisitOrder from './pages/SalesVisitOrder';
+import ProductAnalytics from './pages/ProductAnalytics';
+import KpiDashboard from './pages/KpiDashboard';
+import Promotions from './pages/Promotions';
 
 function App() {
   return (
@@ -32,9 +54,31 @@ function App() {
           <Route path="orders/:id" element={<OrderDetail />} />
           <Route path="inventory" element={<Inventory />} />
           <Route path="merchants" element={<Merchants />} />
+          <Route path="acquisition-map" element={<AcquisitionMap />} />
           <Route path="discounts" element={<Discounts />} />
+          <Route path="promotions" element={<Promotions />} />
           <Route path="shipments" element={<Shipments />} />
+          <Route path="warehouses" element={<WarehouseManagement />} />
+          <Route path="warehouse-stock" element={<WarehouseStock />} />
+          <Route path="forecasting" element={<Forecasting />} />
+          <Route path="sales" element={<Sales />} />
+          <Route path="receivables" element={<Receivables />} />
+          <Route path="returns" element={<Returns />} />
+          <Route path="kpi" element={<SalesKPI />} />
+          <Route path="loyalty" element={<Loyalty />} />
+          <Route path="accounting" element={<Accounting />} />
           <Route path="reports" element={<Reports />} />
+          <Route path="subscription" element={<Subscription />} />
+          <Route path="team" element={<TeamManagement />} />
+          <Route path="sfa" element={<SfaDashboard />} />
+          <Route path="sfa-leaderboard" element={<SfaLeaderboard />} />
+          <Route path="sfa-routes" element={<SfaRoutes />} />
+          <Route path="sfa-orders" element={<SalesVisitOrder />} />
+          <Route path="sales-analytics" element={<SalesAnalytics />} />
+          <Route path="product-analytics" element={<ProductAnalytics />} />
+          <Route path="kpi-dashboard" element={<KpiDashboard />} />
+          <Route path="merchant-performance" element={<MerchantPerformance />} />
+          <Route path="dms" element={<DmsHierarchy />} />
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>

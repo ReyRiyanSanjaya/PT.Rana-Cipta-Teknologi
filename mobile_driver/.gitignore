@@ -43,3 +43,19 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Environment & Secrets
+.env
+*.jks
+*.keystore
+android/key.properties
+
+# Firebase (keep placeholder, ignore real config)
+# android/app/google-services.json  # Uncomment if using real config
+
+# Generated assets (regenerate with flutter_launcher_icons)
+# android/app/src/main/res/mipmap-*
+
+# IDE
+.vscode/
+.idea/

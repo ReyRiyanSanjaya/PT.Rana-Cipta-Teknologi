@@ -34,6 +34,34 @@ class ThemeConfig {
   // Fonts
   static const String fontFamily = 'Inter';
 
+  /// Responsive font scale based on screen width
+  /// Ensures text is readable on small phones (320dp) and not too large on tablets
+  static double fontScale(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width <= 320) return 0.85;
+    if (width <= 360) return 0.92;
+    if (width >= 600) return 1.08;
+    return 1.0;
+  }
+
+  /// Responsive padding that adapts to screen size
+  static double responsivePadding(BuildContext context, {double base = 24.0}) {
+    final width = MediaQuery.of(context).size.width;
+    if (width <= 320) return base * 0.6;
+    if (width <= 360) return base * 0.75;
+    if (width >= 600) return base * 1.2;
+    return base;
+  }
+
+  /// Responsive icon size
+  static double responsiveIconSize(BuildContext context, {double base = 24.0}) {
+    final width = MediaQuery.of(context).size.width;
+    if (width <= 320) return base * 0.8;
+    if (width <= 360) return base * 0.9;
+    if (width >= 600) return base * 1.15;
+    return base;
+  }
+
   static TextTheme get textTheme => GoogleFonts.outfitTextTheme().apply(
         bodyColor: textSecondary,
         displayColor: textPrimary,

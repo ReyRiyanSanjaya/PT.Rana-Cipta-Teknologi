@@ -15,6 +15,7 @@ import 'package:rana_market/services/socket_service.dart';
 import 'package:rana_market/providers/chat_provider.dart';
 import 'package:rana_market/providers/service_provider.dart';
 import 'package:rana_market/services/cache_service.dart';
+import 'package:rana_market/services/webrtc_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -83,6 +84,11 @@ class _SocketManagerState extends State<SocketManager> {
     if (auth.isAuthenticated && auth.token != null) {
       if (!socket.isConnected) {
         socket.init(auth.token!);
+        // Initialize WebRTC for receiving driver calls
+        BuyerWebRTCService().init(socket);
+        BuyerWebRTCService().onIncomingCall = (callerName, orderId) {
+          _showIncomingCallDialog(callerName, orderId, socket);
+        };
       }
     } else {
       if (socket.isConnected) {
@@ -94,5 +100,61 @@ class _SocketManagerState extends State<SocketManager> {
   @override
   Widget build(BuildContext context) {
     return widget.child;
+  }
+
+  void _showIncomingCallDialog(String callerName, String orderId, SocketService socket) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 16),
+            Container(
+              width: 80, height: 80,
+              decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.green.withOpacity(0.1)),
+              child: const Icon(Icons.call_rounded, color: Colors.green, size: 40),
+            ),
+            const SizedBox(height: 16),
+            const Text('Panggilan Masuk', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text(callerName, style: TextStyle(color: Colors.grey.shade600, fontSize: 16)),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    BuyerWebRTCService().rejectCall(socket);
+                    Navigator.pop(ctx);
+                  },
+                  child: Container(
+                    width: 56, height: 56,
+                    decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                    child: const Icon(Icons.call_end_rounded, color: Colors.white),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    BuyerWebRTCService().answerCall(socket);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Panggilan terhubung'), backgroundColor: Colors.green),
+                    );
+                  },
+                  child: Container(
+                    width: 56, height: 56,
+                    decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle),
+                    child: const Icon(Icons.call_rounded, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

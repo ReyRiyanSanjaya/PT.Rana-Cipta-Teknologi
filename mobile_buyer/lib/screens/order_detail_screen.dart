@@ -15,6 +15,7 @@ import 'package:rana_market/services/socket_service.dart';
 import 'package:rana_market/widgets/buyer_bottom_nav.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:rana_market/screens/chat_detail_screen.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final Map<String, dynamic> order;
@@ -113,15 +114,44 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   Future<void> _contactSeller() async {
     final store = _order['store'];
+
+    // Try in-app chat first
+    try {
+      final storeId = _order['storeId'] ?? (store is Map ? store['id'] : null);
+      if (storeId != null) {
+        final chatUser = await MarketApiService().getStoreChatUser(storeId.toString());
+        if (chatUser.isNotEmpty && mounted) {
+          final otherUserId = chatUser['userId']?.toString();
+          final storeName = chatUser['storeName'] ?? (store is Map ? store['name'] : 'Toko');
+          if (otherUserId != null) {
+            // Create or get chat room
+            final api = MarketApiService();
+            final room = await api.createChatRoom(otherUserId, storeName.toString());
+            if (room.isNotEmpty && mounted) {
+              Navigator.push(context, MaterialPageRoute(
+                builder: (_) => ChatDetailScreen(
+                  roomId: room['id']?.toString() ?? '',
+                  roomName: storeName.toString(),
+                ),
+              ));
+              return;
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    // Fallback to WhatsApp
     if (store is! Map) return;
-    final phone = (store['phone'] ?? store['phoneNumber'] ?? '').toString();
+    final phone = (store['phone'] ?? store['phoneNumber'] ?? store['waNumber'] ?? '').toString();
     if (phone.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Nomor telepon toko tidak tersedia')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Nomor telepon toko tidak tersedia')));
+      }
       return;
     }
 
-    // Format phone to international format (assuming ID +62)
     String formattedPhone = phone.replaceAll(RegExp(r'\D'), '');
     if (formattedPhone.startsWith('0')) {
       formattedPhone = '62${formattedPhone.substring(1)}';
@@ -197,6 +227,20 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         .format(number);
   }
 
+  IconData _getCategoryIcon() {
+    final categoryType = _order['categoryType'] ?? '';
+    switch (categoryType) {
+      case 'FOOD':
+        return Icons.soup_kitchen;
+      case 'HEALTH':
+        return Icons.local_pharmacy;
+      case 'RETAIL':
+        return Icons.inventory_2;
+      default:
+        return Icons.soup_kitchen;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final scale = ThemeConfig.tabletScale(context, mobile: 1.0);
@@ -222,29 +266,29 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     switch (status) {
       case 'PENDING':
         statusColor = ThemeConfig.colorWarning;
-        statusText = 'Menunggu Konfirmasi';
+        statusText = _order['statusLabel'] ?? 'Menunggu Konfirmasi';
         statusIcon = Icons.hourglass_top;
         currentStep = 1;
         break;
       case 'ACCEPTED':
       case 'PROCESSING':
         statusColor = ThemeConfig.colorInfo;
-        statusText = 'Sedang Diproses';
-        statusIcon = Icons.soup_kitchen;
+        statusText = _order['statusLabel'] ?? 'Sedang Diproses';
+        statusIcon = _getCategoryIcon();
         lottieUrl = AppConfig.processingLottie;
         currentStep = 2;
         break;
       case 'READY_TO_PICKUP':
       case 'READY':
         statusColor = ThemeConfig.colorSuccess;
-        statusText = 'Siap Diambil';
+        statusText = _order['statusLabel'] ?? 'Siap Diambil';
         statusIcon = Icons.shopping_bag;
         lottieUrl = AppConfig.readyLottie;
         currentStep = 3;
         break;
       case 'ON_DELIVERY':
         statusColor = Colors.blue;
-        statusText = 'Sedang Diantar';
+        statusText = _order['statusLabel'] ?? 'Sedang Diantar';
         statusIcon = Icons.delivery_dining;
         lottieUrl = AppConfig.deliveryLottie;
         currentStep = 3;

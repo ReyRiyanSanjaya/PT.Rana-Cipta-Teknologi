@@ -95,15 +95,85 @@ const initSocket = (server) => {
                 // Emit to the specific buyer's order room so they see the driver moving
                 io.to(`order:${data.orderId}`).emit('driver_moved', data);
             }
-            // Optionally: Emit to admin dashboard
         });
+
+        // ==================== WebRTC Voice Call Signaling ====================
+
+        // Initiate a call to someone in the same order room
+        socket.on('call:offer', (data) => {
+            // data: { targetUserId, orderId, offer (SDP), callerName }
+            const { targetUserId, orderId, offer, callerName } = data;
+            const room = orderId ? `order:${orderId}` : null;
+            // Send to specific user or broadcast to order room
+            if (room) {
+                socket.to(room).emit('call:offer', {
+                    callerId: socket.user.userId,
+                    callerName: callerName || 'Driver',
+                    offer,
+                    orderId,
+                });
+            }
+        });
+
+        // Answer a call
+        socket.on('call:answer', (data) => {
+            // data: { targetUserId, orderId, answer (SDP) }
+            const { orderId, answer } = data;
+            const room = orderId ? `order:${orderId}` : null;
+            if (room) {
+                socket.to(room).emit('call:answer', {
+                    answererId: socket.user.userId,
+                    answer,
+                    orderId,
+                });
+            }
+        });
+
+        // ICE candidate exchange
+        socket.on('call:ice-candidate', (data) => {
+            // data: { orderId, candidate }
+            const { orderId, candidate } = data;
+            const room = orderId ? `order:${orderId}` : null;
+            if (room) {
+                socket.to(room).emit('call:ice-candidate', {
+                    userId: socket.user.userId,
+                    candidate,
+                    orderId,
+                });
+            }
+        });
+
+        // End call
+        socket.on('call:end', (data) => {
+            const { orderId } = data;
+            const room = orderId ? `order:${orderId}` : null;
+            if (room) {
+                socket.to(room).emit('call:end', {
+                    userId: socket.user.userId,
+                    orderId,
+                });
+            }
+        });
+
+        // Reject call
+        socket.on('call:reject', (data) => {
+            const { orderId } = data;
+            const room = orderId ? `order:${orderId}` : null;
+            if (room) {
+                socket.to(room).emit('call:reject', {
+                    userId: socket.user.userId,
+                    orderId,
+                });
+            }
+        });
+
+        // ==================== End WebRTC ====================
 
         // Typing Indicators
         socket.on('typing', ({ ticketId, isTyping }) => {
-            // Broadcast to everyone in room EXCEPT sender
             socket.to(ticketId).emit('typing', {
                 userId: socket.user.userId,
-                role: socket.user.role, // 'ADMIN' or 'OWNER'/'CASHIER'
+                role: socket.user.role,
                 isTyping
             });
         });

@@ -18,6 +18,7 @@ import 'package:rana_market/screens/chat_list_screen.dart';
 import 'package:rana_market/screens/ride_booking_screen.dart';
 import 'package:rana_market/screens/ppob_screen.dart';
 import 'package:rana_market/widgets/interactive_widgets.dart';
+import 'package:rana_market/widgets/home_loading_skeleton.dart';
 import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -257,7 +258,7 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
           _buildAppBar(),
           if (_isLoading)
             const SliverFillRemaining(
-              child: Center(child: CircularProgressIndicator()),
+              child: HomeLoadingSkeleton(),
             )
           else ...[
             SliverToBoxAdapter(

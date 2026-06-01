@@ -1,14 +1,31 @@
 @import "tailwindcss";
 
 @layer base {
-  body {
-    @apply bg-[#FFF8F0] text-slate-800;
+  :root {
+    --color-primary: #5DBB7B;
+    --color-primary-hover: #4DAA6A;
+    --color-primary-light: #E8FAF0;
+    --color-primary-50: #F0FFF6;
+    --color-primary-100: #E0F9EA;
+    --color-primary-200: #B8F0D0;
+    --color-primary-300: #85E3AE;
+    --color-primary-400: #5DBB7B;
+    --color-primary-500: #4DAA6A;
+    --color-primary-600: #3D9A5A;
+    --color-primary-700: #2D7A44;
+    --color-primary-800: #1F5A30;
+    --color-primary-900: #133A1F;
   }
-  
-  /* Custom Scrollbar for Webkit (Chrome, Safari, Edge) */
+
+  body {
+    @apply bg-[#F4FBF6] text-slate-800 antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  /* Modern Scrollbar */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
   }
 
   ::-webkit-scrollbar-track {
@@ -16,12 +33,50 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-slate-300 rounded-full hover:bg-slate-400 transition-colors;
+    background: #c8ddd0;
+    border-radius: 10px;
   }
 
-  /* For Firefox */
+  ::-webkit-scrollbar-thumb:hover {
+    background: #9bbda8;
+  }
+
   * {
     scrollbar-width: thin;
-    scrollbar-color: theme('colors.slate.300') transparent;
+    scrollbar-color: #c8ddd0 transparent;
+  }
+}
+
+@layer components {
+  /* Modern Card */
+  .card-modern {
+    @apply bg-white/80 backdrop-blur-sm border border-emerald-100/50 rounded-2xl shadow-sm shadow-emerald-900/[0.03];
+  }
+
+  /* Glassmorphism */
+  .glass {
+    @apply bg-white/70 backdrop-blur-xl border border-white/60;
+  }
+
+  /* Smooth transitions */
+  .transition-smooth {
+    @apply transition-all duration-200 ease-out;
+  }
+}
+
+@layer utilities {
+  .animate-in {
+    animation: animateIn 0.2s ease-out;
+  }
+
+  @keyframes animateIn {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 }

@@ -66,6 +66,7 @@ const MapController = ({ center, zoom, bounds }) => {
 
 const AcquisitionMap = () => {
     const [stores, setStores] = useState([]);
+    const [allStores, setAllStores] = useState([]); // All stores for stats
     const [activeCity, setActiveCity] = useState(CITIES.MEDAN);
     const [scope, setScope] = useState('CITY');
     const [nationalDistricts, setNationalDistricts] = useState([]);
@@ -78,24 +79,42 @@ const AcquisitionMap = () => {
     const [showMarkers, setShowMarkers] = useState(true);
     const [showHeat, setShowHeat] = useState(false);
     const [focusBounds, setFocusBounds] = useState(null);
+    const [storeStats, setStoreStats] = useState({ total: 0, withCoords: 0, byLocation: {} });
 
     useEffect(() => {
         const fetchStores = async () => {
             try {
                 setLoading(true);
                 const params = new URLSearchParams();
-                if (scope === 'CITY') {
-                    params.append('city', activeCity.name);
-                }
                 if (statusFilter) params.append('status', statusFilter);
                 if (planFilter) params.append('plan', planFilter);
                 if (dateFrom) params.append('createdFrom', dateFrom);
                 if (dateTo) params.append('createdTo', dateTo);
+                if (scope === 'CITY') {
+                    params.append('city', activeCity.name);
+                }
                 const res = await api.get(`/admin/merchants?${params.toString()}`);
                 const raw = res?.data?.data ?? res?.data ?? [];
                 const list = Array.isArray(raw) ? raw : [];
+                
+                // All stores (for stats)
+                setAllStores(list);
+                
+                // Only stores with valid coordinates for map markers
                 const validStores = list.filter(s => s.latitude && s.longitude);
                 setStores(validStores);
+
+                // Build stats
+                const byLocation = {};
+                list.forEach(s => {
+                    const loc = s.location || 'Unknown';
+                    byLocation[loc] = (byLocation[loc] || 0) + 1;
+                });
+                setStoreStats({
+                    total: list.length,
+                    withCoords: validStores.length,
+                    byLocation
+                });
             } catch (error) {
                 console.error("Failed to fetch stores", error);
             } finally {
@@ -108,21 +127,41 @@ const AcquisitionMap = () => {
 
     useEffect(() => {
         if (scope !== 'INDONESIA') {
+            setNationalDistricts([]);
             return;
         }
-        const fetchDistricts = async () => {
-            try {
-                const res = await api.get('/admin/geodata/kecamatan');
-                const raw = res?.data?.data ?? res?.data ?? [];
-                const list = Array.isArray(raw) ? raw : [];
-                setNationalDistricts(list);
-            } catch (error) {
-                console.error("Failed to fetch districts", error);
-                setNationalDistricts([]);
+        // Build national districts from actual store location data
+        // Group stores by location and create virtual district bounds
+        const locationGroups = {};
+        allStores.forEach(s => {
+            const loc = s.location || 'Unknown';
+            if (!locationGroups[loc]) {
+                locationGroups[loc] = { stores: [], lats: [], lngs: [] };
             }
-        };
-        fetchDistricts();
-    }, [scope]);
+            locationGroups[loc].stores.push(s);
+            if (s.latitude && s.longitude) {
+                locationGroups[loc].lats.push(s.latitude);
+                locationGroups[loc].lngs.push(s.longitude);
+            }
+        });
+
+        const colors = ['#60A5FA', '#34D399', '#F87171', '#FBBF24', '#A78BFA', '#FFB4C2', '#6EE7B7', '#FCA5A5'];
+        const districts = Object.entries(locationGroups)
+            .filter(([_, data]) => data.lats.length > 0)
+            .map(([name, data], idx) => {
+                const minLat = Math.min(...data.lats) - 0.01;
+                const maxLat = Math.max(...data.lats) + 0.01;
+                const minLng = Math.min(...data.lngs) - 0.01;
+                const maxLng = Math.max(...data.lngs) + 0.01;
+                return {
+                    name,
+                    color: colors[idx % colors.length],
+                    bounds: [[minLat, minLng], [maxLat, maxLng]]
+                };
+            });
+
+        setNationalDistricts(districts);
+    }, [scope, allStores]);
 
     useEffect(() => {
         const baseDistricts = scope === 'CITY' ? activeCity.districts : nationalDistricts;
@@ -254,12 +293,19 @@ const AcquisitionMap = () => {
 
             <Card className="overflow-hidden rounded-2xl border border-white/60 shadow-xl relative z-0 bg-white/40 backdrop-blur-sm">
                 {loading ? (
-                    <div className="flex h-full flex-col items-center justify-center text-slate-400">
+                    <div className="flex h-[650px] flex-col items-center justify-center text-slate-400">
                         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-500 mb-4"></div>
                         <p className="font-medium animate-pulse">Loading Geospatial Data...</p>
                     </div>
                 ) : (
                     <>
+                        {/* Info banner when stores exist but no coordinates */}
+                        {storeStats.total > 0 && storeStats.withCoords === 0 && (
+                            <div className="px-4 py-3 bg-amber-50 border-b border-amber-100 flex items-center gap-2 text-sm text-amber-700">
+                                <MapIcon size={16} />
+                                <span><strong>{storeStats.total}</strong> merchant ditemukan, namun belum ada yang memiliki koordinat GPS. Marker akan muncul setelah merchant mengisi lokasi GPS.</span>
+                            </div>
+                        )}
                         <div className="h-[650px] w-full">
                             <MapContainer
                                 center={mapCenter}
@@ -343,7 +389,7 @@ const AcquisitionMap = () => {
                         </div>
 
                         {/* Floating Glass Panel - Stats */}
-                        <div className="absolute top-4 right-4 w-64 max-w-[90vw] bg-white/80 backdrop-blur-xl p-5 rounded-2xl shadow-lg border border-white/50 z-[1000] transition-all hover:bg-white/90">
+                        <div className="absolute top-4 right-4 w-72 max-w-[90vw] bg-white/80 backdrop-blur-xl p-5 rounded-2xl shadow-lg border border-white/50 z-[1000] transition-all hover:bg-white/90">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="font-bold text-slate-800 flex items-center">
                                     <Target size={18} className="mr-2 text-indigo-500" />
@@ -351,13 +397,29 @@ const AcquisitionMap = () => {
                                 </h3>
                             </div>
 
+                            {/* Summary Stats */}
+                            <div className="grid grid-cols-2 gap-2 mb-4">
+                                <div className="bg-indigo-50/80 rounded-xl p-2.5 text-center">
+                                    <p className="text-lg font-bold text-indigo-700">{storeStats.total}</p>
+                                    <p className="text-[10px] text-indigo-500 font-medium">Total Merchants</p>
+                                </div>
+                                <div className="bg-emerald-50/80 rounded-xl p-2.5 text-center">
+                                    <p className="text-lg font-bold text-emerald-700">{storeStats.withCoords}</p>
+                                    <p className="text-[10px] text-emerald-500 font-medium">On Map</p>
+                                </div>
+                            </div>
+
                             <div className="space-y-3">
-                                {districtStats.length === 0 && scope === 'INDONESIA' ? (
+                                {districtStats.length === 0 ? (
                                     <div className="text-xs text-slate-400">
-                                        Data zonasi kecamatan Indonesia belum tersedia.
+                                        {storeStats.total === 0
+                                            ? 'Belum ada merchant di area ini.'
+                                            : storeStats.withCoords === 0
+                                                ? 'Merchant belum memiliki koordinat GPS.'
+                                                : 'Tidak ada data zonasi.'}
                                     </div>
                                 ) : (
-                                    districtStats.map(d => (
+                                    districtStats.slice(0, 8).map(d => (
                                         <div
                                             key={d.name}
                                             className="flex items-center justify-between group cursor-pointer"
@@ -368,7 +430,7 @@ const AcquisitionMap = () => {
                                                     className="w-2.5 h-2.5 rounded-full mr-3 shadow-sm transition-all group-hover:scale-125"
                                                     style={{ backgroundColor: d.color }}
                                                 ></div>
-                                                <span className="text-sm text-slate-600 font-medium">{d.name}</span>
+                                                <span className="text-sm text-slate-600 font-medium truncate max-w-[140px]">{d.name}</span>
                                             </div>
                                             <span className="text-sm font-bold text-slate-800">{d.count}</span>
                                         </div>
@@ -376,11 +438,29 @@ const AcquisitionMap = () => {
                                 )}
                             </div>
 
-                            <div className="mt-6 pt-4 border-t border-slate-200/60">
+                            {/* Location breakdown (non-mapped) */}
+                            {storeStats.total > 0 && storeStats.total > storeStats.withCoords && (
+                                <div className="mt-4 pt-3 border-t border-slate-200/60">
+                                    <p className="text-[10px] font-semibold text-slate-500 uppercase mb-2">By Location</p>
+                                    <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                                        {Object.entries(storeStats.byLocation)
+                                            .sort((a, b) => b[1] - a[1])
+                                            .slice(0, 6)
+                                            .map(([loc, count]) => (
+                                                <div key={loc} className="flex items-center justify-between text-xs">
+                                                    <span className="text-slate-600 truncate max-w-[150px]">{loc}</span>
+                                                    <span className="font-semibold text-slate-800">{count}</span>
+                                                </div>
+                                            ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="mt-4 pt-3 border-t border-slate-200/60">
                                 <div className="flex justify-between items-end">
                                     <span className="text-xs text-slate-400 font-medium">Total Acquired</span>
                                     <span className="text-2xl font-black text-slate-800 bg-clip-text text-transparent bg-gradient-to-br from-indigo-600 to-indigo-800">
-                                        {stores.length}
+                                        {storeStats.total}
                                     </span>
                                 </div>
                             </div>

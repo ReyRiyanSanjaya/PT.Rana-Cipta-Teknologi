@@ -183,7 +183,7 @@ const Wallet = () => {
                     </div>
                 </div>
 
-                <div className="bg-[#020617] border border-slate-800 rounded-2xl p-5 md:p-6 shadow-xl shadow-indigo-900/20 relative overflow-hidden">
+                <div className="bg-slate-900 dark:bg-[#020617] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 md:p-6 shadow-xl shadow-indigo-900/20 relative overflow-hidden">
                     <div className="absolute -right-16 -top-16 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl" />
                     <div className="flex items-center justify-between mb-6 relative z-10">
                         <div>
@@ -195,18 +195,21 @@ const Wallet = () => {
                                     Saldo Dompet Toko
                                 </div>
                             </div>
-                            <div className="text-3xl md:text-4xl font-black text-slate-50 tracking-tight">
+                            <div className="text-3xl md:text-4xl font-black text-white dark:text-slate-50 tracking-tight">
                                 {formatCurrency(data?.balance || 0)}
                             </div>
-                            <div className="text-xs text-slate-500 mt-1">
+                            <div className="text-xs text-slate-400 dark:text-slate-500 mt-1">
                                 Saldo ini digunakan untuk PPOB, transfer antar toko, dan penarikan.
                             </div>
                         </div>
                         <div className="hidden md:flex flex-col items-end gap-2 text-xs text-slate-400">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/80 border border-slate-700">
+                            <button
+                                onClick={loadData}
+                                className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800 dark:bg-slate-900/80 border border-slate-700 hover:bg-slate-700 dark:hover:bg-slate-800 transition-colors"
+                            >
                                 <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
-                                <span>{loading ? 'Menyegarkan...' : 'Tarik data terbaru'}</span>
-                            </div>
+                                <span>{loading ? 'Menyegarkan...' : 'Refresh'}</span>
+                            </button>
                         </div>
                     </div>
 
@@ -216,7 +219,7 @@ const Wallet = () => {
                             className={`flex flex-col items-center justify-center px-3 py-2 rounded-xl border text-xs font-medium transition-all ${
                                 activeTab === 'topup'
                                     ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/30'
-                                    : 'bg-slate-900/80 text-slate-200 border-slate-700 hover:bg-slate-800'
+                                    : 'bg-white/10 dark:bg-slate-900/80 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
                             }`}
                         >
                             Top Up
@@ -226,7 +229,7 @@ const Wallet = () => {
                             className={`flex flex-col items-center justify-center px-3 py-2 rounded-xl border text-xs font-medium transition-all ${
                                 activeTab === 'transfer'
                                     ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/30'
-                                    : 'bg-slate-900/80 text-slate-200 border-slate-700 hover:bg-slate-800'
+                                    : 'bg-white/10 dark:bg-slate-900/80 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
                             }`}
                         >
                             Transfer
@@ -236,7 +239,7 @@ const Wallet = () => {
                             className={`flex flex-col items-center justify-center px-3 py-2 rounded-xl border text-xs font-medium transition-all ${
                                 activeTab === 'history'
                                     ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/30'
-                                    : 'bg-slate-900/80 text-slate-200 border-slate-700 hover:bg-slate-800'
+                                    : 'bg-white/10 dark:bg-slate-900/80 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
                             }`}
                         >
                             Riwayat
@@ -246,7 +249,7 @@ const Wallet = () => {
                             className={`flex flex-col items-center justify-center px-3 py-2 rounded-xl border text-xs font-medium transition-all ${
                                 activeTab === 'withdraw'
                                     ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/30'
-                                    : 'bg-slate-900/80 text-slate-200 border-slate-700 hover:bg-slate-800'
+                                    : 'bg-white/10 dark:bg-slate-900/80 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
                             }`}
                         >
                             Tarik

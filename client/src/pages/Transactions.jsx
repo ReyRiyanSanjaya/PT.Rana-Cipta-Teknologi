@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { initTransactionsStream, subscribeTransactions } from '../services/transactionsStream';
-import { Search, Eye, X, Receipt, Calendar, User, CreditCard, ShoppingBag } from 'lucide-react';
+import { Search, Eye, X, Receipt, Calendar, User, CreditCard, ShoppingBag, TrendingUp, DollarSign } from 'lucide-react';
 
 const Badge = ({ connected }) => (
     <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border ${
@@ -53,42 +53,134 @@ const Transactions = () => {
         (t.paymentMethod && t.paymentMethod.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
+    // Summary stats
+    const stats = useMemo(() => {
+        const totalRevenue = filteredList.reduce((sum, t) => sum + (t.totalAmount || 0), 0);
+        const avgTransaction = filteredList.length > 0 ? totalRevenue / filteredList.length : 0;
+        const cashCount = filteredList.filter(t => !t.paymentMethod || t.paymentMethod === 'TUNAI' || t.paymentMethod === 'CASH').length;
+        const digitalCount = filteredList.length - cashCount;
+        return { totalRevenue, avgTransaction, cashCount, digitalCount };
+    }, [filteredList]);
+
     return (
         <DashboardLayout>
-            <div className="space-y-8 pb-20">
+            <div className="space-y-6 pb-20">
                 {/* Header */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Riwayat Transaksi</h2>
-                        <p className="text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2">
-                            <Receipt size={16} />
+                        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Riwayat Transaksi</h2>
+                        <p className="text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2 text-sm">
+                            <Receipt size={14} />
                             <span>Riwayat penjualan dan detail real-time</span>
                         </p>
                     </div>
                     <Badge connected={state.connected} />
                 </div>
 
-                {/* Search & Stats */}
-                <div className="flex flex-col md:flex-row gap-4 justify-between items-center sticky top-0 z-10 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-md py-4 -my-4 px-1">
+                {/* Summary Stats Cards */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-4 shadow-sm">
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center">
+                                <Receipt size={14} className="text-indigo-600 dark:text-indigo-400" />
+                            </div>
+                        </div>
+                        <p className="text-xl font-bold text-slate-900 dark:text-white">{filteredList.length}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Total Transaksi</p>
+                    </div>
+                    <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-4 shadow-sm">
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center">
+                                <DollarSign size={14} className="text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                        </div>
+                        <p className="text-xl font-bold text-slate-900 dark:text-white">{formatCurrency(stats.totalRevenue)}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Total Pendapatan</p>
+                    </div>
+                    <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-4 shadow-sm">
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="w-8 h-8 rounded-lg bg-violet-50 dark:bg-violet-500/10 flex items-center justify-center">
+                                <TrendingUp size={14} className="text-violet-600 dark:text-violet-400" />
+                            </div>
+                        </div>
+                        <p className="text-xl font-bold text-slate-900 dark:text-white">{formatCurrency(stats.avgTransaction)}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Rata-rata</p>
+                    </div>
+                    <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-4 shadow-sm">
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center">
+                                <CreditCard size={14} className="text-amber-600 dark:text-amber-400" />
+                            </div>
+                        </div>
+                        <p className="text-xl font-bold text-slate-900 dark:text-white">{stats.digitalCount}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Digital / {stats.cashCount} Tunai</p>
+                    </div>
+                </div>
+
+                {/* Search */}
+                <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
                     <div className="relative w-full md:w-96 group">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 group-focus-within:text-indigo-500 transition-colors" size={18} />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 group-focus-within:text-teal-500 transition-colors" size={18} />
                         <input
                             type="text"
                             placeholder="Cari ID, Kasir, atau Metode..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-sm"
+                            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all shadow-sm"
                         />
-                    </div>
-                    <div className="text-sm text-slate-500 dark:text-slate-400 font-medium bg-white dark:bg-slate-800 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                        Total Transaksi: <span className="text-slate-900 dark:text-white font-bold">{filteredList.length}</span>
                     </div>
                 </div>
 
-                {/* Table */}
+                {/* Mobile Card View */}
+                <div className="md:hidden space-y-3">
+                    <AnimatePresence initial={false}>
+                        {filteredList.map((t, i) => (
+                            <motion.div
+                                key={(t.id || t.offlineId || i) + '-card-' + i}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ delay: i * 0.03 }}
+                                onClick={() => setSelectedTransaction(t)}
+                                className={`bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 shadow-sm active:scale-[0.98] transition-transform cursor-pointer ${updating && i === 0 ? 'ring-2 ring-emerald-500/20' : ''}`}
+                            >
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs font-bold">
+                                            {(t.cashierName?.[0] || 'U').toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-semibold text-slate-900 dark:text-white">{t.cashierName || 'Kasir'}</p>
+                                            <p className="text-[11px] text-slate-400 dark:text-slate-500">{formatDateTime(t.createdAt || t.occurredAt)}</p>
+                                        </div>
+                                    </div>
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-bold ${
+                                        (t.paymentMethod === 'QRIS' || t.paymentMethod === 'TRANSFER')
+                                        ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                                        : 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+                                    }`}>
+                                        {t.paymentMethod || 'TUNAI'}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs text-slate-400 font-mono">#{t.id?.toString().slice(-6) || '---'}</span>
+                                    <span className="text-base font-bold text-slate-900 dark:text-white">{formatCurrency(t.totalAmount)}</span>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </AnimatePresence>
+                    {filteredList.length === 0 && (
+                        <div className="flex flex-col items-center gap-3 py-12 text-center">
+                            <Receipt size={48} className="text-slate-200 dark:text-slate-700" />
+                            <p className="text-slate-500 dark:text-slate-400 text-sm">Tidak ada transaksi ditemukan</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Desktop Table */}
                 <motion.div 
                     layout
-                    className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden"
+                    className="hidden md:block bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden"
                 >
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
@@ -260,18 +352,33 @@ const Transactions = () => {
 
                                     {/* Summary */}
                                     <div className="space-y-2 pt-4 border-t border-dashed border-slate-200 dark:border-slate-700">
-                                        <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                                            <span>Subtotal</span>
-                                            <span>{formatCurrency((selectedTransaction.totalAmount / 1.11))}</span>
-                                        </div>
-                                        <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                                            <span>Pajak (11%)</span>
-                                            <span>{formatCurrency(selectedTransaction.totalAmount - (selectedTransaction.totalAmount / 1.11))}</span>
-                                        </div>
-                                        <div className="flex justify-between items-end pt-2">
-                                            <span className="font-bold text-slate-900 dark:text-white text-lg">Total Bayar</span>
-                                            <span className="font-extrabold text-2xl text-indigo-600 dark:text-indigo-400 tracking-tight">{formatCurrency(selectedTransaction.totalAmount)}</span>
-                                        </div>
+                                        {(() => {
+                                            const itemsSubtotal = selectedTransaction.items && selectedTransaction.items.length > 0
+                                                ? selectedTransaction.items.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+                                                : selectedTransaction.totalAmount;
+                                            const tax = selectedTransaction.tax != null 
+                                                ? Number(selectedTransaction.tax) 
+                                                : (selectedTransaction.totalAmount - itemsSubtotal);
+                                            const actualTax = Math.max(0, tax);
+                                            return (
+                                                <>
+                                                    <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                                                        <span>Subtotal</span>
+                                                        <span>{formatCurrency(itemsSubtotal)}</span>
+                                                    </div>
+                                                    {actualTax > 0 && (
+                                                        <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                                                            <span>Pajak</span>
+                                                            <span>{formatCurrency(actualTax)}</span>
+                                                        </div>
+                                                    )}
+                                                    <div className="flex justify-between items-end pt-2">
+                                                        <span className="font-bold text-slate-900 dark:text-white text-lg">Total Bayar</span>
+                                                        <span className="font-extrabold text-2xl text-indigo-600 dark:text-indigo-400 tracking-tight">{formatCurrency(selectedTransaction.totalAmount)}</span>
+                                                    </div>
+                                                </>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
                                 

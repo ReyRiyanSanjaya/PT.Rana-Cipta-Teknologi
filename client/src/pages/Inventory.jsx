@@ -439,7 +439,71 @@ const Inventory = () => {
                                     </div>
                                 </div>
                             ) : (
-                                <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+                                <>
+                                {/* Mobile Card View */}
+                                <div className="md:hidden space-y-3 mb-4">
+                                    {filteredProducts.length === 0 ? (
+                                        <div className="flex flex-col items-center gap-3 py-12 text-center">
+                                            <Package size={48} className="text-slate-200 dark:text-slate-700" />
+                                            <p className="text-slate-500 dark:text-slate-400 text-sm">Tidak ditemukan produk yang cocok</p>
+                                        </div>
+                                    ) : currentProducts.map((product) => {
+                                        const stockStatus = product.stock === 0 ? 'habis' : (product.stock || 0) <= (product.minStock || 0) ? 'menipis' : 'aman';
+                                        return (
+                                            <motion.div
+                                                key={product.id + '-mobile'}
+                                                initial={{ opacity: 0, y: 8 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 shadow-sm"
+                                            >
+                                                <div className="flex items-start gap-3">
+                                                    <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex-shrink-0 overflow-hidden flex items-center justify-center">
+                                                        {product.image ? (
+                                                            <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <Package size={20} className="text-slate-400" />
+                                                        )}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-start justify-between gap-2">
+                                                            <div>
+                                                                <h4 className="font-semibold text-sm text-slate-900 dark:text-white truncate">{product.name}</h4>
+                                                                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{product.category?.name || 'Tanpa Kategori'} • {product.sku || '-'}</p>
+                                                            </div>
+                                                            <span className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                                                stockStatus === 'habis' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                                                                : stockStatus === 'menipis' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+                                                                : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+                                                            }`}>
+                                                                {product.stock ?? 0} {stockStatus === 'habis' ? 'Habis' : stockStatus === 'menipis' ? 'Menipis' : 'Aman'}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center justify-between mt-3">
+                                                            <span className="text-sm font-bold text-slate-900 dark:text-white">{formatCurrency(product.sellingPrice || product.price || 0)}</span>
+                                                            <div className="flex items-center gap-1">
+                                                                <button onClick={() => handleOpenEditProduct(product)} className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors" title="Edit">
+                                                                    <Edit size={14} />
+                                                                </button>
+                                                                <button onClick={() => handleOpenAdjust(product)} className="p-1.5 rounded-lg text-slate-400 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors" title="Stok">
+                                                                    <Filter size={14} />
+                                                                </button>
+                                                                <button onClick={() => handleViewLogs(product)} className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors" title="Riwayat">
+                                                                    <History size={14} />
+                                                                </button>
+                                                                <button onClick={() => handleDeleteProduct(product.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Hapus">
+                                                                    <Trash2 size={14} />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </motion.div>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Desktop Table */}
+                                <div className="hidden md:block bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-left">
                                             <thead>
@@ -582,6 +646,7 @@ const Inventory = () => {
                                         </div>
                                     )}
                                 </div>
+                                </>
                             )}
                         </motion.div>
                     )}

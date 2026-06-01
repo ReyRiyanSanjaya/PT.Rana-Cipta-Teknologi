@@ -14,7 +14,7 @@ const createOrder = async (req, res) => {
         }
 
         // Get Store to find TenantId
-        const store = await prisma.store.findUnique({ where: { id: storeId } });
+        const store = await prisma.store.findUnique({ where: { id: storeId }, select: { id: true, tenantId: true, name: true, category: true, latitude: true, longitude: true, location: true } });
         if (!store) return errorResponse(res, "Store not found", 404);
 
         // Apply Flash Sale Pricing if applicable
@@ -119,6 +119,8 @@ const createOrder = async (req, res) => {
 
         try {
             emitToTenant(store.tenantId, 'orders:updated', result);
+            // Emit dedicated new order event for merchant notification
+            emitToTenant(store.tenantId, 'orders:new', result);
             // Notify Buyer (though they just created it, good for sync)
             emitToOrder(result.id, 'order_status', result);
         } catch (e) {
@@ -150,14 +152,18 @@ const confirmPayment = async (req, res) => {
         });
 
         if (order.platformFee && order.platformFee > 0) {
-            await prisma.platformRevenue.create({
-                data: {
-                    amount: order.platformFee,
-                    source: 'OTHER',
-                    description: `Transaction Fee (Buyer) - ${order.id}`,
-                    referenceId: order.id
-                }
-            });
+            try {
+                await prisma.platformRevenue.create({
+                    data: {
+                        amount: order.platformFee,
+                        source: 'OTHER',
+                        description: `Transaction Fee (Buyer) - ${order.id}`,
+                        referenceId: order.id
+                    }
+                });
+            } catch (revenueErr) {
+                console.warn('PlatformRevenue log skipped:', revenueErr.message);
+            }
         }
 
         try {

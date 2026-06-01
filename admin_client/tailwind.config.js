@@ -7,23 +7,29 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                plurk: ['"Plurit"', 'sans-serif'], // Just kidding, using Inter
-                sans: ['"Inter"', 'sans-serif'],
+                sans: ['"Inter"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
             },
             colors: {
-                // Soft Blue Palette for Beige Theme
                 primary: {
-                    50: '#F0F6FA',
-                    100: '#E2EDF5',
-                    200: '#C5DBEB',
-                    300: '#A8C9E1',
-                    400: '#8BB7D7',
-                    500: '#6EA5CD',
-                    600: '#669BBC', // Soft Blue Brand
-                    700: '#527C96',
-                    800: '#3D5D71',
-                    900: '#293E4B',
+                    50: '#F0FFF6',
+                    100: '#E0F9EA',
+                    200: '#B8F0D0',
+                    300: '#85E3AE',
+                    400: '#5DBB7B',
+                    500: '#4DAA6A',
+                    600: '#3D9A5A',
+                    700: '#2D7A44',
+                    800: '#1F5A30',
+                    900: '#133A1F',
                 }
+            },
+            borderRadius: {
+                '2xl': '1rem',
+                '3xl': '1.25rem',
+            },
+            boxShadow: {
+                'soft': '0 2px 15px -3px rgba(93, 187, 123, 0.08), 0 4px 6px -4px rgba(93, 187, 123, 0.04)',
+                'card': '0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02)',
             }
         },
     },

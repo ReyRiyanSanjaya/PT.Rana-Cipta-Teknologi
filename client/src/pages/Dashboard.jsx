@@ -4,10 +4,12 @@ import { DollarSign, ShoppingBag, CreditCard, Activity, Package, Calendar, Alert
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../components/layout/DashboardLayout';
+import { DashboardSkeleton } from '../components/LoadingSkeleton';
 import { fetchDashboardStats, fetchAdminStats, fetchAdminChart, fetchWalletData } from '../services/api';
 import api from '../services/api';
 import { io } from 'socket.io-client';
 import RealtimeBadge from '../components/RealtimeBadge';
+import QuickActions from '../components/QuickActions';
 import { useAuth } from '../context/AuthContext';
 
 const StatCard = ({ title, value, subtext, icon: Icon, colorClass, trend, delay, onClick }) => {
@@ -19,34 +21,35 @@ const StatCard = ({ title, value, subtext, icon: Icon, colorClass, trend, delay,
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             whileHover={{ y: -5, transition: { duration: 0.2 } }}
-            whileTap={{ scale: 0.98 }}
+            whileTap={{ scale: 0.97 }}
             transition={{ delay, duration: 0.4 }}
             onClick={onClick}
-            className={`relative overflow-hidden rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 shadow-sm hover:shadow-2xl hover:shadow-indigo-500/10 dark:hover:shadow-indigo-900/10 transition-all duration-300 group ${onClick ? 'cursor-pointer' : ''}`}
+            className={`relative overflow-hidden rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-4 sm:p-6 shadow-sm hover:shadow-2xl hover:shadow-indigo-500/10 dark:hover:shadow-indigo-900/10 transition-all duration-300 group ${onClick ? 'cursor-pointer' : ''}`}
         >
             <div className={`absolute -right-6 -top-6 h-32 w-32 rounded-full opacity-[0.03] transition-transform duration-700 group-hover:scale-150 ${bgBase}`} />
             <div className={`absolute -bottom-6 -left-6 h-24 w-24 rounded-full opacity-[0.03] transition-transform delay-100 duration-700 group-hover:scale-150 ${bgBase}`} />
             
             <div className="relative z-10 flex flex-col h-full justify-between">
-                <div className="flex items-start justify-between mb-4">
-                    <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-opacity-10 backdrop-blur-sm transition-transform duration-300 group-hover:scale-110 ${bgBase} ${colorClass} dark:${colorClass.replace('600', '400')}`}>
-                        <Icon size={24} />
+                <div className="flex items-start justify-between mb-3 sm:mb-4">
+                    <div className={`flex h-9 w-9 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-opacity-10 backdrop-blur-sm transition-transform duration-300 group-hover:scale-110 ${bgBase} ${colorClass} dark:${colorClass.replace('600', '400')}`}>
+                        <Icon size={18} className="sm:hidden" />
+                        <Icon size={24} className="hidden sm:block" />
                     </div>
-                    {trend !== undefined && (
-                        <div className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold border ${trend >= 0 ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20' : 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20'}`}>
-                            {trend >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                    {trend !== undefined && trend !== null && (
+                        <div className={`flex items-center gap-0.5 sm:gap-1 rounded-full px-1.5 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-xs font-bold border ${trend >= 0 ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20' : 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20'}`}>
+                            {trend >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                             {Math.abs(trend)}%
                         </div>
                     )}
                 </div>
                 
                 <div>
-                    <h3 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white mb-1">{value}</h3>
-                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors">{title}</p>
+                    <h3 className="text-lg sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white mb-0.5 sm:mb-1 truncate">{value}</h3>
+                    <p className="text-[11px] sm:text-sm font-medium text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors truncate">{title}</p>
                 </div>
                 
                 {subtext && (
-                    <div className="mt-4 flex items-center gap-2 border-t border-slate-50 pt-3 text-xs text-slate-400 dark:border-slate-800 dark:text-slate-500">
+                    <div className="mt-3 sm:mt-4 hidden sm:flex items-center gap-2 border-t border-slate-50 pt-3 text-xs text-slate-400 dark:border-slate-800 dark:text-slate-500">
                         <span className={`h-1.5 w-1.5 rounded-full ${bgBase.replace('bg-opacity-10', '')} opacity-60`} />
                         {subtext}
                     </div>
@@ -96,11 +99,34 @@ const Dashboard = () => {
                 }
             } else {
                 try {
-                    const [stats, annRes, walletData] = await Promise.all([
+                    // Fetch today and yesterday for trend comparison
+                    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+                    const [stats, yesterdayStats, annRes, walletData] = await Promise.all([
                         fetchDashboardStats(today, user?.storeId),
+                        fetchDashboardStats(yesterday, user?.storeId).catch(() => null),
                         annResPromise,
                         walletPromise
                     ]);
+                    
+                    // Calculate real trends
+                    if (stats && yesterdayStats) {
+                        const calcTrend = (current, previous) => {
+                            if (!previous || previous === 0) return current > 0 ? 100 : 0;
+                            return Math.round(((current - previous) / previous) * 100 * 10) / 10;
+                        };
+                        const todayFin = stats.financials || {};
+                        const yestFin = yesterdayStats.financials || {};
+                        stats._trends = {
+                            grossProfit: calcTrend(todayFin.grossProfit || 0, yestFin.grossProfit || 0),
+                            netSales: calcTrend(todayFin.netSales || 0, yestFin.netSales || 0),
+                            avgOrder: calcTrend(
+                                (todayFin.netSales || 0) / (todayFin.transactionCount || 1),
+                                (yestFin.netSales || 0) / (yestFin.transactionCount || 1)
+                            ),
+                            cogs: calcTrend(todayFin.cogs || 0, yestFin.cogs || 0),
+                        };
+                    }
+                    
                     setData(stats);
                     setAnnouncements(annRes?.data?.data || []);
                     setWallet(walletData);
@@ -141,12 +167,7 @@ const Dashboard = () => {
 
     if (loading) return (
         <DashboardLayout>
-            <div className="flex items-center justify-center h-[80vh]">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-                    <p className="text-slate-500 dark:text-slate-400 animate-pulse font-medium">Memuat dashboard...</p>
-                </div>
-            </div>
+            <DashboardSkeleton />
         </DashboardLayout>
     );
 
@@ -175,13 +196,52 @@ const Dashboard = () => {
     if (!data && !adminData) {
         return (
             <DashboardLayout>
-                <div className="flex items-center justify-center h-[80vh]">
-                    <div className="flex flex-col items-center gap-2 text-center">
-                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">Dashboard belum memiliki data</h3>
-                        <p className="text-slate-500 dark:text-slate-400 text-sm">
-                            Tidak ada data transaksi yang bisa ditampilkan untuk hari ini.
-                        </p>
-                    </div>
+                <div className="flex flex-col items-center justify-center min-h-[70vh] px-4">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.5 }}
+                        className="flex flex-col items-center gap-6 text-center max-w-md"
+                    >
+                        <div className="relative">
+                            <div className="absolute inset-0 bg-gradient-to-br from-teal-400 to-indigo-500 rounded-full blur-2xl opacity-20 animate-pulse" />
+                            <div className="relative p-6 rounded-full bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 border border-slate-200 dark:border-slate-700">
+                                <Store size={48} className="text-teal-500 dark:text-teal-400" />
+                            </div>
+                        </div>
+                        <div>
+                            <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Selamat Datang di Rana!</h3>
+                            <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
+                                Belum ada data transaksi hari ini. Mulai berjualan melalui POS untuk melihat ringkasan performa toko Anda.
+                            </p>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                            <button 
+                                onClick={() => navigate('/pos')}
+                                className="px-6 py-3 bg-gradient-to-r from-teal-500 to-emerald-600 text-white rounded-xl hover:from-teal-600 hover:to-emerald-700 transition-all font-semibold flex items-center justify-center gap-2 shadow-lg shadow-teal-500/25"
+                            >
+                                <Store size={18} />
+                                Buka Kasir (POS)
+                            </button>
+                            <button 
+                                onClick={() => navigate('/inventory')}
+                                className="px-6 py-3 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all font-semibold flex items-center justify-center gap-2"
+                            >
+                                <Package size={18} />
+                                Kelola Inventaris
+                            </button>
+                        </div>
+                    </motion.div>
+
+                    {/* Quick Actions even when no data */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                        className="mt-12 w-full max-w-lg rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 shadow-sm"
+                    >
+                        <QuickActions />
+                    </motion.div>
                 </div>
             </DashboardLayout>
         );
@@ -315,28 +375,28 @@ const Dashboard = () => {
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
                     <div>
                         <div className="flex items-center gap-2 mb-3">
-                            <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-bold text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400">
-                                <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-indigo-500"></span>
+                            <span className="inline-flex items-center rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-bold text-teal-700 dark:bg-teal-500/10 dark:text-teal-400">
+                                <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse"></span>
                                 Dashboard
                             </span>
                             <RealtimeBadge />
                         </div>
-                        <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
                             Halo, {user?.name?.split(' ')[0] || 'Kasir'} <span className="text-2xl">👋</span>
                         </h1>
-                        <p className="mt-2 text-slate-500 dark:text-slate-400">
+                        <p className="mt-2 text-sm sm:text-base text-slate-500 dark:text-slate-400">
                             Berikut adalah ringkasan performa toko Anda untuk hari ini.
                         </p>
                     </div>
                     
                     <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 rounded-2xl bg-white px-4 py-2.5 shadow-sm border border-slate-100 dark:bg-slate-900 dark:border-slate-800">
-                            <div className="rounded-lg bg-indigo-50 p-2 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
-                                <Calendar size={18} />
+                        <div className="flex items-center gap-2 rounded-2xl bg-white px-3 sm:px-4 py-2 sm:py-2.5 shadow-sm border border-slate-100 dark:bg-slate-900 dark:border-slate-800">
+                            <div className="rounded-lg bg-teal-50 p-1.5 sm:p-2 text-teal-600 dark:bg-teal-500/10 dark:text-teal-400">
+                                <Calendar size={16} />
                             </div>
                             <div className="flex flex-col">
                                 <span className="text-[10px] font-bold uppercase text-slate-400">Hari Ini</span>
-                                <span className="text-sm font-bold text-slate-900 dark:text-white">
+                                <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
                                     {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                                 </span>
                             </div>
@@ -344,24 +404,24 @@ const Dashboard = () => {
 
                         <button 
                             onClick={() => navigate('/inventory')}
-                            className="group relative flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-sm border border-slate-100 hover:border-indigo-100 hover:text-indigo-600 dark:bg-slate-900 dark:border-slate-800 dark:hover:border-indigo-900 dark:hover:text-indigo-400 transition-all"
+                            className="group relative flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-white shadow-sm border border-slate-100 hover:border-rose-100 hover:text-rose-600 dark:bg-slate-900 dark:border-slate-800 dark:hover:border-rose-900 dark:hover:text-rose-400 transition-all"
                             title="Cek Stok Menipis"
                         >
-                            <AlertCircle size={22} />
-                            <span className="absolute top-3 right-3 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900"></span>
+                            <AlertCircle size={20} />
+                            <span className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900"></span>
                         </button>
                     </div>
                 </div>
 
                 {/* Financial Metrics */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
                     <StatCard
                         title="Laba Kotor"
                         value={formatCurrency(financials.grossProfit)}
                         subtext="Pendapatan - HPP"
                         icon={DollarSign}
                         colorClass="text-emerald-600"
-                        trend={12.5}
+                        trend={data?._trends?.grossProfit}
                         delay={0.1}
                         onClick={() => navigate('/profit-loss')}
                     />
@@ -371,7 +431,7 @@ const Dashboard = () => {
                         subtext={`${financials.transactionCount} Transaksi sukses`}
                         icon={ShoppingBag}
                         colorClass="text-indigo-600"
-                        trend={8.2}
+                        trend={data?._trends?.netSales}
                         delay={0.2}
                         onClick={() => navigate('/transactions')}
                     />
@@ -381,7 +441,7 @@ const Dashboard = () => {
                         subtext="Per transaksi sukses"
                         icon={CreditCard}
                         colorClass="text-violet-600"
-                        trend={-2.4}
+                        trend={data?._trends?.avgOrder}
                         delay={0.3}
                         onClick={() => navigate('/reports')}
                     />
@@ -391,11 +451,21 @@ const Dashboard = () => {
                         subtext="Modal barang terjual"
                         icon={Activity}
                         colorClass="text-amber-600"
-                        trend={5.1}
+                        trend={data?._trends?.cogs}
                         delay={0.4}
                         onClick={() => navigate('/profit-loss')}
                     />
                 </div>
+
+                {/* Quick Actions - Mobile First */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.45 }}
+                    className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 shadow-sm"
+                >
+                    <QuickActions />
+                </motion.div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Top Products Chart */}
@@ -474,14 +544,14 @@ const Dashboard = () => {
                         className="space-y-6"
                     >
                         {wallet && (
-                            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 p-8 text-white shadow-2xl shadow-indigo-500/30 transition-transform hover:scale-[1.02] duration-500">
+                            <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 p-5 sm:p-8 text-white shadow-2xl shadow-indigo-500/30 transition-transform hover:scale-[1.01] duration-500">
                                 <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-white opacity-10 blur-3xl transition-transform duration-1000 group-hover:scale-110" />
                                 <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-48 w-48 rounded-full bg-indigo-950 opacity-20 blur-2xl" />
                                 
                                 <div className="relative z-10 flex flex-col justify-between h-full">
-                                    <div className="flex items-start justify-between mb-8">
-                                        <div className="rounded-2xl bg-white/10 p-3 backdrop-blur-md border border-white/10 shadow-lg">
-                                            <Wallet className="h-6 w-6 text-white" />
+                                    <div className="flex items-start justify-between mb-5 sm:mb-8">
+                                        <div className="rounded-xl sm:rounded-2xl bg-white/10 p-2.5 sm:p-3 backdrop-blur-md border border-white/10 shadow-lg">
+                                            <Wallet className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                                         </div>
                                         <div className="text-right">
                                             <p className="text-xs font-bold uppercase tracking-widest text-indigo-200">Rana Pay</p>
@@ -495,9 +565,9 @@ const Dashboard = () => {
                                         </div>
                                     </div>
                                     
-                                    <div className="mb-8">
-                                        <p className="text-sm font-medium text-indigo-100 mb-1">Total Saldo Aktif</p>
-                                        <h3 className="text-4xl font-bold tracking-tight text-white drop-shadow-sm">
+                                    <div className="mb-5 sm:mb-8">
+                                        <p className="text-xs sm:text-sm font-medium text-indigo-100 mb-1">Total Saldo Aktif</p>
+                                        <h3 className="text-2xl sm:text-4xl font-bold tracking-tight text-white drop-shadow-sm">
                                             {formatCurrency(wallet.balance || 0)}
                                         </h3>
                                     </div>

@@ -116,8 +116,7 @@ const POSMode = () => {
             setCurrentShift(null);
             setShiftSummary(null);
             playSuccess();
-            // alert("Shift berhasil ditutup.");
-            setShowOpenShift(true); // Ask to open new shift
+            navigate('/dashboard');
         } catch (e) {
             console.error("Failed to close shift", e);
             playError();
@@ -142,7 +141,7 @@ const POSMode = () => {
              
              socket = io(SOCKET_URL, {
                 auth: { token },
-                transports: ['websocket']
+                transports: ['websocket', 'polling']
              });
 
              socket.on('connect', () => {
@@ -334,9 +333,9 @@ const POSMode = () => {
             await refreshUser();
         }
 
-        if (isOffline || !serverConnected) {
+        if (isOffline) {
             playError();
-            alert("Tidak dapat memproses transaksi. Pastikan perangkat online dan terhubung ke server.");
+            alert("Tidak dapat memproses transaksi. Pastikan perangkat terhubung ke internet.");
             return;
         }
 
@@ -346,9 +345,9 @@ const POSMode = () => {
 
         const transaction = {
             offlineId: crypto.randomUUID(),
-            tenantId: user?.tenantId,
-            storeId: user?.storeId || user?.store?.id,
-            cashierId: user?.id,
+            tenantId: user?.tenantId || null,
+            storeId: user?.storeId || user?.store?.id || null,
+            cashierId: user?.id || null,
             occurredAt: new Date().toISOString(),
             totalAmount: finalTotal,
             subtotal: subtotal,
@@ -358,12 +357,12 @@ const POSMode = () => {
             change: paymentData.change,
             items: cart.map(item => ({
                 productId: item.id,
-                quantity: item.qty,
-                price: item.price,
-                productName: item.name,
-                productSku: item.sku,
-                productImage: item.imageUrl,
-                basePrice: item.basePrice
+                quantity: Number(item.qty),
+                price: Number(item.price || item.sellingPrice || 0),
+                productName: item.name || null,
+                productSku: item.sku || null,
+                productImage: item.imageUrl || item.image || null,
+                basePrice: item.basePrice != null ? Number(item.basePrice) : null
             }))
         };
 
@@ -402,8 +401,11 @@ const POSMode = () => {
             } else if (status === 401) {
                 alert('Tidak terautentikasi. Silakan login ulang.');
                 navigate('/login');
+            } else if (!navigator.onLine || error?.code === 'ERR_NETWORK') {
+                alert("Tidak dapat memproses transaksi. Pastikan perangkat online dan terhubung ke server.");
             } else {
-                alert("Gagal menyimpan transaksi. Silakan coba lagi.");
+                const serverMsg = data?.message || data?.error?.errors?.map(e => `${e.field}: ${e.message}`).join(', ');
+                alert(serverMsg || "Gagal menyimpan transaksi. Silakan coba lagi.");
             }
         }
     };
@@ -447,77 +449,6 @@ const POSMode = () => {
                             onChange={e => setSearchTerm(e.target.value)}
                             className="w-full pl-9 pr-3 py-2 bg-[#020617]/80 border border-slate-700/70 focus:bg-[#020617] focus:border-indigo-500/80 rounded-xl focus:ring-0 outline-none text-xs text-slate-100 placeholder:text-slate-500 transition-all duration-300 shadow-inner focus:shadow-[0_0_0_1px_rgba(129,140,248,0.7)]"
                         />
-            
-            {/* Shortcuts Modal */}
-            <AnimatePresence>
-                {showShortcuts && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-                        onClick={() => setShowShortcuts(false)}
-                    >
-                        <motion.div
-                            initial={{ scale: 0.95, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.95, opacity: 0 }}
-                            onClick={e => e.stopPropagation()}
-                            className="bg-[#0f172a] border border-slate-700 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
-                        >
-                            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-[#1e293b]/50">
-                                <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                                    <Keyboard size={20} className="text-indigo-400" />
-                                    Pintasan Keyboard
-                                </h2>
-                                <button 
-                                    onClick={() => setShowShortcuts(false)}
-                                    className="text-slate-400 hover:text-white transition-colors"
-                                >
-                                    <X size={20} />
-                                </button>
-                            </div>
-                            <div className="p-6 space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                        <div className="text-xs text-slate-400 font-medium uppercase tracking-wider">Navigasi</div>
-                                        <div className="flex justify-between items-center bg-slate-900/50 p-2 rounded border border-slate-800">
-                                            <span className="text-sm text-slate-200">Cari Produk</span>
-                                            <kbd className="px-2 py-1 bg-slate-800 text-slate-300 rounded text-xs font-bold border border-slate-700">Ctrl + K</kbd>
-                                        </div>
-                                        <div className="flex justify-between items-center bg-slate-900/50 p-2 rounded border border-slate-800">
-                                            <span className="text-sm text-slate-200">Bantuan</span>
-                                            <kbd className="px-2 py-1 bg-slate-800 text-slate-300 rounded text-xs font-bold border border-slate-700">F1</kbd>
-                                        </div>
-                                        <div className="flex justify-between items-center bg-slate-900/50 p-2 rounded border border-slate-800">
-                                            <span className="text-sm text-slate-200">Layar Penuh</span>
-                                            <kbd className="px-2 py-1 bg-slate-800 text-slate-300 rounded text-xs font-bold border border-slate-700">F11</kbd>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <div className="text-xs text-slate-400 font-medium uppercase tracking-wider">Transaksi</div>
-                                        <div className="flex justify-between items-center bg-slate-900/50 p-2 rounded border border-slate-800">
-                                            <span className="text-sm text-slate-200">Bayar</span>
-                                            <kbd className="px-2 py-1 bg-slate-800 text-slate-300 rounded text-xs font-bold border border-slate-700">F4</kbd>
-                                        </div>
-                                        <div className="flex justify-between items-center bg-slate-900/50 p-2 rounded border border-slate-800">
-                                            <span className="text-sm text-slate-200">Hapus Keranjang</span>
-                                            <kbd className="px-2 py-1 bg-slate-800 text-slate-300 rounded text-xs font-bold border border-slate-700">Ctrl + Del</kbd>
-                                        </div>
-                                        <div className="flex justify-between items-center bg-slate-900/50 p-2 rounded border border-slate-800">
-                                            <span className="text-sm text-slate-200">Tutup / Batal</span>
-                                            <kbd className="px-2 py-1 bg-slate-800 text-slate-300 rounded text-xs font-bold border border-slate-700">Esc</kbd>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="px-6 py-4 bg-slate-950/50 border-t border-slate-800 text-center">
-                                <p className="text-xs text-slate-500">Tekan <span className="text-indigo-400 font-bold">Esc</span> untuk menutup jendela ini</p>
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
                         <div className="absolute inset-y-0 right-2 flex items-center">
                              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[9px] font-semibold text-slate-300 bg-slate-800/80 border border-slate-700 rounded">CTRL+K</kbd>
                         </div>
@@ -850,6 +781,77 @@ const POSMode = () => {
                     onConfirm={handleCloseShift}
                     summary={shiftSummary}
                 />
+
+                {/* Shortcuts Modal */}
+                <AnimatePresence>
+                    {showShortcuts && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+                            onClick={() => setShowShortcuts(false)}
+                        >
+                            <motion.div
+                                initial={{ scale: 0.95, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0.95, opacity: 0 }}
+                                onClick={e => e.stopPropagation()}
+                                className="bg-[#0f172a] border border-slate-700 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+                            >
+                                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-[#1e293b]/50">
+                                    <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                                        <Keyboard size={20} className="text-indigo-400" />
+                                        Pintasan Keyboard
+                                    </h2>
+                                    <button 
+                                        onClick={() => setShowShortcuts(false)}
+                                        className="text-slate-400 hover:text-white transition-colors"
+                                    >
+                                        <X size={20} />
+                                    </button>
+                                </div>
+                                <div className="p-6 space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <div className="text-xs text-slate-400 font-medium uppercase tracking-wider">Navigasi</div>
+                                            <div className="flex justify-between items-center bg-slate-900/50 p-2 rounded border border-slate-800">
+                                                <span className="text-sm text-slate-200">Cari Produk</span>
+                                                <kbd className="px-2 py-1 bg-slate-800 text-slate-300 rounded text-xs font-bold border border-slate-700">Ctrl + K</kbd>
+                                            </div>
+                                            <div className="flex justify-between items-center bg-slate-900/50 p-2 rounded border border-slate-800">
+                                                <span className="text-sm text-slate-200">Bantuan</span>
+                                                <kbd className="px-2 py-1 bg-slate-800 text-slate-300 rounded text-xs font-bold border border-slate-700">F1</kbd>
+                                            </div>
+                                            <div className="flex justify-between items-center bg-slate-900/50 p-2 rounded border border-slate-800">
+                                                <span className="text-sm text-slate-200">Layar Penuh</span>
+                                                <kbd className="px-2 py-1 bg-slate-800 text-slate-300 rounded text-xs font-bold border border-slate-700">F11</kbd>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <div className="text-xs text-slate-400 font-medium uppercase tracking-wider">Transaksi</div>
+                                            <div className="flex justify-between items-center bg-slate-900/50 p-2 rounded border border-slate-800">
+                                                <span className="text-sm text-slate-200">Bayar</span>
+                                                <kbd className="px-2 py-1 bg-slate-800 text-slate-300 rounded text-xs font-bold border border-slate-700">F4</kbd>
+                                            </div>
+                                            <div className="flex justify-between items-center bg-slate-900/50 p-2 rounded border border-slate-800">
+                                                <span className="text-sm text-slate-200">Hapus Keranjang</span>
+                                                <kbd className="px-2 py-1 bg-slate-800 text-slate-300 rounded text-xs font-bold border border-slate-700">Ctrl + Del</kbd>
+                                            </div>
+                                            <div className="flex justify-between items-center bg-slate-900/50 p-2 rounded border border-slate-800">
+                                                <span className="text-sm text-slate-200">Tutup / Batal</span>
+                                                <kbd className="px-2 py-1 bg-slate-800 text-slate-300 rounded text-xs font-bold border border-slate-700">Esc</kbd>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="px-6 py-4 bg-slate-950/50 border-t border-slate-800 text-center">
+                                    <p className="text-xs text-slate-500">Tekan <span className="text-indigo-400 font-bold">Esc</span> untuk menutup jendela ini</p>
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
         </div>
     );
 };

@@ -118,7 +118,7 @@ export default function ProductList() {
                         <div className="h-10 w-10 rounded-md bg-slate-100 dark:bg-slate-800 overflow-hidden">
                             {product.images && product.images.length > 0 ? (
                                 <img 
-                                    src={`http://localhost:3000${product.images[0]}`} 
+                                    src={product.images[0].startsWith('http') ? product.images[0] : `http://localhost:4000${product.images[0]}`} 
                                     alt={product.name} 
                                     className="h-full w-full object-cover"
                                 />

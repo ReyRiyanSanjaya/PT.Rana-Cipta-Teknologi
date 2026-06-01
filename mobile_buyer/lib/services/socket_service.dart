@@ -16,6 +16,8 @@ class SocketService extends ChangeNotifier {
       StreamController<Map<String, dynamic>>.broadcast();
   final _onlineCountController =
       StreamController<Map<String, dynamic>>.broadcast();
+  final _driverMovedController =
+      StreamController<Map<String, dynamic>>.broadcast();
 
   bool get isConnected => _isConnected;
   Stream<Map<String, dynamic>> get orderStatusStream =>
@@ -26,6 +28,8 @@ class SocketService extends ChangeNotifier {
       _typingController.stream;
   Stream<Map<String, dynamic>> get onlineCountStream =>
       _onlineCountController.stream;
+  Stream<Map<String, dynamic>> get driverMovedStream =>
+      _driverMovedController.stream;
 
   void init(String token) {
     if (_currentToken == token && _isConnected) return;
@@ -68,6 +72,13 @@ class SocketService extends ChangeNotifier {
       }
     });
 
+    _socket!.on('payment_status', (data) {
+      if (data is Map) {
+        // Treat payment status updates as order status updates for UI
+        _orderStatusController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
     _socket!.on('chat:new_message', (data) {
       if (data is Map) {
         _chatMessageController.add(Map<String, dynamic>.from(data));
@@ -83,6 +94,12 @@ class SocketService extends ChangeNotifier {
     _socket!.on('chat:online_count', (data) {
       if (data is Map) {
         _onlineCountController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    _socket!.on('driver_moved', (data) {
+      if (data is Map) {
+        _driverMovedController.add(Map<String, dynamic>.from(data));
       }
     });
 
@@ -115,6 +132,18 @@ class SocketService extends ChangeNotifier {
         });
       }
     }
+  }
+
+  /// Emit raw event (for WebRTC signaling)
+  void emitRaw(String event, dynamic data) {
+    if (_socket != null && _socket!.connected) {
+      _socket!.emit(event, data);
+    }
+  }
+
+  /// Listen to raw socket event (for WebRTC signaling)
+  void onRaw(String event, Function(dynamic) callback) {
+    _socket?.on(event, callback);
   }
 
   void disconnect() {

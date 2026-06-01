@@ -66,6 +66,10 @@ class ApiService {
   String? _token;
   String? get token => _token; // [NEW] Getter
 
+  /// Convenience getter for auth options (used by screens calling dio directly)
+  Options get authOptions =>
+      Options(headers: {'Authorization': 'Bearer $_token'});
+
   void setToken(String token) {
     _token = token;
     _dio.options.headers['Authorization'] =
@@ -1059,7 +1063,37 @@ class ApiService {
     }
   }
 
-  // 5. App Menus (Dynamic)
+  // 5. Promotions (Wholesale)
+  Future<List<dynamic>> getActiveWholesalePromos(String distributorId) async {
+    try {
+      final response = await _dio.get('/distributor/promotions/active/$distributorId');
+      return response.data['data'] ?? [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> applyWholesalePromo({
+    required String distributorId,
+    required String promoCode,
+    required List<Map<String, dynamic>> items,
+    required double orderTotal,
+  }) async {
+    try {
+      final response = await _dio.post('/distributor/promotions/apply', data: {
+        'distributorId': distributorId,
+        'promoCode': promoCode,
+        'items': items,
+        'orderTotal': orderTotal,
+      }, options: Options(headers: {'Authorization': 'Bearer $_token'}));
+      if (_isSuccess(response.data)) return response.data['data'];
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // 6. App Menus (Dynamic)
   Future<List<dynamic>> fetchAppMenus() async {
     try {
       final response = await _dio.get('/system/app-menus');

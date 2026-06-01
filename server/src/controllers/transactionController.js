@@ -267,6 +267,7 @@ const getTransactionHistory = async (req, res) => {
         const transactions = await prisma.transaction.findMany({
             where,
             include: {
+                cashier: { select: { name: true } },
                 transactionItems: {
                     include: {
                         product: { select: { basePrice: true, name: true } }
@@ -283,16 +284,18 @@ const getTransactionHistory = async (req, res) => {
             tenantId: t.tenantId,
             storeId: t.storeId,
             cashierId: t.cashierId,
+            cashierName: t.cashier?.name || 'Kasir',
             totalAmount: t.totalAmount,
+            tax: t.tax || 0,
+            discount: t.discount || 0,
             paymentMethod: t.paymentMethod,
-            status: t.orderStatus, // Map orderStatus to status
+            status: t.orderStatus,
             occurredAt: t.occurredAt,
             createdAt: t.createdAt,
             items: t.transactionItems.map(ti => ({
                 productId: ti.productId,
                 quantity: ti.quantity,
                 price: ti.price,
-                // Return the snapshot basePrice first, fallback to product current basePrice
                 basePrice: ti.basePrice ?? ti.costPrice ?? ti.product?.basePrice ?? 0,
                 costPrice: ti.basePrice ?? ti.costPrice ?? ti.product?.basePrice ?? 0,
                 name: ti.productName ?? ti.product?.name

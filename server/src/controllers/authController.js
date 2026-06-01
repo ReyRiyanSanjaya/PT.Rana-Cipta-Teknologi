@@ -579,6 +579,7 @@ const getProfile = async (req, res) => {
                 name: true,
                 email: true,
                 role: true,
+                avatarUrl: true,
                 createdAt: true,
                 tenant: {
                     select: { 
@@ -619,4 +620,75 @@ const updateUserProfile = async (req, res) => {
     }
 };
 
-module.exports = { register, login, getProfile, updateStoreProfile, updateUserProfile, registerDistributor };
+const changePassword = async (req, res) => {
+    try {
+        const { userId } = req.user;
+        const { currentPassword, newPassword } = req.body;
+
+        if (!currentPassword || !newPassword) {
+            return errorResponse(res, "Password lama dan baru wajib diisi", 400);
+        }
+
+        if (!isStrongPassword(newPassword)) {
+            return errorResponse(res, "Password baru harus minimal 8 karakter, mengandung huruf besar, huruf kecil, dan angka", 400);
+        }
+
+        const user = await prisma.user.findUnique({ where: { id: userId }, select: { passwordHash: true } });
+        if (!user) return errorResponse(res, "User not found", 404);
+
+        const validPass = await bcrypt.compare(currentPassword, user.passwordHash);
+        if (!validPass) return errorResponse(res, "Password lama tidak sesuai", 401);
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await prisma.user.update({
+            where: { id: userId },
+            data: { passwordHash: hashedPassword }
+        });
+
+        successResponse(res, null, "Password berhasil diubah");
+    } catch (error) {
+        errorResponse(res, "Gagal mengubah password", 500, error);
+    }
+};
+
+const updatePhoto = async (req, res) => {
+    try {
+        const { userId, tenantId } = req.user;
+        const { photoBase64 } = req.body;
+
+        if (!photoBase64) return errorResponse(res, "Foto wajib diisi", 400);
+
+        // Validate base64 image
+        const matches = photoBase64.match(/^data:image\/(png|jpeg|jpg|webp);base64,(.+)$/);
+        if (!matches) return errorResponse(res, "Format gambar tidak valid", 400);
+
+        const ext = matches[1];
+        const buffer = Buffer.from(matches[2], 'base64');
+
+        // Max 2MB
+        if (buffer.length > 2 * 1024 * 1024) {
+            return errorResponse(res, "Ukuran foto maksimal 2MB", 400);
+        }
+
+        const fs = require('fs');
+        const path = require('path');
+        const fileName = `avatar_${userId}_${Date.now()}.${ext}`;
+        const uploadDir = path.join(__dirname, '../../uploads/avatars');
+        if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+        fs.writeFileSync(path.join(uploadDir, fileName), buffer);
+        const photoUrl = `/uploads/avatars/${fileName}`;
+
+        // Update user record
+        await prisma.user.update({
+            where: { id: userId },
+            data: { avatarUrl: photoUrl }
+        });
+
+        successResponse(res, { avatarUrl: photoUrl }, "Foto profil berhasil diperbarui");
+    } catch (error) {
+        errorResponse(res, "Gagal mengupload foto", 500, error);
+    }
+};
+
+module.exports = { register, login, getProfile, updateStoreProfile, updateUserProfile, registerDistributor, changePassword, updatePhoto };

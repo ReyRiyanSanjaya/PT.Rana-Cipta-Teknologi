@@ -3,6 +3,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:rana_market/data/market_api_service.dart';
 import 'package:rana_market/screens/product_detail_screen.dart';
 import 'package:rana_market/screens/store_detail_screen.dart';
+import 'package:rana_market/screens/table_order_screen.dart';
 import 'package:rana_market/config/theme_config.dart';
 
 class QrScannerScreen extends StatefulWidget {
@@ -34,7 +35,19 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     setState(() => _isProcessing = true);
 
     try {
-      // Assuming QR can be "store:ID" or "product:ID" or just ID (default product)
+      // Table QR: starts with "TABLE_" or contains "/table/qr/"
+      if (code.startsWith('TABLE_') || code.contains('/table/qr/')) {
+        final qrCode = code.startsWith('TABLE_') ? code : code.split('/table/qr/').last;
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => TableOrderScreen(qrCode: qrCode)),
+          );
+        }
+        return;
+      }
+
+      // Store QR
       if (code.startsWith('store:')) {
         final storeId = code.substring(6);
         final result = await MarketApiService().getStoreCatalog(storeId);

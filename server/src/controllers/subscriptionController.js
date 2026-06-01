@@ -155,14 +155,18 @@ exports.approveRequest = async (req, res) => {
 
         // 4. Create Platform Revenue log for the subscription
         if (request.package) {
-            await prisma.platformRevenue.create({
-                data: {
-                    amount: request.package.price,
-                    source: 'SUBSCRIPTION',
-                    description: `Subscription: ${request.package.name} - ${request.tenant.name}`,
-                    referenceId: request.id
-                }
-            });
+            try {
+                await prisma.platformRevenue.create({
+                    data: {
+                        amount: request.package.price,
+                        source: 'SUBSCRIPTION',
+                        description: `Subscription: ${request.package.name} - ${request.tenant.name}`,
+                        referenceId: request.id
+                    }
+                });
+            } catch (revenueErr) {
+                console.warn('PlatformRevenue log skipped:', revenueErr.message);
+            }
         }
 
         res.json({

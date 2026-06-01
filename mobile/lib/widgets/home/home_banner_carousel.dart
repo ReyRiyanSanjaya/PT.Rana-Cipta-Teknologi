@@ -28,8 +28,10 @@ class HomeBannerCarousel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bannerHeight =
-        (MediaQuery.of(context).size.width * 0.68).clamp(340.0, 520.0).toDouble();
+    final screenWidth = MediaQuery.of(context).size.width;
+    final bannerHeight = screenWidth <= 320
+        ? (screenWidth * 0.55).clamp(180.0, 280.0).toDouble()
+        : (screenWidth * 0.68).clamp(280.0, 520.0).toDouble();
 
     if (isLoadingBanners) {
       return Padding(

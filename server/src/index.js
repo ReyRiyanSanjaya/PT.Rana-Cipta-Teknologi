@@ -116,10 +116,13 @@ try {
     app.use('/api/referral', referralRoutes);
     app.use('/api/community', require('./routes/communityRoutes'));
     app.use('/api/chat', require('./routes/chatRoutes'));
+    app.use('/api/games', require('./routes/gameRoutes'));
+    app.use('/api/ai', require('./routes/aiRoutes'));
     app.use('/api/contact', require('./routes/contact'));
     app.use('/api/careers', require('./routes/careers'));
     app.use('/api/driver', require('./routes/driverRoutes'));
     app.use('/api/service-requests', require('./routes/serviceRequestRoutes'));
+    app.use('/api/table', require('./routes/tableRoutes'));
     logger.info('✅ All API modules mounted');
 } catch (e) {
     logger.error('❌ Critical error mounting API modules', e);

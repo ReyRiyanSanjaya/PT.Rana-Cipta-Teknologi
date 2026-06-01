@@ -24,7 +24,7 @@ JWT_SECRET="ganti_dengan_string_acak_panjang"
 NODE_ENV=development
 ```
 > ⚠️ Ganti `PASSWORD_ANDA` dengan password PostgreSQL Anda. Jangan ada prefix `PASSWORD_` — cukup passwordnya saja.
-
+   
 ### Langkah 3 — Jalankan Installer Otomatis
 
 **Double-click** file **`Install manual awal.bat`** di root folder.

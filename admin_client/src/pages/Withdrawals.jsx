@@ -15,6 +15,7 @@ const Withdrawals = () => {
     const [exporting, setExporting] = useState(false);
     const [search, setSearch] = useState('');
     const [actionLoading, setActionLoading] = useState({});
+    const [counts, setCounts] = useState({ PENDING: 0, APPROVED: 0, REJECTED: 0 });
 
     const fetchWithdrawals = async () => {
         setLoading(true);
@@ -28,9 +29,30 @@ const Withdrawals = () => {
         }
     };
 
+    const fetchCounts = async () => {
+        try {
+            const [pending, approved, rejected] = await Promise.all([
+                api.get('/admin/withdrawals', { params: { status: 'PENDING' } }),
+                api.get('/admin/withdrawals', { params: { status: 'APPROVED' } }),
+                api.get('/admin/withdrawals', { params: { status: 'REJECTED' } }),
+            ]);
+            setCounts({
+                PENDING: pending.data.data?.length || 0,
+                APPROVED: approved.data.data?.length || 0,
+                REJECTED: rejected.data.data?.length || 0,
+            });
+        } catch (e) {
+            console.error('Failed to fetch counts', e);
+        }
+    };
+
     useEffect(() => {
         fetchWithdrawals();
     }, [filter]);
+
+    useEffect(() => {
+        fetchCounts();
+    }, []);
 
     const handleApprove = async (id) => {
         if (!window.confirm("Are you sure you want to approve this transfer?")) return;
@@ -38,6 +60,7 @@ const Withdrawals = () => {
             setActionLoading(prev => ({ ...prev, [id]: true }));
             await api.put(`/admin/withdrawals/${id}/approve`);
             fetchWithdrawals();
+            fetchCounts();
         } catch (error) {
             alert(error.response?.data?.message || "Failed to approve");
         } finally {
@@ -52,6 +75,7 @@ const Withdrawals = () => {
             setActionLoading(prev => ({ ...prev, [id]: true }));
             await api.put(`/admin/withdrawals/${id}/reject`, { reason });
             fetchWithdrawals();
+            fetchCounts();
         } catch (error) {
             alert(error.response?.data?.message || "Failed to reject");
         } finally {
@@ -74,11 +98,11 @@ const Withdrawals = () => {
                 const values = [
                     row.id,
                     new Date(row.createdAt).toISOString(),
-                    `"${row.store.name}"`, // Quote strings
-                    `"${row.store.tenant.name}"`,
+                    `"${row.store?.name || ''}"`,
+                    `"${row.store?.tenant?.name || ''}"`,
                     row.amount,
                     row.bankName,
-                    `'${row.accountNumber}`, // Force text in Excel with '
+                    `'${row.accountNumber}`,
                     row.status
                 ];
                 csvRows.push(values.join(','));
@@ -159,6 +183,12 @@ const Withdrawals = () => {
                             <span className={cn("font-semibold", filter === tab.id ? "" : "text-slate-600")}>
                                 {tab.label}
                             </span>
+                            <span className={cn(
+                                "ml-2 text-xs font-bold px-2 py-0.5 rounded-full",
+                                filter === tab.id ? "bg-white/80 text-slate-700" : "bg-slate-100 text-slate-500"
+                            )}>
+                                {counts[tab.id] || 0}
+                            </span>
                         </button>
                     ))}
                 </div>
@@ -212,12 +242,17 @@ const Withdrawals = () => {
                                     </Td>
                                     <Td>
                                         <div className="flex flex-col">
-                                            <span className="font-medium text-slate-900">{w.store.name}</span>
-                                            <span className="text-xs text-slate-500 text-truncate max-w-[150px]">{w.store.tenant.name}</span>
+                                            <span className="font-medium text-slate-900">{w.store?.name || 'Unknown'}</span>
+                                            <span className="text-xs text-slate-500 text-truncate max-w-[150px]">{w.store?.tenant?.name || '-'}</span>
                                         </div>
                                     </Td>
                                     <Td>
-                                        <span className="font-mono font-medium text-slate-700">{formatCurrency(w.amount)}</span>
+                                        <div className="flex flex-col">
+                                            <span className="font-mono font-medium text-slate-700">{formatCurrency(w.amount)}</span>
+                                            {w.fee > 0 && (
+                                                <span className="text-[10px] text-slate-400">Fee: {formatCurrency(w.fee)} • Net: {formatCurrency(w.netAmount)}</span>
+                                            )}
+                                        </div>
                                     </Td>
                                     <Td>
                                         <div className="flex flex-col">
@@ -255,8 +290,15 @@ const Withdrawals = () => {
                                                 </Button>
                                             </div>
                                         )}
-                                        {w.status !== 'PENDING' && (
-                                            <span className="text-xs text-slate-400 italic">No actions</span>
+                                        {w.status === 'APPROVED' && (
+                                            <span className="text-xs text-green-600">
+                                                {w.updatedAt ? new Date(w.updatedAt).toLocaleDateString('id-ID') : 'Processed'}
+                                            </span>
+                                        )}
+                                        {w.status === 'REJECTED' && (
+                                            <span className="text-xs text-red-500">
+                                                {w.updatedAt ? new Date(w.updatedAt).toLocaleDateString('id-ID') : 'Rejected'}
+                                            </span>
                                         )}
                                     </Td>
                                 </Tr>

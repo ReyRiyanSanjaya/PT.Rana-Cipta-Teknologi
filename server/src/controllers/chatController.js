@@ -84,18 +84,29 @@ exports.getMessages = async (req, res) => {
 
 exports.sendMessage = async (req, res) => {
   const { roomId } = req.params;
-  const { content } = req.body;
+  const { content, replyToId } = req.body;
   const userId = req.user.id;
 
   try {
     const room = await prisma.chatRoom.findUnique({ where: { id: roomId } });
     if (!room) return res.status(404).json({ error: 'Chat room not found' });
 
+    // Handle file attachment
+    let messageContent = content || '';
+    if (req.file) {
+      const fileUrl = `/uploads/${req.file.filename}`;
+      messageContent = messageContent || `[attachment] ${fileUrl}`;
+    }
+
+    if (!messageContent.trim()) {
+      return res.status(400).json({ error: 'Message content is required' });
+    }
+
     const message = await prisma.chatMessage.create({
       data: {
         roomId,
         userId,
-        content,
+        content: messageContent,
         userName: req.user.name
       },
       include: {
@@ -115,6 +126,18 @@ exports.sendMessage = async (req, res) => {
     res.status(201).json(message);
   } catch (error) {
     console.error('Error sending message:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.markRoomRead = async (req, res) => {
+  const { roomId } = req.params;
+  // For now, acknowledge the read. In a full implementation, 
+  // you'd track read receipts per user per room.
+  try {
+    res.json({ status: 'success', message: 'Marked as read' });
+  } catch (error) {
+    console.error('Error marking room as read:', error);
     res.status(500).json({ error: error.message });
   }
 };

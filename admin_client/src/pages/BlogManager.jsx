@@ -180,6 +180,7 @@ const BlogManager = () => {
   const [formData, setFormData] = useState({
     title: '',
     content: '',
+    summary: '',
     tags: '',
     image: '',
     slug: ''
@@ -231,10 +232,15 @@ const BlogManager = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Prepare data for submission (convert tags back to array if needed, but backend now handles string too)
-      // We send as is, backend handles it. Or we can split here.
-      // Let's rely on backend fix, but for safety:
-      const payload = { ...formData };
+      const payload = {
+        title: formData.title,
+        content: formData.content,
+        summary: formData.summary || (formData.content || '').replace(/<[^>]*>/g, '').substring(0, 200),
+        tags: formData.tags,
+        imageUrl: formData.image || '',
+        slug: formData.slug,
+        status: 'PUBLISHED'
+      };
       
       if (formData.id) {
         await api.put(`/blog/admin/${formData.id}`, payload);
@@ -244,18 +250,25 @@ const BlogManager = () => {
         Swal.fire('Success', 'Post created successfully', 'success');
       }
       setIsEditing(false);
-      setFormData({ title: '', content: '', tags: '', image: '', slug: '' });
+      setFormData({ title: '', content: '', summary: '', tags: '', image: '', slug: '' });
       fetchPosts();
     } catch (error) {
       console.error('Error saving post:', error);
-      Swal.fire('Error', 'Failed to save post', 'error');
+      Swal.fire('Error', error.response?.data?.message || 'Failed to save post', 'error');
     }
   };
 
   const handleEdit = (post) => {
-    // Ensure tags are converted to string for the input field
     const tagsString = Array.isArray(post.tags) ? post.tags.join(', ') : (post.tags || '');
-    setFormData({ ...post, tags: tagsString });
+    setFormData({
+      id: post.id,
+      title: post.title || '',
+      content: post.content || '',
+      summary: post.summary || '',
+      tags: tagsString,
+      image: post.imageUrl || post.image || '',
+      slug: post.slug || ''
+    });
     setIsEditing(true);
   };
 
@@ -286,17 +299,23 @@ const BlogManager = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    const formData = new FormData();
-    formData.append('image', file);
+    const uploadData = new FormData();
+    uploadData.append('image', file);
 
     try {
-      const response = await api.post('/blog/upload', formData, {
+      const response = await api.post('/blog/upload', uploadData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      setFormData(prev => ({ ...prev, image: response.data.imageUrl }));
+      // Server returns { status: 'success', data: { imageUrl: '...' } }
+      const imageUrl = response.data.data?.imageUrl || response.data.imageUrl || '';
+      if (imageUrl) {
+        setFormData(prev => ({ ...prev, image: imageUrl }));
+      } else {
+        Swal.fire('Error', 'Upload succeeded but no URL returned', 'warning');
+      }
     } catch (error) {
       console.error('Error uploading image:', error);
-      Swal.fire('Error', 'Failed to upload image', 'error');
+      Swal.fire('Error', error.response?.data?.message || 'Failed to upload image', 'error');
     }
   };
 
@@ -399,6 +418,18 @@ const BlogManager = () => {
                     className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-sm"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Summary / Excerpt</label>
+                  <textarea
+                    name="summary"
+                    value={formData.summary}
+                    onChange={handleInputChange}
+                    placeholder="Brief description for SEO and previews..."
+                    rows={3}
+                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-sm"
+                  />
+                </div>
                 
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Tags</label>
@@ -478,7 +509,7 @@ const BlogManager = () => {
         </div>
         <button
           onClick={() => {
-            setFormData({ title: '', content: '', tags: '', image: '', slug: '' });
+            setFormData({ title: '', content: '', summary: '', tags: '', image: '', slug: '' });
             setIsEditing(true);
           }}
           className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20 font-medium"
@@ -503,8 +534,8 @@ const BlogManager = () => {
         {filteredPosts.map((post) => (
           <div key={post.id} className="group bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl hover:border-blue-200 transition-all duration-300 flex flex-col h-full">
             <div className="aspect-video bg-slate-100 relative overflow-hidden">
-              {post.image ? (
-                <img src={post.image} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+              {(post.imageUrl || post.image) ? (
+                <img src={post.imageUrl || post.image} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-slate-300">
                   <FiImage size={40} />
@@ -558,8 +589,10 @@ const BlogManager = () => {
                 {(post.content || '').replace(/<[^>]*>/g, '')}
               </p>
               <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 font-medium">
-                 <span>{new Date().toLocaleDateString()}</span>
-                 <span>Admin</span>
+                 <span>{post.publishedAt ? new Date(post.publishedAt).toLocaleDateString('id-ID') : new Date(post.createdAt).toLocaleDateString('id-ID')}</span>
+                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${post.status === 'PUBLISHED' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>
+                   {post.status || 'DRAFT'}
+                 </span>
               </div>
             </div>
           </div>

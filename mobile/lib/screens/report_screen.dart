@@ -312,7 +312,7 @@ class _ReportScreenState extends State<ReportScreen> {
              _speakSummary();
           }
         }
-      }).catchError((e) => debugPrint('AI Insights error: $e')));
+      }).catchError((e) { debugPrint('AI Insights error: $e'); }));
 
     } catch (e) {
       debugPrint('Error in optimized fetch wrapper: $e');
