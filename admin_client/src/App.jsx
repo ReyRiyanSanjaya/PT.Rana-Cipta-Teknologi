@@ -31,6 +31,7 @@ import DistributorManagement from './pages/DistributorManagement'; // [NEW] Dist
 import BuyerManagement from './pages/BuyerManagement'; // [NEW] Buyer
 import AiMarketing from './pages/AiMarketing'; // [NEW] AI Marketing
 import EmailRecipients from './pages/EmailRecipients'; // [NEW] Email Recipients
+import BannerManagement from './pages/BannerManagement'; // [NEW] Banner Slider
 import { getToken, isTokenExpired, getUser } from './lib/auth';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -103,6 +104,7 @@ function App() {
             <Route path="buyers" element={<BuyerManagement />} />
             <Route path="ai-marketing" element={<AiMarketing />} />
             <Route path="email-recipients" element={<EmailRecipients />} />
+            <Route path="banners" element={<BannerManagement />} />
           </Route>
           <Route path="/" element={<Navigate to="/admin" replace />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />

@@ -523,9 +523,10 @@ const registerDistributor = async (req, res) => {
 // [NEW] Update Store Profile (Mobile)
 const updateStoreProfile = async (req, res) => {
     try {
-        const { tenantId } = req.user;
-        const { businessName, waNumber, address, latitude, longitude, storeImageBase64 } = req.body;
+        const { tenantId, userId } = req.user;
+        const { businessName, ownerName, waNumber, address, latitude, longitude, storeImageBase64, category } = req.body;
 
+        // Update tenant name if businessName provided
         if (businessName) {
             await prisma.tenant.update({
                 where: { id: tenantId },
@@ -533,8 +534,15 @@ const updateStoreProfile = async (req, res) => {
             });
         }
 
-        // Update Store Info (Assuming data for primary store)
-        // Find store by tenantId
+        // Update user's own name if ownerName provided
+        if (ownerName && ownerName.toString().trim()) {
+            await prisma.user.update({
+                where: { id: userId },
+                data: { name: ownerName.toString().trim() }
+            });
+        }
+
+        // Update Store Info
         const store = await prisma.store.findFirst({ where: { tenantId } });
         if (store) {
             if (waNumber) {
@@ -549,13 +557,26 @@ const updateStoreProfile = async (req, res) => {
                 if (dup) return errorResponse(res, "Nomor WhatsApp sudah digunakan", 400);
             }
 
-            const maybeImageUrl = saveStoreImage(storeImageBase64, tenantId, store.id);
+            // Handle storeImageBase64 — accept with or without MIME prefix
+            let imageBase64ToSave = null;
+            if (storeImageBase64 && storeImageBase64.trim()) {
+                const raw = storeImageBase64.trim();
+                if (raw.startsWith('data:image/')) {
+                    imageBase64ToSave = raw;
+                } else {
+                    // Assume JPEG if no prefix
+                    imageBase64ToSave = `data:image/jpeg;base64,${raw}`;
+                }
+            }
+
+            const maybeImageUrl = saveStoreImage(imageBase64ToSave, tenantId, store.id);
             await prisma.store.update({
                 where: { id: store.id },
                 data: {
                     name: businessName || undefined,
                     waNumber: waNumber ? normalizePhone(waNumber) : undefined,
-                    location: address,
+                    location: address || undefined,
+                    category: category || undefined,
                     latitude: latitude ? parseFloat(latitude) : undefined,
                     longitude: longitude ? parseFloat(longitude) : undefined,
                     imageUrl: maybeImageUrl || undefined
@@ -563,15 +584,15 @@ const updateStoreProfile = async (req, res) => {
             });
         }
 
-        successResponse(res, null, "Profile updated successfully");
+        return successResponse(res, null, "Profile updated successfully");
     } catch (error) {
-        errorResponse(res, "Failed to update profile", 500, error);
+        return errorResponse(res, "Failed to update profile", 500, error);
     }
 };
 
 const getProfile = async (req, res) => {
     try {
-        const { userId } = req.user; // [FIX] Use userId from token
+        const { userId } = req.user;
         const user = await prisma.user.findUnique({
             where: { id: userId },
             select: {
@@ -594,12 +615,51 @@ const getProfile = async (req, res) => {
                     }
                 },
                 store: {
-                    select: { id: true, name: true, waNumber: true, location: true }
+                    select: {
+                        id: true,
+                        name: true,
+                        waNumber: true,
+                        location: true,
+                        imageUrl: true,
+                        category: true,
+                        latitude: true,
+                        longitude: true
+                    }
                 }
             }
         });
         if (!user) return errorResponse(res, "User not found", 404);
-        successResponse(res, user);
+
+        // Flatten profile into a shape the mobile app expects
+        const profile = {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            avatarUrl: user.avatarUrl,
+            createdAt: user.createdAt,
+            // Tenant info
+            tenantId: user.tenant?.id || null,
+            subscriptionStatus: user.tenant?.subscriptionStatus || 'FREE',
+            plan: user.tenant?.plan || 'FREE',
+            subscriptionEndsAt: user.tenant?.subscriptionEndsAt || null,
+            trialEndsAt: user.tenant?.trialEndsAt || null,
+            // Store info (flattened for mobile)
+            storeId: user.store?.id || null,
+            businessName: user.store?.name || user.tenant?.name || user.name,
+            ownerName: user.name,
+            waNumber: user.store?.waNumber || null,
+            phone: user.store?.waNumber || null,
+            address: user.store?.location || null,
+            category: user.store?.category || null,
+            latitude: user.store?.latitude || null,
+            longitude: user.store?.longitude || null,
+            storeImage: user.store?.imageUrl || null,
+            storeImageUrl: user.store?.imageUrl || null,
+            imageUrl: user.store?.imageUrl || null,
+        };
+
+        successResponse(res, profile);
     } catch (error) {
         errorResponse(res, "Failed to fetch profile", 500);
     }
@@ -623,7 +683,9 @@ const updateUserProfile = async (req, res) => {
 const changePassword = async (req, res) => {
     try {
         const { userId } = req.user;
-        const { currentPassword, newPassword } = req.body;
+        // Accept both 'currentPassword' and 'oldPassword' from clients
+        const currentPassword = req.body.currentPassword || req.body.oldPassword;
+        const newPassword = req.body.newPassword;
 
         if (!currentPassword || !newPassword) {
             return errorResponse(res, "Password lama dan baru wajib diisi", 400);

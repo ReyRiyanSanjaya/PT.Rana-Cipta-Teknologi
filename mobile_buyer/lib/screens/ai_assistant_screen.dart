@@ -945,8 +945,7 @@ class _ReorderCards extends StatelessWidget {
     return Column(
       children: items.map((raw) {
         final item = raw as Map<String, dynamic>;
-        return
-        Container(
+        return Container(
           margin: const EdgeInsets.only(left: 44, bottom: 10),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
@@ -974,8 +973,8 @@ class _ReorderCards extends StatelessWidget {
                 colors: const [Color(0xFF667EEA), Color(0xFF764BA2)]),
             ]),
           ]),
-        ),
-      ).toList(),
+        );
+      }).toList(),
     );
   }
 }

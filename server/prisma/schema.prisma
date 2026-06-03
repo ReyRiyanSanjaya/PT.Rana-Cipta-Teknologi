@@ -212,6 +212,7 @@ model WholesaleCategory {
   name      String
   slug      String   @unique
   parentId  String?
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
   products WholesaleProduct[]
@@ -286,11 +287,15 @@ model WholesaleOrder {
   distributorId   String
   orderNumber     String               @unique
   totalAmount     Float
+  serviceFee      Float                @default(0)
+  shippingCost    Float                @default(0)
   status          WholesaleOrderStatus @default(PENDING)
   shippingAddress Json
   paymentMethod   String
   paymentStatus   PaymentStatus        @default(UNPAID)
   paymentDetails  Json?
+  proofUrl        String?
+  pickupCode      String?
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
 
@@ -1426,4 +1431,21 @@ model EmailList {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// ================================
+// BANNER / SLIDER MANAGEMENT
+// ================================
+
+model Banner {
+  id           String   @id @default(uuid())
+  title        String
+  imageUrl     String
+  linkUrl      String?
+  actionType   String?  // NONE, URL, FLASHSALE, PROMO, SUPPORT
+  actionTarget String?
+  isActive     Boolean  @default(true)
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

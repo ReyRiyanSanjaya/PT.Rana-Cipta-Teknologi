@@ -37,26 +37,34 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _businessNameController = TextEditingController(
         text: (widget.initialData['businessName'] ??
                 widget.initialData['store_name'] ??
+                widget.initialData['store']?['name'] ??
                 widget.initialData['name'] ??
                 '')
             .toString());
     _ownerNameController = TextEditingController(
         text: (widget.initialData['ownerName'] ??
                 widget.initialData['owner_name'] ??
-                widget.initialData['full_name'] ??
+                widget.initialData['name'] ??
                 '')
             .toString());
     _waNumberController = TextEditingController(
-        text: widget.initialData['waNumber'] ??
-            widget.initialData['phone'] ??
-            '');
-    _addressController =
-        TextEditingController(text: widget.initialData['address'] ?? '');
+        text: (widget.initialData['waNumber'] ??
+                widget.initialData['phone'] ??
+                widget.initialData['store']?['waNumber'] ??
+                '')
+            .toString());
+    _addressController = TextEditingController(
+        text: (widget.initialData['address'] ??
+                widget.initialData['store']?['location'] ??
+                '')
+            .toString());
 
-    // Initialize Lat/Long if available
-    _latitude = widget.initialData['latitude']?.toString();
-    _longitude = widget.initialData['longitude']?.toString();
-    _category = widget.initialData['category']?.toString();
+    _latitude = widget.initialData['latitude']?.toString() ??
+        widget.initialData['store']?['latitude']?.toString();
+    _longitude = widget.initialData['longitude']?.toString() ??
+        widget.initialData['store']?['longitude']?.toString();
+    _category = widget.initialData['category']?.toString() ??
+        widget.initialData['store']?['category']?.toString();
     Future.microtask(() => _refreshFromAuth());
   }
 
@@ -76,26 +84,36 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       await auth.refreshProfile();
       final profile = auth.currentUser ?? {};
       final bn = (profile['businessName'] ??
-              profile['store_name'] ??
+              profile['store']?['name'] ??
               profile['name'] ??
               '')
           .toString();
       final on = (profile['ownerName'] ??
-              profile['owner_name'] ??
-              profile['full_name'] ??
+              profile['name'] ??
               '')
           .toString();
-      final wa = (profile['waNumber'] ?? profile['phone'] ?? '').toString();
-      final addr = (profile['address'] ?? '').toString();
-      final lat = profile['latitude']?.toString();
-      final lng = profile['longitude']?.toString();
+      final wa = (profile['waNumber'] ??
+              profile['phone'] ??
+              profile['store']?['waNumber'] ??
+              '')
+          .toString();
+      final addr = (profile['address'] ??
+              profile['store']?['location'] ??
+              '')
+          .toString();
+      final lat = profile['latitude']?.toString() ??
+          profile['store']?['latitude']?.toString();
+      final lng = profile['longitude']?.toString() ??
+          profile['store']?['longitude']?.toString();
       if (bn.isNotEmpty) _businessNameController.text = bn;
       if (on.isNotEmpty) _ownerNameController.text = on;
       if (wa.isNotEmpty) _waNumberController.text = wa;
       if (addr.isNotEmpty) _addressController.text = addr;
       _latitude = lat ?? _latitude;
       _longitude = lng ?? _longitude;
-      _category = profile['category']?.toString() ?? _category;
+      _category = profile['category']?.toString() ??
+          profile['store']?['category']?.toString() ??
+          _category;
     } catch (_) {
       // ignore
     } finally {
@@ -105,23 +123,34 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   String? _getInitialImage() {
     final d = widget.initialData;
-    final keys = ['storeImage', 'storeImageUrl', 'store_image', 'imageUrl', 'logoUrl', 'photoUrl', 'logo', 'photo'];
+    final keys = ['storeImage', 'storeImageUrl', 'imageUrl', 'store_image', 'logoUrl', 'photoUrl', 'avatarUrl', 'logo', 'photo'];
     for (final k in keys) {
-      if (d[k] != null && d[k].toString().isNotEmpty) return d[k].toString();
+      final v = d[k];
+      if (v != null && v.toString().trim().isNotEmpty) {
+        return ApiService().resolveFileUrl(v.toString().trim());
+      }
+    }
+    // Also check nested store object if present
+    final store = d['store'];
+    if (store is Map && store['imageUrl'] != null) {
+      return ApiService().resolveFileUrl(store['imageUrl'].toString().trim());
     }
     return null;
   }
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70, maxWidth: 1600);
     
     if (pickedFile != null) {
       final file = File(pickedFile.path);
       final bytes = await file.readAsBytes();
+      final ext = pickedFile.name.split('.').last.toLowerCase();
+      final safeExt = RegExp(r'^[a-z0-9]+$').hasMatch(ext) ? ext : 'jpg';
+      final mime = safeExt == 'png' ? 'image/png' : 'image/jpeg';
       setState(() {
         _imageFile = file;
-        _imageBase64 = base64Encode(bytes);
+        _imageBase64 = 'data:$mime;base64,${base64Encode(bytes)}';
       });
     }
   }

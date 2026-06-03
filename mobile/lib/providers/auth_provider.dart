@@ -48,7 +48,7 @@ class AuthProvider extends ChangeNotifier {
           try {
             final profile = await _api.getProfile();
             _currentUser = profile;
-            final tenantId = (profile['tenantId'] ?? profile['id'])?.toString();
+            final tenantId = profile['tenantId']?.toString();
             if (tenantId != null && tenantId.isNotEmpty) {
               await DatabaseHelper.instance.upsertTenant({
                 'id': tenantId,
@@ -180,7 +180,6 @@ class AuthProvider extends ChangeNotifier {
     syncOnLogin();
   }
 
-  // [NEW] Background sync process
   Future<void> syncOnLogin() async {
     try {
       // 1. Refresh profile silently
@@ -189,7 +188,8 @@ class AuthProvider extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('user_data', jsonEncode(profile));
       
-      final tenantId = (profile['tenantId'] ?? profile['id'])?.toString();
+      // Use flattened fields from new getProfile response
+      final tenantId = (profile['tenantId'])?.toString();
       if (tenantId != null && tenantId.isNotEmpty) {
         await DatabaseHelper.instance.upsertTenant({
           'id': tenantId,
@@ -211,9 +211,8 @@ class AuthProvider extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint('Background sync/refresh failed: $e');
-      // Optional: Handle specific errors, e.g., token expiration
       if (e.toString().contains('401') || e.toString().contains('Unauthorized')) {
-         _clearAuthData(); // Clear session on auth error
+         _clearAuthData();
       }
     }
   }

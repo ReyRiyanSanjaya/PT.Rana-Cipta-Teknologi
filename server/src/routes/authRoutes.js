@@ -28,6 +28,7 @@ router.get('/me', verifyToken, authController.getProfile);
 router.put('/me', verifyToken, authController.updateUserProfile);
 router.put('/store', verifyToken, authController.updateStoreProfile);
 router.put('/password', verifyToken, authController.changePassword);
+router.put('/change-password', verifyToken, authController.changePassword); // alias for mobile clients
 router.put('/photo', verifyToken, authController.updatePhoto);
 
 module.exports = router;

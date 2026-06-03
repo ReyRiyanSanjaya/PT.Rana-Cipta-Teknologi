@@ -986,13 +986,28 @@ class ApiService {
 
   // 4. Kulakan (Wholesale)
   Future<List<dynamic>> getWholesaleProducts(
-      {String? category, String? search}) async {
+      {String? category, String? search, String? distributorId}) async {
     try {
       final response = await _dio.get('/wholesale/products',
-          queryParameters: {'category': category, 'search': search});
+          queryParameters: {
+            if (category != null && category != 'Semua') 'category': category,
+            if (search != null && search.isNotEmpty) 'search': search,
+            if (distributorId != null) 'distributorId': distributorId,
+          },
+          options: Options(headers: {'Authorization': 'Bearer $_token'}));
       return response.data['data'] ?? [];
     } catch (e) {
       throw Exception('Failed to fetch wholesale products');
+    }
+  }
+
+  Future<List<dynamic>> getWholesaleDistributors() async {
+    try {
+      final response = await _dio.get('/wholesale/distributors',
+          options: Options(headers: {'Authorization': 'Bearer $_token'}));
+      return response.data['data'] ?? [];
+    } catch (e) {
+      return [];
     }
   }
 

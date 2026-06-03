@@ -2,19 +2,18 @@ const { z } = require('zod');
 
 // Auth Schemas
 const registerSchema = z.object({
-    businessName: z.string().min(3, "Nama bisnis minimal 3 karakter"),
-    ownerName: z.string().min(3, "Nama pemilik minimal 3 karakter"),
+    businessName: z.string().min(3, "Nama bisnis minimal 3 karakter").optional().nullable(),
+    ownerName: z.string().min(3, "Nama pemilik minimal 3 karakter").optional().nullable(),
+    name: z.string().optional().nullable(),
+    phone: z.string().optional().nullable(),
     email: z.string().email("Email tidak valid"),
-    password: z.string().min(8, "Password minimal 8 karakter")
-        .regex(/[A-Z]/, "Password harus mengandung huruf besar")
-        .regex(/[a-z]/, "Password harus mengandung huruf kecil")
-        .regex(/[0-9]/, "Password harus mengandung angka"),
-    role: z.enum(['OWNER', 'BUYER', 'DRIVER']).optional(),
-    waNumber: z.string().min(10, "Nomor WhatsApp tidak valid").optional(),
-    category: z.string().optional(),
-    address: z.string().optional(),
-    latitude: z.union([z.number(), z.string()]).optional(),
-    longitude: z.union([z.number(), z.string()]).optional(),
+    password: z.string().min(6, "Password minimal 6 karakter"),
+    role: z.enum(['OWNER', 'BUYER', 'DRIVER']).optional().nullable(),
+    waNumber: z.string().min(10, "Nomor WhatsApp tidak valid").optional().nullable(),
+    category: z.string().optional().nullable(),
+    address: z.string().optional().nullable(),
+    latitude: z.union([z.number(), z.string()]).optional().nullable(),
+    longitude: z.union([z.number(), z.string()]).optional().nullable(),
 });
 
 const loginSchema = z.object({

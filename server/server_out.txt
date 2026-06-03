@@ -1,0 +1,7 @@
+[2026-06-02 19:07:58.124 +0700] [32mINFO[39m: [36m✅ Auth routes mounted[39m
+[2026-06-02 19:07:58.293 +0700] [32mINFO[39m: [36m✅ All API modules mounted[39m
+[2026-06-02 19:07:58.307 +0700] [32mINFO[39m: [36mServer running on port 4000[39m
+[2026-06-02 19:07:58.307 +0700] [32mINFO[39m: [36mEnvironment: development[39m
+prisma:query DELETE FROM "public"."ChatMessage" WHERE "public"."ChatMessage"."createdAt" < $1
+prisma:query SELECT COUNT(*) FROM (SELECT "public"."BlogPost"."id" FROM "public"."BlogPost" WHERE 1=1 OFFSET $1) AS "sub"
+prisma:query SELECT COUNT(*) FROM (SELECT "public"."User"."id" FROM "public"."User" WHERE "public"."User"."role" = CAST($1::text AS "public"."UserRole") OFFSET $2) AS "sub"

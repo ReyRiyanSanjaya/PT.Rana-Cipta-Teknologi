@@ -38,6 +38,7 @@ router.post('/upload-proof', authenticateToken, upload.single('file'), controlle
 router.post('/orders/scan', authenticateToken, controller.scanOrder); // [NEW]
 router.get('/products', controller.getProducts); // Public browsing allowed? Or restrict? Let's keep public for now or restrict later.
 router.get('/categories', controller.getCategories);
+router.get('/distributors', controller.getDistributors); // [NEW] List approved distributors for marketplace
 
 // Protected Merchant Routes
 router.post('/orders', authenticateToken, controller.createOrder);

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Store, Map, BarChart, ShoppingBag, LogOut, Search, Bell, Settings, Command, Wallet, CreditCard, Package, Megaphone, MessageSquare, Smartphone, Shield, Layout, FileText, List, Gift, Menu, X, ChevronRight, Sparkles, Check, Clock, AlertTriangle, Mail, Info, Car } from 'lucide-react';
+import { LayoutDashboard, Store, Map, BarChart, ShoppingBag, LogOut, Search, Bell, Settings, Command, Wallet, CreditCard, Package, Megaphone, MessageSquare, Smartphone, Shield, Layout, FileText, List, Gift, Menu, X, ChevronRight, Sparkles, Check, Clock, AlertTriangle, Mail, Info, Car, Image } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getRole, getUser, logout } from '../lib/auth';
 import { initSocket, getSocket, disconnectSocket } from '../lib/socket';
@@ -337,6 +337,7 @@ const AdminLayout = ({ children }) => {
         { icon: List, label: 'Flash Sales', to: '/admin/flashsales' },
         { icon: Package, label: 'Packages', to: '/admin/packages' },
         { icon: Megaphone, label: 'Broadcasts', to: '/admin/broadcasts' },
+        { icon: Image, label: 'Banner / Slider', to: '/admin/banners' },
     ];
 
     const systemItems = [

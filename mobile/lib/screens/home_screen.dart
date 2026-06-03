@@ -1543,12 +1543,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (_showBeginnerTip) const SizedBox(height: 16),
                   if (_showBeginnerTip) _buildBeginnerTipBanner(navContext),
                   if (_showBeginnerTip) const SizedBox(height: 16),
-                  _buildLiveTicker(),
-                  const SizedBox(height: 16),
+                  // ── Banner Slider full width dengan rounded bottom ──
+                  _buildHomeBannerCarousel(),
+                  // ── Dots + SalesSummary menyatu ──
                   const SalesSummaryCard()
                       .animate()
                       .fade(duration: 300.ms)
                       .slideY(begin: 0.05, end: 0),
+                  const SizedBox(height: 16),
+                  _buildLiveTicker(),
                   const SizedBox(height: 24),
                   FeatureGrid(
                     maintenanceMap: _maintenanceMap,
@@ -1558,7 +1561,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   _buildLowStockAlert(),
                   if (_aiInsights.isNotEmpty) _buildAiInsightSection(navContext),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
+                  _buildNotificationSection(navContext),
+                  const SizedBox(height: 8),
                   _buildAnnouncementsSection(navContext),
                   const SizedBox(height: 16),
                   _buildBlogCarousel(navContext)
@@ -1981,6 +1986,129 @@ class _HomeScreenState extends State<HomeScreen> {
             .fade(delay: 300.ms)
             .slideX(),
       ],
+    );
+  }
+
+  Widget _buildNotificationSection(BuildContext navContext) {
+    if (_unreadNotificationCount <= 0) return const SizedBox.shrink();
+    final colorScheme = Theme.of(navContext).colorScheme;
+    final isDark = Theme.of(navContext).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: GestureDetector(
+        onTap: () => Navigator.push(
+          navContext,
+          MaterialPageRoute(builder: (_) => const NotificationScreen()),
+        ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: isDark
+                ? colorScheme.surface
+                : ThemeConfig.brandColor.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: ThemeConfig.brandColor.withOpacity(0.25),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: ThemeConfig.brandColor.withOpacity(0.06),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: ThemeConfig.brandColor.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Stack(
+                  children: [
+                    Center(
+                      child: Icon(
+                        Icons.notifications_outlined,
+                        color: ThemeConfig.brandColor,
+                        size: 20,
+                      ),
+                    ),
+                    Positioned(
+                      right: 4,
+                      top: 4,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isDark
+                                ? colorScheme.surface
+                                : ThemeConfig.brandColor.withOpacity(0.06),
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Notifikasi Belum Dibaca',
+                      style: GoogleFonts.outfit(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                    Text(
+                      '$_unreadNotificationCount pemberitahuan menunggu',
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        color: colorScheme.onSurface.withOpacity(0.6),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: ThemeConfig.brandColor,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  _unreadNotificationCount > 99
+                      ? '99+'
+                      : '$_unreadNotificationCount',
+                  style: GoogleFonts.outfit(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: colorScheme.onSurface.withOpacity(0.4),
+                size: 20,
+              ),
+            ],
+          ),
+        ).animate().fade(delay: 100.ms).slideY(begin: 0.06, end: 0),
+      ),
     );
   }
 
@@ -2497,8 +2625,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = authProvider.currentUser;
     final wallet = Provider.of<WalletProvider>(context);
     final themeProvider = Provider.of<ThemeProvider>(context);
-    final bannerHeight =
-        (MediaQuery.of(context).size.width * 0.68).clamp(340.0, 520.0).toDouble();
 
     // 1. Dynamic Greeting
     final hour = DateTime.now().hour;
@@ -2513,6 +2639,7 @@ class _HomeScreenState extends State<HomeScreen> {
       greeting = 'Selamat malam,';
     }
 
+    // ignore: unused_local_variable
     final ownerName = user?['name']?.toString() ?? 'PARTNER';
     String storeName;
     final rawBusinessName = (user?['businessName'] ?? '').toString().trim();
@@ -2534,15 +2661,6 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final width = MediaQuery.of(context).size.width;
-    final isNarrow = width < 360;
-    final isCompact = width < 420;
-    final showWalletAmount = width >= 460;
-    final formattedBalance = NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: 'Rp',
-      decimalDigits: 0,
-    ).format(wallet.balance);
 
     Widget actionContainer({
       required Widget child,
@@ -2566,30 +2684,35 @@ class _HomeScreenState extends State<HomeScreen> {
       if (count <= 0) return const SizedBox.shrink();
       final label = count > 99 ? '99+' : count.toString();
       return Positioned(
-        right: 2,
-        top: 2,
+        right: 0,
+        top: 0,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
           decoration: BoxDecoration(
-            color: colorScheme.error,
+            color: Colors.red,
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
               color: isDark ? colorScheme.surface : Colors.white,
-              width: 1,
+              width: 1.5,
             ),
+            boxShadow: [
+              BoxShadow(color: Colors.red.withOpacity(0.4), blurRadius: 6),
+            ],
           ),
           constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
           child: Text(
             label,
             textAlign: TextAlign.center,
             style: GoogleFonts.outfit(
-              color: colorScheme.onError,
+              color: Colors.white,
               fontSize: 9,
               fontWeight: FontWeight.w800,
               height: 1.1,
             ),
           ),
-        ),
+        )
+        .animate(onPlay: (c) => c.repeat(reverse: true))
+        .scaleXY(begin: 1.0, end: 1.18, duration: 800.ms, curve: Curves.easeInOut),
       );
     }
 
@@ -2651,44 +2774,57 @@ class _HomeScreenState extends State<HomeScreen> {
       pinned: true,
       floating: false,
       snap: false,
-      expandedHeight: bannerHeight,
+      expandedHeight: null,
       backgroundColor: isDark ? colorScheme.surface : ThemeConfig.brandColor,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
-      toolbarHeight: 56,
-      leadingWidth: 48,
+      toolbarHeight: 64,
+      leadingWidth: 60,
       leading: Padding(
-        padding: const EdgeInsets.only(left: 8),
-        child: CircleAvatar(
-          radius: 20,
-          backgroundColor: isDark ? colorScheme.primary.withOpacity(0.2) : Colors.white.withOpacity(0.9),
-          child: logoUrl.isNotEmpty
-              ? ClipOval(
-                  child: Image.network(
-                    logoUrl,
-                    width: 40,
-                    height: 40,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Center(
-                      child: Text(
-                        (storeName.isNotEmpty ? storeName[0] : 'T'),
-                        style: GoogleFonts.outfit(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: isDark ? colorScheme.onSurface : ThemeConfig.brandColor,
+        padding: const EdgeInsets.only(left: 12),
+        child: GestureDetector(
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const SettingsScreen())),
+          child: Hero(
+            tag: 'profile_image',
+            child: CircleAvatar(
+              radius: 20,
+              backgroundColor: isDark
+                  ? colorScheme.primary.withOpacity(0.2)
+                  : Colors.white.withOpacity(0.9),
+              child: logoUrl.isNotEmpty
+                  ? ClipOval(
+                      child: Image.network(
+                        logoUrl,
+                        width: 40,
+                        height: 40,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Center(
+                          child: Text(
+                            (storeName.isNotEmpty ? storeName[0] : 'T'),
+                            style: GoogleFonts.outfit(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: isDark
+                                  ? colorScheme.onSurface
+                                  : ThemeConfig.brandColor,
+                            ),
+                          ),
                         ),
                       ),
+                    )
+                  : Text(
+                      (storeName.isNotEmpty ? storeName[0] : 'T'),
+                      style: GoogleFonts.outfit(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: isDark
+                            ? colorScheme.onSurface
+                            : ThemeConfig.brandColor,
+                      ),
                     ),
-                  ),
-                )
-              : Text(
-                  (storeName.isNotEmpty ? storeName[0] : 'T'),
-                  style: GoogleFonts.outfit(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: isDark ? colorScheme.onSurface : ThemeConfig.brandColor,
-                  ),
-                ),
+            ),
+          ),
         ),
       ),
       titleSpacing: 0,
@@ -2701,7 +2837,9 @@ class _HomeScreenState extends State<HomeScreen> {
             style: GoogleFonts.outfit(
               fontSize: 12,
               fontWeight: FontWeight.w500,
-              color: isDark ? colorScheme.onSurface.withOpacity(0.9) : Colors.white.withOpacity(0.9),
+              color: isDark
+                  ? colorScheme.onSurface.withOpacity(0.9)
+                  : Colors.white.withOpacity(0.9),
             ),
           ),
           Row(
@@ -2709,16 +2847,16 @@ class _HomeScreenState extends State<HomeScreen> {
               Icon(
                 Icons.storefront_rounded,
                 color: isDark ? colorScheme.onSurface : Colors.white,
-                size: 20,
-              ).animate().scale(delay: 300.ms),
-              const SizedBox(width: 8),
-              Expanded(
+                size: 16,
+              ),
+              const SizedBox(width: 4),
+              Flexible(
                 child: Text(
                   storeName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.outfit(
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: isDark ? colorScheme.onSurface : Colors.white,
                     height: 1.2,
@@ -2730,180 +2868,37 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       actions: [
-        if (!isCompact)
-          iconAction(
-            icon: themeProvider.mode == ThemeMode.dark
-                ? Icons.light_mode_rounded
-                : Icons.dark_mode_rounded,
-            onTap: themeProvider.toggle,
-          ),
-        if (!isNarrow)
-          iconAction(
-            icon: Icons.chat_bubble_outline_rounded,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ChatScreen()),
-              );
-            },
-            badgeCount: _unreadSupportCount,
-          ),
-        iconAction(
-          icon: Icons.notifications_outlined,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const NotificationScreen()),
+        Consumer<ThemeProvider>(
+          builder: (context, themeProvider, _) {
+            final isDarkTheme = themeProvider.mode == ThemeMode.dark;
+            return iconAction(
+              icon: isDarkTheme
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
+              onTap: () => themeProvider.toggle(),
+              iconSize: 20,
             );
           },
+        ),
+        iconAction(
+          icon: Icons.chat_bubble_outline_rounded,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ChatScreen()),
+          ),
+          iconSize: 20,
+        ),
+        iconAction(
+          icon: Icons.notifications_outlined,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const NotificationScreen()),
+          ),
           badgeCount: _unreadNotificationCount,
+          iconSize: 22,
+          margin: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
         ),
-        if (!isNarrow)
-          actionContainer(
-            margin: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
-            borderRadius: BorderRadius.circular(999),
-            backgroundColor:
-                isDark ? Colors.white.withOpacity(0.12) : Colors.white.withOpacity(0.22),
-            child: InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const WalletScreen()),
-                );
-              },
-              borderRadius: BorderRadius.circular(999),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.account_balance_wallet_outlined,
-                      size: 22,
-                      color: isDark ? colorScheme.onSurface : Colors.white,
-                    ),
-                    if (showWalletAmount) ...[
-                      const SizedBox(width: 8),
-                      Text(
-                        formattedBalance,
-                        style: GoogleFonts.outfit(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: isDark ? colorScheme.onSurface : Colors.white,
-                        ),
-                      ),
-                    ]
-                  ],
-                ),
-              ),
-            ),
-          ),
-        if (isNarrow || isCompact)
-          menuAction(
-            items: [
-              if (isCompact)
-                PopupMenuItem(
-                  value: 'theme',
-                  child: Text(
-                    themeProvider.mode == ThemeMode.dark ? 'Tema terang' : 'Tema gelap',
-                  ),
-                ),
-              if (isNarrow)
-                const PopupMenuItem(
-                  value: 'chat',
-                  child: Text('Chat'),
-                ),
-              const PopupMenuItem(
-                value: 'wallet',
-                child: Text('Dompet'),
-              ),
-            ],
-            onSelected: (value) {
-              switch (value) {
-                case 'theme':
-                  themeProvider.toggle();
-                  break;
-                case 'chat':
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ChatScreen()),
-                  );
-                  break;
-                case 'wallet':
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const WalletScreen()),
-                  );
-                  break;
-              }
-            },
-          ),
       ],
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          bottom: Radius.circular(44),
-        ),
-      ),
-      flexibleSpace: FlexibleSpaceBar(
-        collapseMode: CollapseMode.parallax,
-        background: ClipRRect(
-          borderRadius: const BorderRadius.vertical(bottom: Radius.circular(44)),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (_isLoadingBanners)
-                Shimmer.fromColors(
-                  baseColor: isDark ? colorScheme.surfaceVariant.withOpacity(0.5) : Colors.white.withOpacity(0.2),
-                  highlightColor: isDark ? colorScheme.surfaceVariant : Colors.white.withOpacity(0.5),
-                  child: Container(color: Colors.white),
-                )
-              else if (_homeBanners.isEmpty)
-                Container(color: Theme.of(context).colorScheme.surface)
-              else
-                PageView.builder(
-                  controller: _bannerPageController,
-                  itemCount: _homeBanners.length,
-                  onPageChanged: (idx) {
-                    setState(() {
-                      _bannerPageIndex = idx;
-                      _bannerProgress = 0.0;
-                    });
-                    _prefetchBannerImagesAroundIndex(idx);
-                  },
-                  itemBuilder: (_, index) {
-                    final item = _homeBanners[index] as Map;
-                    final rawImageUrl = (item['imageUrl'] ?? '').toString();
-                    final imageUrl = ApiService().resolveFileUrl(rawImageUrl);
-                    final hasImage = imageUrl.isNotEmpty;
-                    return InkWell(
-                      onTap: () {
-                        _pauseBannerAutoFor(const Duration(seconds: 8));
-                        _handleBannerTap(item);
-                      },
-                      child: hasImage
-                          ? Image.network(
-                              imageUrl,
-                              fit: BoxFit.cover,
-                              gaplessPlayback: true,
-                              filterQuality: FilterQuality.low,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  Container(color: Theme.of(context).colorScheme.surface),
-                            )
-                          : Container(color: Theme.of(context).colorScheme.surface),
-                    );
-                  },
-                ),
-              if (_homeBanners.length > 1)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 16,
-                  child: _buildBannerDotsRow(),
-                ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -3008,21 +3003,6 @@ class _HomeScreenState extends State<HomeScreen> {
         _prefetchBannerImagesAroundIndex(idx);
       },
       onBannerTap: _handleBannerTap,
-      onDotTap: (index) {
-        _bannerPageController.animateToPage(
-          index,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOutCubic,
-        );
-      },
-      onPauseAuto: _pauseBannerAutoFor,
-    );
-  }
-
-  Widget _buildBannerDotsRow() {
-    return HomeBannerDots(
-      homeBanners: _homeBanners,
-      bannerPageIndex: _bannerPageIndex,
       onDotTap: (index) {
         _bannerPageController.animateToPage(
           index,

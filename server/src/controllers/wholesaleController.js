@@ -5,21 +5,91 @@ const { successResponse, errorResponse } = require('../utils/response');
 // PRODUCT MANAGEMENT
 // =======================
 
-// Get all active wholesale products (For Mobile App)
+// Get approved distributors for marketplace
+const getDistributors = async (req, res) => {
+    try {
+        const distributors = await prisma.distributor.findMany({
+            where: { approvalStatus: 'APPROVED' },
+            select: {
+                id: true,
+                companyName: true,
+                _count: {
+                    select: { wholesaleProducts: { where: { isActive: true } } }
+                }
+            },
+            orderBy: { companyName: 'asc' }
+        });
+
+        const result = distributors.map(d => ({
+            id: d.id,
+            companyName: d.companyName,
+            productCount: d._count.wholesaleProducts,
+        }));
+
+        return successResponse(res, result, "Distributors retrieved");
+    } catch (error) {
+        return errorResponse(res, "Failed to fetch distributors", 500, error);
+    }
+};
+
+// Get all active wholesale products (For Mobile App - Marketplace view)
 const getProducts = async (req, res) => {
     try {
-        const { category, search } = req.query;
+        const { category, search, distributorId } = req.query;
+
+        const where = {
+            isActive: true,
+            wholesaleCategoryId: (category && category !== 'Semua') ? category : undefined,
+            name: search ? { contains: search, mode: 'insensitive' } : undefined,
+            // Only show products from APPROVED distributors
+            distributor: { approvalStatus: 'APPROVED' },
+            distributorId: distributorId || undefined,
+        };
 
         const products = await prisma.wholesaleProduct.findMany({
-            where: {
-                isActive: true,
-                categoryId: category && category !== 'Semua' ? category : undefined,
-                name: search ? { contains: search, mode: 'insensitive' } : undefined
+            where,
+            include: {
+                wholesaleCategory: true,
+                distributor: {
+                    select: {
+                        id: true,
+                        companyName: true,
+                        approvalStatus: true,
+                    }
+                }
             },
-            include: { category: true },
             orderBy: { name: 'asc' }
         });
-        return successResponse(res, products, "Wholesale products retrieved");
+
+        // Normalize for mobile: extract base price from pricingTiers[0]
+        const normalized = products.map(p => {
+            let tiers = [];
+            try { tiers = Array.isArray(p.pricingTiers) ? p.pricingTiers : JSON.parse(p.pricingTiers || '[]'); } catch (_) {}
+            const basePrice = tiers.length > 0 ? (tiers[tiers.length - 1].price || 0) : 0;
+            const images = Array.isArray(p.images) ? p.images : (p.images ? [p.images] : []);
+            return {
+                id: p.id,
+                name: p.name,
+                description: p.description,
+                imageUrl: images[0] || null,
+                images,
+                price: basePrice,
+                wholesalePrice: basePrice,
+                pricingTiers: tiers,
+                moq: p.moq,
+                stockQuantity: p.stockQuantity,
+                unit: p.unit,
+                category: p.wholesaleCategory?.name || null,
+                categoryId: p.wholesaleCategoryId,
+                distributorId: p.distributorId,
+                supplierName: p.distributor?.companyName || null,
+                distributor: p.distributor,
+                isActive: p.isActive,
+                createdAt: p.createdAt,
+            };
+        });
+
+        return successResponse(res, normalized, "Wholesale products retrieved");
     } catch (error) {
         return errorResponse(res, "Failed to fetch wholesale products", 500, error);
     }
@@ -127,20 +197,34 @@ const validateCoupon = async (req, res) => {
     }
 };
 
-// Create Product (Admin)
+// Create Product (Admin - assigns to a specific distributor)
 const createProduct = async (req, res) => {
     try {
-        const { name, categoryId, price, stock, supplierName, imageUrl, description } = req.body;
+        const { name, categoryId, price, stock, supplierName, imageUrl, description, distributorId, pricingTiers, moq, unit } = req.body;
+
+        if (!name) return errorResponse(res, "Product name is required", 400);
+        if (!distributorId) return errorResponse(res, "distributorId is required", 400);
+
+        // Build pricingTiers from simple price if not provided
+        let tiers = pricingTiers;
+        if (!tiers && price) {
+            tiers = [{ minQty: 1, price: parseFloat(price) }];
+        }
+        if (!tiers) return errorResponse(res, "pricingTiers or price is required", 400);
+        if (typeof tiers === 'string') { try { tiers = JSON.parse(tiers); } catch(_) {} }
 
         const product = await prisma.wholesaleProduct.create({
             data: {
+                distributorId,
                 name,
-                categoryId,
-                price: parseFloat(price),
-                stock: parseInt(stock),
-                supplierName,
-                imageUrl,
-                description
+                wholesaleCategoryId: categoryId || undefined,
+                description,
+                images: imageUrl ? [imageUrl] : [],
+                pricingTiers: tiers,
+                moq: moq ? parseInt(moq) : 1,
+                stockQuantity: stock ? parseInt(stock) : 0,
+                unit: unit || 'pcs',
+                isActive: true,
             }
         });
         return successResponse(res, product, "Product created", 201);
@@ -251,40 +335,27 @@ const createOrder = async (req, res) => {
         const orderNumber = `ORD-${dateStr}-${randomSuffix}`;
 
         const result = await prisma.$transaction(async (tx) => {
-            // Create Order
             const order = await tx.wholesaleOrder.create({
                 data: {
-                    tenantId, // Which merchant is buying
-                    distributorId, // [FIX] Added distributorId
-                    orderNumber, // [FIX] Added orderNumber
+                    tenantId,
+                    distributorId,
+                    orderNumber,
                     totalAmount: totalAmount > 0 ? totalAmount : 0,
-                    serviceFee: serviceFee,
+                    serviceFee,
+                    shippingCost: finalShippingCost,
                     status: 'PENDING',
                     paymentMethod,
                     shippingAddress,
-                    shippingCost: finalShippingCost, // Note: Schema might not have this field, checking... Schema has 'shippingAddress' Json. I should add 'shippingCost' or store in Json?
-                    // Schema check: WholesaleOrder has totalAmount, status, shippingAddress(Json), paymentMethod, paymentStatus, paymentDetails(Json).
-                    // It does NOT have shippingCost column explicitly in my previous read.
-                    // Wait, I should check schema.prisma content again.
-                    // If not exist, I can put it in paymentDetails or add it. 
-                    // Let's assume I need to add it or it's part of totalAmount calculation.
-                    // For now, I'll store it in paymentDetails or assume it's part of total.
-                    // Actually, let's look at the previous code I replaced. It had `shippingCost: finalShippingCost`.
-                    // If the schema doesn't have it, that code would have failed too.
-                    // I will check schema in a moment. If missing, I'll add it or ignore.
-                    // Let's put it in `paymentDetails` for safety if column missing.
                     paymentDetails: {
-                        shippingCost: finalShippingCost,
-                        serviceFee,
                         discountAmount,
-                        couponCode
+                        couponCode: couponCode || null,
                     },
                     items: {
                         create: orderItems.map(i => ({
-                            wholesaleProductId: i.productId, // [FIX] Field name is wholesaleProductId
+                            wholesaleProductId: i.productId,
                             quantity: i.quantity,
-                            unitPrice: i.price, // [FIX] Field name is unitPrice
-                            subtotal: i.price * i.quantity // [FIX] Field name is subtotal
+                            unitPrice: i.price,
+                            subtotal: i.price * i.quantity,
                         }))
                     }
                 }
@@ -294,7 +365,7 @@ const createOrder = async (req, res) => {
             for (const item of orderItems) {
                 await tx.wholesaleProduct.update({
                     where: { id: item.productId },
-                    data: { stockQuantity: { decrement: item.quantity } } // [FIX] stockQuantity not stock
+                    data: { stockQuantity: { decrement: item.quantity } }
                 });
             }
 
@@ -318,23 +389,38 @@ const getOrders = async (req, res) => {
         };
 
         // [SECURE] If not Admin, force own tenant
-        if (role !== 'ADMIN') {
+        if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
             where.tenantId = userTenantId;
         } else if (tenantId) {
-            // Admin filtering by specific tenant
             where.tenantId = tenantId;
         }
 
         const orders = await prisma.wholesaleOrder.findMany({
             where,
             include: {
-                items: { include: { product: true } },
-                tenant: { select: { name: true } } // Show who bought it
+                items: {
+                    include: {
+                        wholesaleProduct: {
+                            select: { id: true, name: true, unit: true, images: true }
+                        }
+                    }
+                },
+                tenant: { select: { name: true } },
+                distributor: { select: { id: true, companyName: true } }
             },
             orderBy: { createdAt: 'desc' }
         });
 
-        return successResponse(res, orders, "Orders retrieved");
+        // Normalize items.productName for mobile
+        const normalized = orders.map(o => ({
+            ...o,
+            items: o.items.map(item => ({
+                ...item,
+                productName: item.wholesaleProduct?.name || 'Produk',
+            }))
+        }));
+
+        return successResponse(res, normalized, "Orders retrieved");
     } catch (error) {
         return errorResponse(res, "Failed to fetch orders", 500, error);
     }
@@ -382,7 +468,10 @@ const updateOrderStatus = async (req, res) => {
 
 const getCategories = async (req, res) => {
     try {
-        const cats = await prisma.wholesaleCategory.findMany({ where: { isActive: true } });
+        const cats = await prisma.wholesaleCategory.findMany({
+            where: { isActive: true },
+            orderBy: { name: 'asc' }
+        });
         return successResponse(res, cats, "Categories retrieved");
     } catch (error) {
         return errorResponse(res, "Failed fetch categories", 500, error);
@@ -392,8 +481,17 @@ const getCategories = async (req, res) => {
 // Admin: Create Category
 const createCategory = async (req, res) => {
     try {
-        const { name } = req.body;
-        const cat = await prisma.wholesaleCategory.create({ data: { name } });
+        const { name, slug } = req.body;
+        if (!name) return errorResponse(res, "Category name is required", 400);
+        // Auto-generate slug if not provided
+        const finalSlug = (slug || name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        const cat = await prisma.wholesaleCategory.create({
+            data: {
+                name,
+                slug: finalSlug,
+                isActive: true
+            }
+        });
         return successResponse(res, cat, "Category created", 201);
     } catch (error) {
         return errorResponse(res, "Failed create category", 500, error);
@@ -404,18 +502,25 @@ const createCategory = async (req, res) => {
 const updateProduct = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, categoryId, price, stock, supplierName, imageUrl, description, isActive } = req.body;
+        const { name, categoryId, price, stock, imageUrl, description, isActive, pricingTiers, moq, unit } = req.body;
+
+        let tiers = pricingTiers;
+        if (!tiers && price !== undefined) {
+            tiers = [{ minQty: 1, price: parseFloat(price) }];
+        }
+        if (tiers && typeof tiers === 'string') { try { tiers = JSON.parse(tiers); } catch(_) {} }
 
         const product = await prisma.wholesaleProduct.update({
             where: { id },
             data: {
                 name,
-                categoryId,
-                price: price ? parseFloat(price) : undefined,
-                stock: stock ? parseInt(stock) : undefined,
-                supplierName,
-                imageUrl,
+                wholesaleCategoryId: categoryId !== undefined ? (categoryId || null) : undefined,
+                images: imageUrl ? [imageUrl] : undefined,
                 description,
+                pricingTiers: tiers !== undefined ? tiers : undefined,
+                moq: moq ? parseInt(moq) : undefined,
+                stockQuantity: stock !== undefined ? parseInt(stock) : undefined,
+                unit,
                 isActive: isActive !== undefined ? isActive : undefined
             }
         });
@@ -475,7 +580,6 @@ const deleteCategory = async (req, res) => {
 const uploadProof = async (req, res) => {
     try {
         if (!req.file) return errorResponse(res, "No file uploaded", 400);
-        // Assuming public/uploads is served statically
         const url = `/uploads/proofs/${req.file.filename}`;
         const { orderId } = req.body || {};
         if (orderId) {
@@ -496,7 +600,6 @@ const uploadProof = async (req, res) => {
 const scanOrder = async (req, res) => {
     try {
         const { pickupCode } = req.body;
-        // Find by ID or PickupCode
         const order = await prisma.wholesaleOrder.findFirst({
             where: {
                 OR: [
@@ -507,7 +610,6 @@ const scanOrder = async (req, res) => {
         });
 
         if (!order) return errorResponse(res, "Order not found", 404);
-
         if (order.status !== 'SHIPPED') {
             return errorResponse(res, `Order cannot be received. Status: ${order.status}`, 400);
         }
@@ -526,6 +628,7 @@ const scanOrder = async (req, res) => {
 module.exports = {
     uploadProof,
     scanOrder, // [NEW]
+    getDistributors,
     getProducts,
     createProduct,
     createOrder,
@@ -546,7 +649,7 @@ module.exports = {
     createBanner: async (req, res) => {
         try {
             const { title, imageUrl, description, isActive, actionType, actionTarget } = req.body;
-            const banner = await prisma.wholesaleBanner.create({
+            const banner = await prisma.banner.create({
                 data: {
                     title,
                     imageUrl,
@@ -564,7 +667,7 @@ module.exports = {
 
     getBanners: async (req, res) => {
         try {
-            const banners = await prisma.wholesaleBanner.findMany({
+            const banners = await prisma.banner.findMany({
                 where: { isActive: true },
                 orderBy: { createdAt: 'desc' }
             });
@@ -576,7 +679,7 @@ module.exports = {
 
     getAllBanners: async (req, res) => {
         try {
-            const banners = await prisma.wholesaleBanner.findMany({
+            const banners = await prisma.banner.findMany({
                 orderBy: { createdAt: 'desc' }
             });
             return successResponse(res, banners, "Banners retrieved");
@@ -604,7 +707,7 @@ module.exports = {
     deleteBanner: async (req, res) => {
         try {
             const { id } = req.params;
-            await prisma.wholesaleBanner.delete({ where: { id } });
+            await prisma.banner.delete({ where: { id } });
             return successResponse(res, null, "Banner deleted");
         } catch (error) {
             return errorResponse(res, "Failed to delete banner", 500, error);
@@ -615,7 +718,7 @@ module.exports = {
         try {
             const { id } = req.params;
             const { title, imageUrl, description, isActive, actionType, actionTarget } = req.body;
-            const banner = await prisma.wholesaleBanner.update({
+            const banner = await prisma.banner.update({
                 where: { id },
                 data: {
                     title,
@@ -656,3 +759,4 @@ module.exports = {
         }
     }
 };
+

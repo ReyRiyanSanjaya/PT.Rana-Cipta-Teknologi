@@ -1,28 +1,7 @@
-const prisma = require('../config/database'); // [FIX] Singleton Prisma
+const prisma = require('../config/database');
 const { successResponse, errorResponse } = require('../utils/response');
 
-const DEFAULT_PROGRAM_CODE = 'DEFAULT_MERCHANT_REFERRAL';
-
-const ensureDefaultProgram = async () => {
-  const existing = await prisma.referralProgram.findUnique({
-    where: { code: DEFAULT_PROGRAM_CODE },
-  });
-  if (existing) return existing;
-  return prisma.referralProgram.create({
-    data: {
-      name: 'Program Referral Merchant Default',
-      code: DEFAULT_PROGRAM_CODE,
-      type: 'SINGLE_LEVEL',
-      status: 'ACTIVE',
-      maxLevels: 2,
-      rewardL1: 50000,
-      rewardL2: 20000,
-      rewardL3: 0,
-      holdDays: 0,
-    },
-  });
-};
-
+// Generate a unique referral code for a tenant
 const generateCodeForTenant = async (tenantId) => {
   const base = tenantId.replace(/-/g, '').toUpperCase().slice(0, 6);
   for (let i = 0; i < 5; i++) {
@@ -43,63 +22,50 @@ const getMyReferralInfo = async (req, res) => {
     const { tenantId } = req.user;
     if (!tenantId) return errorResponse(res, 'Invalid tenant', 400);
 
-    const program = await ensureDefaultProgram();
-
+    // Get or create referral code for this tenant
     let codeRecord = await prisma.referralCode.findFirst({
-      where: {
-        tenantId,
-        programId: program.id,
-        status: 'ACTIVE',
-      },
+      where: { tenantId },
     });
 
     if (!codeRecord) {
       const code = await generateCodeForTenant(tenantId);
       codeRecord = await prisma.referralCode.create({
         data: {
-          programId: program.id,
           tenantId,
           code,
-          status: 'ACTIVE',
         },
       });
     }
 
+    // Count how many tenants this tenant has referred
     const totalReferrals = await prisma.referral.count({
-      where: { referrerTenantId: tenantId },
+      where: { referrerId: tenantId },
     });
 
-    const rewardAgg = await prisma.referralReward.aggregate({
+    // Sum released (PAID) rewards
+    const paidAgg = await prisma.referralReward.aggregate({
       _sum: { amount: true },
       where: {
-        beneficiaryTenantId: tenantId,
-        status: 'RELEASED',
+        tenantId,
+        status: 'PAID',
       },
     });
 
-    const holdAgg = await prisma.referralReward.aggregate({
+    // Sum pending rewards
+    const pendingAgg = await prisma.referralReward.aggregate({
       _sum: { amount: true },
       where: {
-        beneficiaryTenantId: tenantId,
-        status: { in: ['CREATED', 'HOLD', 'ELIGIBLE'] },
+        tenantId,
+        status: 'PENDING',
       },
     });
 
     return successResponse(res, {
       code: codeRecord.code,
-      program: {
-        id: program.id,
-        name: program.name,
-        type: program.type,
-        maxLevels: program.maxLevels,
-        rewardL1: program.rewardL1,
-        rewardL2: program.rewardL2,
-        rewardL3: program.rewardL3,
-      },
       stats: {
         totalReferrals,
-        totalRewardReleased: rewardAgg._sum.amount || 0,
-        totalRewardPending: holdAgg._sum.amount || 0,
+        totalRewardReleased: paidAgg._sum.amount || 0,
+        totalRewardPending: pendingAgg._sum.amount || 0,
       },
     });
   } catch (error) {
@@ -113,34 +79,31 @@ const getMyReferrals = async (req, res) => {
     if (!tenantId) return errorResponse(res, 'Invalid tenant', 400);
 
     const referrals = await prisma.referral.findMany({
-      where: { referrerTenantId: tenantId },
+      where: { referrerId: tenantId },
       orderBy: { createdAt: 'desc' },
       include: {
-        referee: true,
-        rewards: true,
+        referee: {
+          select: { id: true, name: true },
+        },
+        reward: true,
       },
     });
 
-    const items = referrals.map((r) => {
-      const directReward = r.rewards.find((rw) => rw.level === 1) || null;
-      return {
-        id: r.id,
-        createdAt: r.createdAt,
-        status: r.status,
-        referee: {
-          id: r.referee.id,
-          name: r.referee.name,
-        },
-        reward: directReward
-          ? {
-              amount: directReward.amount,
-              currency: directReward.currency,
-              status: directReward.status,
-              releasedAt: directReward.releasedAt,
-            }
-          : null,
-      };
-    });
+    const items = referrals.map((r) => ({
+      id: r.id,
+      createdAt: r.createdAt,
+      status: r.status,
+      referee: r.referee
+        ? { id: r.referee.id, name: r.referee.name }
+        : null,
+      reward: r.reward
+        ? {
+            amount: r.reward.amount,
+            status: r.reward.status,
+            paidAt: r.reward.paidAt,
+          }
+        : null,
+    }));
 
     return successResponse(res, { items });
   } catch (error) {
@@ -149,4 +112,3 @@ const getMyReferrals = async (req, res) => {
 };
 
 module.exports = { getMyReferralInfo, getMyReferrals };
-
