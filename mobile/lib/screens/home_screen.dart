@@ -1316,6 +1316,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       key: _scaffoldKey, // [FIX] Assigned Key
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      drawer: _buildMerchantDrawer(context),
       body: LayoutBuilder(
         builder: (context, constraints) {
           bool isDesktop = constraints.maxWidth >= 600;
@@ -1356,21 +1357,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 bottomNavigationBar: SafeArea(
                   top: false,
                   child: Container(
-                    height: 70,
-                    margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                    height: 48,
+                    margin: const EdgeInsets.fromLTRB(14, 0, 14, 6),
                     decoration: BoxDecoration(
                       color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(35),
+                      borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.08),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
+                          blurRadius: 14,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(35),
+                      borderRadius: BorderRadius.circular(24),
                       child: BackdropFilter(
                         filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
                         child: Container(
@@ -1410,8 +1411,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _switchTab(2);
       },
       child: Container(
-        width: 56,
-        height: 56,
+        width: 40,
+        height: 40,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -1425,12 +1426,12 @@ class _HomeScreenState extends State<HomeScreen> {
           boxShadow: [
             BoxShadow(
               color: ThemeConfig.brandColor.withOpacity(0.4),
-              blurRadius: 16,
-              offset: const Offset(0, 8),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: const Icon(Icons.qr_code_scanner_rounded, color: Colors.white, size: 28),
+        child: const Icon(Icons.qr_code_scanner_rounded, color: Colors.white, size: 19),
       )
       .animate(target: _bottomNavIndex == 2 ? 1 : 0)
       .scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 200.ms),
@@ -1456,10 +1457,10 @@ class _HomeScreenState extends State<HomeScreen> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOutBack,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: isSelected ? activeColor.withOpacity(0.1) : Colors.transparent,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1467,24 +1468,24 @@ class _HomeScreenState extends State<HomeScreen> {
             Icon(
               icon,
               color: isSelected ? activeColor : inactiveColor,
-              size: 24,
+              size: 18,
             ),
             if (isSelected) ...[
-              const SizedBox(width: 8),
+              const SizedBox(width: 5),
               Text(
                 label,
                 style: GoogleFonts.outfit(
-                  fontSize: 13,
+                  fontSize: 10,
                   fontWeight: FontWeight.w600,
                   color: activeColor,
                 ),
               ).animate().fade(duration: 200.ms).slideX(begin: -0.2, end: 0),
             ],
             if (badge > 0 && !isSelected) ...[
-              const SizedBox(width: 4),
+              const SizedBox(width: 3),
               Container(
-                width: 8,
-                height: 8,
+                width: 6,
+                height: 6,
                 decoration: BoxDecoration(
                   color: Colors.red,
                   shape: BoxShape.circle,
@@ -1543,9 +1544,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (_showBeginnerTip) const SizedBox(height: 16),
                   if (_showBeginnerTip) _buildBeginnerTipBanner(navContext),
                   if (_showBeginnerTip) const SizedBox(height: 16),
-                  // ── Banner Slider full width dengan rounded bottom ──
-                  _buildHomeBannerCarousel(),
                   // ── Dots + SalesSummary menyatu ──
+                  const SizedBox(height: 20),
                   const SalesSummaryCard()
                       .animate()
                       .fade(duration: 300.ms)
@@ -2623,10 +2623,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final user = authProvider.currentUser;
+    // ignore: unused_local_variable
     final wallet = Provider.of<WalletProvider>(context);
+    // ignore: unused_local_variable
     final themeProvider = Provider.of<ThemeProvider>(context);
 
-    // 1. Dynamic Greeting
     final hour = DateTime.now().hour;
     String greeting;
     if (hour < 11) {
@@ -2643,260 +2644,279 @@ class _HomeScreenState extends State<HomeScreen> {
     final ownerName = user?['name']?.toString() ?? 'PARTNER';
     String storeName;
     final rawBusinessName = (user?['businessName'] ?? '').toString().trim();
-    if (rawBusinessName.isNotEmpty) {
-      storeName = rawBusinessName;
-    } else {
-      storeName = (_storeName ?? 'TOKO');
-    }
+    storeName = rawBusinessName.isNotEmpty ? rawBusinessName : (_storeName ?? 'TOKO');
+
     String logoUrl = '';
-    final logoKeys = ['storeImage', 'storeImageUrl', 'imageUrl', 'logoUrl', 'photoUrl'];
-    for (final key in logoKeys) {
+    for (final key in ['storeImage', 'storeImageUrl', 'imageUrl', 'logoUrl', 'photoUrl']) {
       final v = user?[key];
       if (v != null) {
         final s = v.toString().trim();
-        if (s.isNotEmpty) {
-          logoUrl = ApiService().resolveFileUrl(s);
-          break;
-        }
+        if (s.isNotEmpty) { logoUrl = ApiService().resolveFileUrl(s); break; }
       }
     }
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    Widget actionContainer({
-      required Widget child,
-      EdgeInsets margin = const EdgeInsets.only(right: 8, top: 8, bottom: 8),
-      BorderRadius borderRadius = const BorderRadius.all(Radius.circular(12)),
-      Color? backgroundColor,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isScrolled = _isScrolled;
+
+    // Warna adaptif transparan ↔ solid
+    final appBarBg    = isScrolled ? (isDark ? colorScheme.surface : Colors.white) : Colors.transparent;
+    final onAppBar    = isScrolled ? colorScheme.onSurface : Colors.white;
+    final onMuted     = isScrolled ? colorScheme.onSurface.withOpacity(0.5) : Colors.white.withOpacity(0.75);
+    final avatarBg    = isScrolled
+        ? (isDark ? colorScheme.primary.withOpacity(0.15) : ThemeConfig.brandColor.withOpacity(0.1))
+        : Colors.white.withOpacity(0.18);
+    final avatarFg    = isScrolled ? (isDark ? colorScheme.primary : ThemeConfig.brandColor) : Colors.white;
+
+    // Hitung tinggi banner yang dipakai di FlexibleSpace
+    final sw = MediaQuery.of(context).size.width;
+    final bannerH = (sw * 0.72).clamp(280.0, 420.0);
+    // expandedHeight = banner + toolbar agar saat collapsed tinggal toolbar saja
+    final expandedH = bannerH;
+
+    // ── icon action helper ──────────────────────────────────────────
+    Widget iconBtn({
+      required IconData icon,
+      required VoidCallback onTap,
+      int badge = 0,
+      EdgeInsets margin = const EdgeInsets.only(right: 3, top: 5, bottom: 5),
     }) {
       return Container(
         margin: margin,
         decoration: BoxDecoration(
-          color: backgroundColor ??
-              (isDark ? Colors.white.withOpacity(0.1) : Colors.white.withOpacity(0.15)),
-          borderRadius: borderRadius,
-          border: Border.all(color: Colors.white.withOpacity(0.1)),
+          color: isScrolled
+              ? colorScheme.onSurface.withOpacity(0.06)
+              : Colors.white.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isScrolled
+                ? colorScheme.outline.withOpacity(0.08)
+                : Colors.white.withOpacity(0.12),
+          ),
         ),
-        child: child,
-      );
-    }
-
-    Widget badgeCounter(int count) {
-      if (count <= 0) return const SizedBox.shrink();
-      final label = count > 99 ? '99+' : count.toString();
-      return Positioned(
-        right: 0,
-        top: 0,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-          decoration: BoxDecoration(
-            color: Colors.red,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: isDark ? colorScheme.surface : Colors.white,
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(color: Colors.red.withOpacity(0.4), blurRadius: 6),
-            ],
-          ),
-          constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.outfit(
-              color: Colors.white,
-              fontSize: 9,
-              fontWeight: FontWeight.w800,
-              height: 1.1,
-            ),
-          ),
-        )
-        .animate(onPlay: (c) => c.repeat(reverse: true))
-        .scaleXY(begin: 1.0, end: 1.18, duration: 800.ms, curve: Curves.easeInOut),
-      );
-    }
-
-    Widget iconAction({
-      required IconData icon,
-      required VoidCallback onTap,
-      int badgeCount = 0,
-      double iconSize = 22,
-      EdgeInsets margin = const EdgeInsets.only(right: 8, top: 8, bottom: 8),
-    }) {
-      return actionContainer(
-        margin: margin,
         child: Stack(
           clipBehavior: Clip.none,
           children: [
             IconButton(
-              icon: Icon(icon,
-                  color: isDark ? colorScheme.onSurface : Colors.white,
-                  size: iconSize),
+              icon: Icon(icon, color: onAppBar, size: 17),
               onPressed: onTap,
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+              constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
             ),
-            badgeCounter(badgeCount),
+            if (badge > 0)
+              Positioned(
+                right: 0, top: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 1),
+                  ),
+                  constraints: const BoxConstraints(minWidth: 12, minHeight: 12),
+                  child: Text(
+                    badge > 99 ? '9+' : '$badge',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white, fontSize: 7, fontWeight: FontWeight.w800, height: 1),
+                  ),
+                ),
+              ),
           ],
         ),
       );
     }
 
-    Widget menuAction({
-      required List<PopupMenuEntry<String>> items,
-      required ValueChanged<String> onSelected,
-      EdgeInsets margin = const EdgeInsets.only(right: 16, top: 8, bottom: 8),
-    }) {
-      return actionContainer(
-        margin: margin,
-        child: PopupMenuButton<String>(
-          tooltip: 'Menu',
-          onSelected: onSelected,
-          itemBuilder: (_) => items,
-          offset: const Offset(0, 44),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          child: SizedBox(
-            width: 40,
-            height: 40,
-            child: Center(
-              child: Icon(
-                Icons.more_vert_rounded,
-                color: isDark ? colorScheme.onSurface : Colors.white,
-                size: 20,
+    // ── leading avatar ──────────────────────────────────────────────
+    Widget leading = Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: GestureDetector(
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
+        child: Hero(
+          tag: 'profile_image',
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            width: 30, height: 30,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: avatarBg,
+              border: Border.all(
+                color: isScrolled ? colorScheme.outline.withOpacity(0.15) : Colors.white.withOpacity(0.3),
+                width: 1.5,
               ),
+            ),
+            child: ClipOval(
+              child: logoUrl.isNotEmpty
+                  ? Image.network(logoUrl, width: 30, height: 30, fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Center(child: Text(
+                        (storeName.isNotEmpty ? storeName[0] : 'T').toUpperCase(),
+                        style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w800, color: avatarFg),
+                      )))
+                  : Center(child: Text(
+                      (storeName.isNotEmpty ? storeName[0] : 'T').toUpperCase(),
+                      style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w800, color: avatarFg),
+                    )),
             ),
           ),
         ),
-      );
-    }
+      ),
+    );
 
     return SliverAppBar(
       pinned: true,
       floating: false,
       snap: false,
-      expandedHeight: null,
-      backgroundColor: isDark ? colorScheme.surface : ThemeConfig.brandColor,
+      // expandedHeight mencakup tinggi banner penuh
+      expandedHeight: expandedH,
+      backgroundColor: appBarBg,
       surfaceTintColor: Colors.transparent,
-      elevation: 0,
-      toolbarHeight: 64,
-      leadingWidth: 60,
-      leading: Padding(
-        padding: const EdgeInsets.only(left: 12),
-        child: GestureDetector(
-          onTap: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const SettingsScreen())),
-          child: Hero(
-            tag: 'profile_image',
-            child: CircleAvatar(
-              radius: 20,
-              backgroundColor: isDark
-                  ? colorScheme.primary.withOpacity(0.2)
-                  : Colors.white.withOpacity(0.9),
-              child: logoUrl.isNotEmpty
-                  ? ClipOval(
-                      child: Image.network(
-                        logoUrl,
-                        width: 40,
-                        height: 40,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Center(
-                          child: Text(
-                            (storeName.isNotEmpty ? storeName[0] : 'T'),
-                            style: GoogleFonts.outfit(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: isDark
-                                  ? colorScheme.onSurface
-                                  : ThemeConfig.brandColor,
-                            ),
-                          ),
-                        ),
-                      ),
-                    )
-                  : Text(
-                      (storeName.isNotEmpty ? storeName[0] : 'T'),
-                      style: GoogleFonts.outfit(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: isDark
-                            ? colorScheme.onSurface
-                            : ThemeConfig.brandColor,
+      shadowColor: isScrolled ? Colors.black.withOpacity(0.1) : Colors.transparent,
+      elevation: isScrolled ? 1 : 0,
+      toolbarHeight: 44,
+      leadingWidth: 46,
+      // FlexibleSpaceBar = BANNER yang akan collapse saat scroll
+      flexibleSpace: FlexibleSpaceBar(
+        collapseMode: CollapseMode.pin,
+        background: ClipRRect(
+          borderRadius: const BorderRadius.vertical(
+            bottom: Radius.circular(28),
+          ),
+          child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Banner gambar / carousel
+            _homeBanners.isEmpty && !_isLoadingBanners
+                ? Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: isDark
+                            ? [colorScheme.surface, colorScheme.surface]
+                            : [ThemeConfig.brandColor, ThemeConfig.brandColor.withOpacity(0.75)],
                       ),
                     ),
+                  )
+                : _isLoadingBanners
+                    ? Container(color: ThemeConfig.brandColor.withOpacity(0.08))
+                    : PageView.builder(
+                        controller: _bannerPageController,
+                        itemCount: _homeBanners.length,
+                        onPageChanged: (idx) {
+                          setState(() { _bannerPageIndex = idx; _bannerProgress = 0.0; });
+                          _prefetchBannerImagesAroundIndex(idx);
+                        },
+                        itemBuilder: (_, index) {
+                          final item = _homeBanners[index] as Map;
+                          final rawUrl = (item['imageUrl'] ?? '').toString();
+                          final imageUrl = ApiService().resolveFileUrl(rawUrl);
+                          return GestureDetector(
+                            onTap: () { _pauseBannerAutoFor(const Duration(seconds: 8)); _handleBannerTap(item); },
+                            child: imageUrl.isNotEmpty
+                                ? Image.network(imageUrl, fit: BoxFit.cover, width: double.infinity,
+                                    gaplessPlayback: true, filterQuality: FilterQuality.medium,
+                                    errorBuilder: (_, __, ___) => Container(
+                                      decoration: BoxDecoration(gradient: LinearGradient(colors: [ThemeConfig.brandColor, ThemeConfig.brandColor.withOpacity(0.7)])),
+                                    ))
+                                : Container(
+                                    decoration: BoxDecoration(gradient: LinearGradient(colors: [ThemeConfig.brandColor, ThemeConfig.brandColor.withOpacity(0.7)])),
+                                    padding: const EdgeInsets.all(24),
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(item['title']?.toString() ?? '', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                                  ),
+                          );
+                        },
+                      ),
+            // Gradient gelap di area toolbar agar teks terbaca
+            Positioned(
+              top: 0, left: 0, right: 0,
+              height: 90,
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0xCC000000), Colors.transparent],
+                  ),
+                ),
+              ),
             ),
-          ),
+            // Dots indicator di bawah banner
+            if (_homeBanners.length > 1)
+              Positioned(
+                bottom: 12, left: 0, right: 0,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ...List.generate(_homeBanners.length, (i) {
+                      final isActive = i == _bannerPageIndex;
+                      return GestureDetector(
+                        onTap: () {
+                          _pauseBannerAutoFor(const Duration(seconds: 8));
+                          _bannerPageController.animateToPage(i,
+                              duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic);
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 280),
+                          curve: Curves.easeOutCubic,
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          height: 5,
+                          width: isActive ? 20 : 5,
+                          decoration: BoxDecoration(
+                            color: isActive ? Colors.white : Colors.white.withOpacity(0.45),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                      );
+                    }),
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      width: 28, height: 3,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(999),
+                        child: LinearProgressIndicator(
+                          value: _bannerProgress,
+                          backgroundColor: Colors.white.withOpacity(0.2),
+                          valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
         ),
+        ), // ClipRRect
       ),
+      leading: leading,
       titleSpacing: 0,
       centerTitle: false,
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            greeting,
-            style: GoogleFonts.outfit(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: isDark
-                  ? colorScheme.onSurface.withOpacity(0.9)
-                  : Colors.white.withOpacity(0.9),
-            ),
-          ),
-          Row(
-            children: [
-              Icon(
-                Icons.storefront_rounded,
-                color: isDark ? colorScheme.onSurface : Colors.white,
-                size: 16,
-              ),
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(
-                  storeName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.outfit(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? colorScheme.onSurface : Colors.white,
-                    height: 1.2,
-                  ),
-                ),
-              ),
-            ],
-          ),
+          Text(greeting, style: GoogleFonts.outfit(fontSize: 9, fontWeight: FontWeight.w400, color: onMuted)),
+          Text(storeName, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w700, color: onAppBar, height: 1.1)),
         ],
       ),
       actions: [
         Consumer<ThemeProvider>(
           builder: (context, themeProvider, _) {
             final isDarkTheme = themeProvider.mode == ThemeMode.dark;
-            return iconAction(
-              icon: isDarkTheme
-                  ? Icons.light_mode_rounded
-                  : Icons.dark_mode_rounded,
+            return iconBtn(
+              icon: isDarkTheme ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
               onTap: () => themeProvider.toggle(),
-              iconSize: 20,
             );
           },
         ),
-        iconAction(
+        iconBtn(
           icon: Icons.chat_bubble_outline_rounded,
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const ChatScreen()),
-          ),
-          iconSize: 20,
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatScreen())),
         ),
-        iconAction(
+        iconBtn(
           icon: Icons.notifications_outlined,
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const NotificationScreen()),
-          ),
-          badgeCount: _unreadNotificationCount,
-          iconSize: 22,
-          margin: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationScreen())),
+          badge: _unreadNotificationCount,
+          margin: const EdgeInsets.only(right: 8, top: 5, bottom: 5),
         ),
       ],
     );
@@ -3273,6 +3293,272 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // [NEW] Drawer for Mobile Navigation
   // Redundant _buildDrawer removed.
+
+  Widget _buildMerchantDrawer(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final user = authProvider.currentUser;
+    final storeName = (user?['businessName'] ?? _storeName ?? 'TOKO').toString().trim();
+    final ownerName = (user?['name'] ?? 'Merchant').toString().trim();
+    final mq = MediaQuery.of(context);
+    final statusBarH = mq.padding.top;
+    final bottomPadH = mq.padding.bottom;
+    final screenW = mq.size.width;
+    final screenH = mq.size.height;
+
+    final List<Map<String, dynamic>> menuItems = [
+      {'icon': Icons.point_of_sale_rounded,          'label': 'Kasir (POS)',   'route': '/pos'},
+      {'icon': Icons.inventory_2_rounded,             'label': 'Produk',        'route': '/products'},
+      {'icon': Icons.receipt_long_rounded,            'label': 'Pesanan',       'tab': 1},
+      {'icon': Icons.bar_chart_rounded,               'label': 'Laporan',       'route': '/reports'},
+      {'icon': Icons.account_balance_wallet_rounded,  'label': 'Wallet',        'route': '/wallet'},
+      {'icon': Icons.storefront_rounded,              'label': 'Kulakan',       'route': '/kulakan'},
+      {'icon': Icons.payment_rounded,                 'label': 'PPOB',          'route': '/ppob'},
+      {'icon': Icons.people_rounded,                  'label': 'Pelanggan',     'route': '/customer'},
+      {'icon': Icons.badge_rounded,                   'label': 'Karyawan',      'route': '/employee'},
+      {'icon': Icons.account_balance_wallet_outlined, 'label': 'Piutang',       'route': '/debt'},
+      {'icon': Icons.inventory_2_outlined,            'label': 'Stok Opname',   'route': '/stock'},
+      {'icon': Icons.campaign_rounded,                'label': 'Marketing',     'route': '/marketing'},
+      {'icon': Icons.support_agent_rounded,           'label': 'Bantuan',       'route': '/support'},
+      {'icon': Icons.settings_rounded,                'label': 'Pengaturan',    'tab': 4},
+    ];
+
+    // ─── header content ───────────────────────────────────────────────
+    Widget drawerHeader = Container(
+      width: double.infinity,
+      // Mulai dari 0 (sudah di bawah status bar karena removeTop),
+      // tambah statusBarH secara manual agar konten tidak tertutup notch
+      padding: EdgeInsets.only(
+        top: statusBarH + 18,
+        left: 20,
+        right: 20,
+        bottom: 22,
+      ),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [colorScheme.primary, colorScheme.primary.withOpacity(0.75)]
+              : [ThemeConfig.brandColor, ThemeConfig.brandColor.withOpacity(0.82)],
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Avatar + nama
+          Row(
+            children: [
+              Hero(
+                tag: 'profile_image_drawer',
+                child: CircleAvatar(
+                  radius: 28,
+                  backgroundColor: Colors.white.withOpacity(0.92),
+                  child: Text(
+                    storeName.isNotEmpty ? storeName[0].toUpperCase() : 'T',
+                    style: GoogleFonts.outfit(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: ThemeConfig.brandColor,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      storeName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.outfit(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      ownerName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        color: Colors.white.withOpacity(0.82),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          // Badge status aktif
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.18),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF4ADE80),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Aktif',
+                  style: GoogleFonts.outfit(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // ─── menu list ────────────────────────────────────────────────────
+    Widget menuList = Expanded(
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        itemCount: menuItems.length,
+        itemBuilder: (ctx, i) {
+          final item = menuItems[i];
+          return ListTile(
+            dense: true,
+            minLeadingWidth: 0,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 1),
+            leading: Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: isDark
+                    ? colorScheme.primary.withOpacity(0.12)
+                    : ThemeConfig.brandColor.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                item['icon'] as IconData,
+                size: 18,
+                color: isDark ? colorScheme.primary : ThemeConfig.brandColor,
+              ),
+            ),
+            title: Text(
+              item['label'] as String,
+              style: GoogleFonts.outfit(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: isDark ? colorScheme.onSurface : const Color(0xFF1E293B),
+              ),
+            ),
+            trailing: Icon(
+              Icons.chevron_right_rounded,
+              size: 16,
+              color: colorScheme.onSurface.withOpacity(0.25),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              if (item.containsKey('tab')) {
+                _switchTab(item['tab'] as int);
+              } else if (item.containsKey('route')) {
+                final targetScreen = _getScreen(item['route'] as String);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => targetScreen),
+                );
+              }
+            },
+          );
+        },
+      ),
+    );
+
+    // ─── footer logout ────────────────────────────────────────────────
+    Widget footer = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Divider(height: 1, color: colorScheme.outline.withOpacity(0.12)),
+        ListTile(
+          dense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+          leading: Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.logout_rounded, size: 18, color: Colors.red),
+          ),
+          title: Text(
+            'Keluar',
+            style: GoogleFonts.outfit(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Colors.red,
+            ),
+          ),
+          onTap: () async {
+            Navigator.pop(context);
+            final auth = context.read<AuthProvider>();
+            await auth.logout();
+            if (!context.mounted) return;
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const LoginScreen()),
+              (_) => false,
+            );
+          },
+        ),
+        SizedBox(height: bottomPadH > 0 ? bottomPadH : 8),
+      ],
+    );
+
+    // ─── Drawer utama ─────────────────────────────────────────────────
+    // Gunakan DrawerTheme untuk override shape dan remove default top padding
+    return Theme(
+      data: Theme.of(context).copyWith(
+        drawerTheme: DrawerThemeData(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+        ),
+      ),
+      child: Drawer(
+        width: screenW * 0.82,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+        child: SizedBox(
+          height: screenH,
+          child: Material(
+            color: isDark ? colorScheme.surface : Colors.white,
+            elevation: 0,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                drawerHeader,
+                menuList,
+                footer,
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   // [NEW] Info Terkini Widget (Announcements)
   // Removed internal _buildInfoTerkini

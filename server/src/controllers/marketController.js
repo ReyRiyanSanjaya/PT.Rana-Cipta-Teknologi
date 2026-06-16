@@ -3,7 +3,7 @@ const { successResponse, errorResponse } = require('../utils/response');
 
 const getNearbyStores = async (req, res) => {
     try {
-        const { lat, long, radius = 5 } = req.query; // Radius in km
+        const { lat, long, radius = 5, category } = req.query; // Radius in km
 
         if (!lat || !long) {
             return errorResponse(res, "Latitude and Longitude required", 400);
@@ -12,34 +12,37 @@ const getNearbyStores = async (req, res) => {
         const userLat = parseFloat(lat);
         const userLong = parseFloat(long);
 
+        // Build optional category WHERE clause
+        const categoryFilter = category && category !== 'Semua'
+            ? `AND LOWER("category") LIKE LOWER('%${category.replace(/'/g, "''")}%')`
+            : '';
+
         // Raw SQL for Distance Calculation (Postgres)
-        // Note: Prisma returns BigInt for some counts, handled by JSON.stringify usually.
-        // We select stores and distance
-        const stores = await prisma.$queryRaw`
+        const stores = await prisma.$queryRawUnsafe(`
             SELECT id, name, "location" AS address, "category", "latitude", "longitude", "imageUrl",
+            "openingHours", "description",
             (
                 6371 * acos(
-                    cos(radians(${userLat})) * cos(radians("latitude")) *
+                    LEAST(1.0, cos(radians(${userLat})) * cos(radians("latitude")) *
                     cos(radians("longitude") - radians(${userLong})) +
-                    sin(radians(${userLat})) * sin(radians("latitude"))
+                    sin(radians(${userLat})) * sin(radians("latitude")))
                 )
             ) AS distance
             FROM "Store"
             WHERE "latitude" IS NOT NULL AND "longitude" IS NOT NULL
+            AND "isActive" = true
+            ${categoryFilter}
             AND (
                 6371 * acos(
-                    cos(radians(${userLat})) * cos(radians("latitude")) *
+                    LEAST(1.0, cos(radians(${userLat})) * cos(radians("latitude")) *
                     cos(radians("longitude") - radians(${userLong})) +
-                    sin(radians(${userLat})) * sin(radians("latitude"))
+                    sin(radians(${userLat})) * sin(radians("latitude")))
                 )
             ) < ${parseFloat(radius)}
             ORDER BY distance ASC
-            LIMIT 20;
-        `;
+            LIMIT 30
+        `);
 
-        // Fetch products for these stores (Top 3 per store for display)
-        // This is a "N+1" problem potential, but for 20 stores it's acceptable.
-        // We will map it in JS.
         const result = [];
         for (const store of stores) {
             const products = await prisma.product.findMany({
@@ -56,7 +59,7 @@ const getNearbyStores = async (req, res) => {
 
             result.push({
                 ...store,
-                distance: store.distance,
+                distance: typeof store.distance === 'number' ? store.distance : parseFloat(store.distance) || 0,
                 rating: aggs._avg.rating || 0,
                 reviewCount: aggs._count.rating || 0,
                 products
@@ -550,8 +553,106 @@ const getRecommendations = async (req, res) => {
     }
 };
 
+// ─── RanaFood: Toko dengan kategori makanan/minuman ──────────────────────────
+const getFoodStores = async (req, res) => {
+    try {
+        const { lat, long, q, sort = 'rating_desc', limit = 30, page = 1 } = req.query;
+
+        // Keyword kategori yang dianggap "food"
+        const foodKeywords = ['makanan', 'minuman', 'food', 'kuliner', 'resto', 'restoran',
+            'warung', 'kedai', 'cafe', 'kafe', 'bakery', 'bakeri', 'catering',
+            'jajanan', 'snack', 'dessert', 'kue', 'roti', 'mie', 'nasi',
+            'ayam', 'soto', 'seafood', 'laut', 'masakan', 'dapur', 'juice', 'kopi'];
+
+        // Build OR conditions for category matching
+        const categoryConditions = foodKeywords.map(kw => ({
+            category: { contains: kw, mode: 'insensitive' }
+        }));
+
+        const take = Math.min(parseInt(limit) || 30, 60);
+        const skip = (Math.max(parseInt(page), 1) - 1) * take;
+
+        // Cari semua toko dengan kategori food
+        const stores = await prisma.store.findMany({
+            where: {
+                isActive: true,
+                OR: categoryConditions,
+                ...(q ? { name: { contains: q, mode: 'insensitive' } } : {})
+            },
+            select: {
+                id: true, name: true, location: true, category: true,
+                latitude: true, longitude: true, imageUrl: true,
+                bannerUrl: true, description: true, openingHours: true,
+                _count: { select: { transactions: true } }
+            },
+            orderBy: sort === 'name_asc' ? { name: 'asc' } : undefined,
+            take,
+            skip,
+        });
+
+        // Enrichment: rating + produk per toko
+        const result = [];
+        for (const store of stores) {
+            let distance = null;
+            if (lat && long && store.latitude && store.longitude) {
+                const R = 6371;
+                const dLat = (store.latitude - parseFloat(lat)) * Math.PI / 180;
+                const dLon = (store.longitude - parseFloat(long)) * Math.PI / 180;
+                const a = Math.sin(dLat / 2) ** 2 +
+                    Math.cos(parseFloat(lat) * Math.PI / 180) *
+                    Math.cos(store.latitude * Math.PI / 180) *
+                    Math.sin(dLon / 2) ** 2;
+                distance = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            }
+
+            const aggs = await prisma.review.aggregate({
+                where: { product: { storeId: store.id } },
+                _avg: { rating: true },
+                _count: { rating: true }
+            });
+
+            // Ambil 4 produk teratas
+            const products = await prisma.product.findMany({
+                where: { storeId: store.id, isActive: true },
+                take: 4,
+                orderBy: [{ averageRating: 'desc' }, { name: 'asc' }],
+                select: {
+                    id: true, name: true, sellingPrice: true,
+                    imageUrl: true, description: true,
+                    averageRating: true, reviewCount: true
+                }
+            });
+
+            result.push({
+                ...store,
+                _count: undefined,
+                orderCount: store._count?.transactions ?? 0,
+                distance,
+                rating: parseFloat((aggs._avg.rating || 0).toFixed(1)),
+                reviewCount: aggs._count.rating || 0,
+                products,
+            });
+        }
+
+        // Sort hasil
+        if (sort === 'rating_desc') {
+            result.sort((a, b) => b.rating - a.rating);
+        } else if (sort === 'distance' && lat && long) {
+            result.sort((a, b) => (a.distance ?? 9999) - (b.distance ?? 9999));
+        } else if (sort === 'popular') {
+            result.sort((a, b) => b.orderCount - a.orderCount);
+        }
+
+        return successResponse(res, result);
+    } catch (error) {
+        console.error('getFoodStores error:', error);
+        return errorResponse(res, 'Failed to fetch food stores', 500, error);
+    }
+};
+
 module.exports = { 
-    getNearbyStores, 
+    getNearbyStores,
+    getFoodStores,
     getActiveFlashSales, 
     getStoreCatalog,
     getStoreChatUser,

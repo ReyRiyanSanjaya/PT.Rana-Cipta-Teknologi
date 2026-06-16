@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:rana_market/config/theme_config.dart';
 import 'package:rana_market/data/market_api_service.dart';
 import 'package:rana_market/providers/market_cart_provider.dart';
+import 'package:rana_market/providers/auth_provider.dart';
 import 'package:rana_market/screens/market_cart_screen.dart';
 import 'package:rana_market/screens/product_detail_screen.dart';
 import 'package:rana_market/screens/store_detail_screen.dart';
@@ -17,6 +18,9 @@ import 'package:rana_market/screens/map_explore_screen.dart';
 import 'package:rana_market/screens/chat_list_screen.dart';
 import 'package:rana_market/screens/ride_booking_screen.dart';
 import 'package:rana_market/screens/ppob_screen.dart';
+import 'package:rana_market/screens/notifications_screen.dart';
+import 'package:rana_market/screens/profile_screen.dart';
+import 'package:rana_market/screens/login_screen.dart';
 import 'package:rana_market/widgets/interactive_widgets.dart';
 import 'package:rana_market/widgets/home_loading_skeleton.dart';
 import 'dart:ui';
@@ -50,6 +54,11 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
   double _userLat = 0;
   double _userLong = 0;
 
+  // RanaPay wallet
+  double _walletBalance = 0;
+  bool _walletLoading = true;
+  bool _walletObscure = false;
+
   Timer? _timer;
   Duration _flashSaleDuration = Duration.zero;
 
@@ -57,6 +66,17 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
   void initState() {
     super.initState();
     _loadData();
+    _loadWalletBalance();
+  }
+
+  Future<void> _loadWalletBalance() async {
+    try {
+      final data = await MarketApiService().getBuyerWallet();
+      final bal = (data['balance'] as num?)?.toDouble() ?? 0.0;
+      if (mounted) setState(() { _walletBalance = bal; _walletLoading = false; });
+    } catch (_) {
+      if (mounted) setState(() { _walletLoading = false; });
+    }
   }
 
   @override
@@ -249,62 +269,395 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = Provider.of<AuthProvider>(context);
+    final isGuest = !auth.isAuthenticated;
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: const Color(0xFFF5F6FA),
       body: CustomScrollView(
         controller: _scrollCtrl,
         physics: const BouncingScrollPhysics(),
         slivers: [
           _buildAppBar(),
           if (_isLoading)
-            const SliverFillRemaining(
-              child: HomeLoadingSkeleton(),
-            )
+            const SliverFillRemaining(child: HomeLoadingSkeleton())
           else ...[
             SliverToBoxAdapter(
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildStories(),
-                  _buildWalletCard(),
-                  _buildSmartAiWidget(),
+                  if (isGuest) _buildGuestBanner() else _buildWalletCard(),
                   _buildSuperAppGrid(),
-                  _buildAnnouncements(),
-                  _buildMapExploreBanner(),
-                  if (_recentProducts.isNotEmpty) _buildRecentProducts(),
-                  if (_recommendations.isNotEmpty) _buildSmartRecommendations(),
-                  _buildCategories(),
-                  if (_flashSales.isNotEmpty) _buildFlashSale(),
-                  if (_popularProducts.isNotEmpty) _buildPopularProducts(),
-                  _buildTopFavoriteStores(),
+                  if (_announcements.isNotEmpty) _buildAnnouncements(),
+                  _buildSectionHeader(
+                    'Produk Populer',
+                    Icons.local_fire_department_rounded,
+                    onSeeAll: () => Navigator.push(context,
+                        MaterialPageRoute(builder: (_) => const MarketSearchScreen())),
+                  ),
                 ],
               ),
             ),
-            _buildNearbyStoresHeader(),
+            // Grid produk 2 kolom penuh seperti marketplace
+            _buildProductSliverGrid(_popularProducts),
+            if (_flashSales.isNotEmpty) ...[
+              SliverToBoxAdapter(
+                child: _buildSectionHeader(
+                  'Flash Sale',
+                  Icons.flash_on_rounded,
+                  onSeeAll: null,
+                  badge: _buildFlashSaleTimer(),
+                ),
+              ),
+              _buildProductSliverGrid(_flashSales, isFlashSale: true),
+            ],
+            if (_recommendations.isNotEmpty) ...[
+              SliverToBoxAdapter(
+                child: _buildSectionHeader(
+                  'Rekomendasi Untukmu',
+                  Icons.auto_awesome_rounded,
+                  onSeeAll: null,
+                ),
+              ),
+              _buildProductSliverGrid(_recommendations),
+            ],
+            SliverToBoxAdapter(
+              child: _buildSectionHeader('Toko Terdekat', Icons.store_rounded, onSeeAll: null),
+            ),
             _buildNearbyStoresList(),
-            const SliverToBoxAdapter(child: SizedBox(height: 120)),
+            const SliverToBoxAdapter(child: SizedBox(height: 110)),
           ],
         ],
       ),
     );
   }
 
+  // Banner login untuk guest
+  Widget _buildGuestBanner() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: ThemeConfig.brandColor.withOpacity(0.07),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: ThemeConfig.brandColor.withOpacity(0.18)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.person_outline_rounded,
+              color: ThemeConfig.brandColor, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Masuk untuk pengalaman belanja lebih baik',
+              style: GoogleFonts.outfit(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: ThemeConfig.textPrimary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const LoginScreen()),
+            ),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              decoration: BoxDecoration(
+                color: ThemeConfig.brandColor,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                'Masuk',
+                style: GoogleFonts.outfit(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Grid produk 2 kolom sebagai Sliver (full width)
+  Widget _buildProductSliverGrid(List<dynamic> products,
+      {bool isFlashSale = false}) {
+    if (products.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
+    final items = products.take(8).toList();
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      sliver: SliverGrid(
+        delegate: SliverChildBuilderDelegate(
+          (context, i) {
+            final item = items[i] as Map;
+            return _buildProductCard(item, isFlashSale: isFlashSale, index: i);
+          },
+          childCount: items.length,
+        ),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: 0.72,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProductCard(Map item,
+      {bool isFlashSale = false, int index = 0}) {
+    final name = item['name']?.toString() ?? '';
+    final price = (item['sellingPrice'] as num?)?.toDouble() ??
+        (item['price'] as num?)?.toDouble() ?? 0;
+    final originalPrice = (item['originalPrice'] as num?)?.toDouble();
+    final imgUrl = MarketApiService().resolveFileUrl(item['imageUrl']);
+    final discPct =
+        isFlashSale ? (item['discountPercentage'] as num?)?.toInt() ?? 0 : 0;
+    final rating = (item['rating'] as num?)?.toDouble();
+    final sold = item['soldCount'] ?? item['sold'];
+
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ProductDetailScreen(
+            product: Map<String, dynamic>.from(item),
+            storeId: item['storeId']?.toString() ?? '',
+            storeName: item['storeName']?.toString() ?? '',
+            storeAddress: item['storeAddress']?.toString(),
+            storeLat: (item['storeLat'] as num?)?.toDouble(),
+            storeLong: (item['storeLong'] as num?)?.toDouble(),
+          ),
+        ),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Gambar produk
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(12)),
+                  child: imgUrl.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: imgUrl,
+                          width: double.infinity,
+                          height: 130,
+                          fit: BoxFit.cover,
+                          errorWidget: (_, __, ___) =>
+                              _productPlaceholder(height: 130),
+                        )
+                      : _productPlaceholder(height: 130),
+                ),
+                if (discPct > 0)
+                  Positioned(
+                    top: 6, left: 6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE63946),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text('$discPct%',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900)),
+                    ),
+                  ),
+              ],
+            ),
+            // Info produk
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 7, 8, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.outfit(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: ThemeConfig.textPrimary,
+                      height: 1.3,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Rp ${ThemeConfig.formatCurrency(price)}',
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: ThemeConfig.brandColor,
+                    ),
+                  ),
+                  if (originalPrice != null && originalPrice > price) ...[
+                    const SizedBox(height: 1),
+                    Text(
+                      'Rp ${ThemeConfig.formatCurrency(originalPrice)}',
+                      style: GoogleFonts.outfit(
+                        fontSize: 10,
+                        color: Colors.grey.shade400,
+                        decoration: TextDecoration.lineThrough,
+                      ),
+                    ),
+                  ],
+                  if (rating != null || sold != null) ...[
+                    const SizedBox(height: 5),
+                    Row(
+                      children: [
+                        if (rating != null) ...[
+                          const Icon(Icons.star_rounded,
+                              size: 12, color: Color(0xFFFFB800)),
+                          const SizedBox(width: 2),
+                          Text(rating.toStringAsFixed(1),
+                              style: GoogleFonts.outfit(
+                                  fontSize: 10, color: Colors.grey.shade600)),
+                        ],
+                        if (rating != null && sold != null)
+                          const SizedBox(width: 6),
+                        if (sold != null)
+                          Text('Terjual $sold',
+                              style: GoogleFonts.outfit(
+                                  fontSize: 10, color: Colors.grey.shade500)),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ).animate().fadeIn(delay: (40 * index).ms);
+  }
+
+  Widget _productPlaceholder({double height = 130}) {
+    return Container(
+      width: double.infinity,
+      height: height,
+      color: ThemeConfig.brandColor.withOpacity(0.06),
+      child: Icon(Icons.image_outlined,
+          size: 28, color: ThemeConfig.brandColor.withOpacity(0.25)),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, IconData icon,
+      {VoidCallback? onSeeAll, Widget? badge}) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
+      child: Row(
+        children: [
+          Container(
+            width: 28, height: 28,
+            decoration: BoxDecoration(
+              color: ThemeConfig.brandColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 16, color: ThemeConfig.brandColor),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: GoogleFonts.outfit(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: ThemeConfig.textPrimary,
+            ),
+          ),
+          if (badge != null) ...[const SizedBox(width: 8), badge],
+          const Spacer(),
+          if (onSeeAll != null)
+            GestureDetector(
+              onTap: onSeeAll,
+              child: Text(
+                'Lihat Semua',
+                style: GoogleFonts.outfit(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: ThemeConfig.brandColor,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFlashSaleTimer() {
+    if (_flashSaleDuration == Duration.zero) return const SizedBox.shrink();
+    final h = _flashSaleDuration.inHours.toString().padLeft(2, '0');
+    final m = (_flashSaleDuration.inMinutes % 60).toString().padLeft(2, '0');
+    final s = (_flashSaleDuration.inSeconds % 60).toString().padLeft(2, '0');
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE63946),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        '$h:$m:$s',
+        style: GoogleFonts.outfit(
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          color: Colors.white,
+          letterSpacing: 1,
+        ),
+      ),
+    );
+  }
+
   Widget _buildAppBar() {
     final topPadding = MediaQuery.of(context).padding.top;
-    final scale = ThemeConfig.tabletScale(context, mobile: 1.0);
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final isGuest = !auth.isAuthenticated;
 
     return SliverPersistentHeader(
       pinned: true,
       delegate: _HomeAppBarDelegate(
         topPadding: topPadding,
         address: _address,
+        isGuest: isGuest,
         onSearchTap: () {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const MarketSearchScreen()),
           );
         },
-        onNotifTap: () {},
+        onNotifTap: () {
+          if (isGuest) {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+            return;
+          }
+          Navigator.of(context, rootNavigator: true).push(
+            MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+          );
+        },
         onChatTap: () {
+          if (isGuest) {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+            return;
+          }
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const ChatListScreen()),
@@ -315,6 +668,15 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
             context,
             MaterialPageRoute(builder: (_) => const MarketCartScreen()),
           );
+        },
+        onAvatarTap: () {
+          if (isGuest) {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+          } else {
+            Navigator.of(context, rootNavigator: true).push(
+              MaterialPageRoute(builder: (_) => const ProfileScreen()),
+            );
+          }
         },
       ),
     );
@@ -512,114 +874,153 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
   }
 
   Widget _buildWalletCard() {
-    final scale = ThemeConfig.tabletScale(context, mobile: 1.0);
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final userName = (auth.user?['name'] ?? '').toString().trim();
+    final firstName = userName.isNotEmpty ? userName.split(' ').first : 'Kamu';
+    final hour = DateTime.now().hour;
+    final greeting = hour < 11
+        ? 'Selamat pagi'
+        : hour < 15
+            ? 'Selamat siang'
+            : hour < 18
+                ? 'Selamat sore'
+                : 'Selamat malam';
+
+    final balanceText = _walletLoading
+        ? '...'
+        : _walletObscure
+            ? '••••••••'
+            : 'Rp ${ThemeConfig.formatCurrency(_walletBalance)}';
+
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
+        gradient: const LinearGradient(
+          colors: [ThemeConfig.brandColor, Color(0xFFFF9A7A)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 25,
-            offset: const Offset(0, 12),
-          )
+            color: ThemeConfig.brandColor.withOpacity(0.35),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Primary Wallet Section
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  ThemeConfig.brandColor,
-                  ThemeConfig.brandColor.withOpacity(0.8),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: [
-                BoxShadow(
-                  color: ThemeConfig.brandColor.withOpacity(0.3),
-                  blurRadius: 15,
-                  offset: const Offset(0, 8),
-                )
-              ],
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.account_balance_wallet_rounded,
-                              color: Colors.white, size: 16),
-                          const SizedBox(width: 8),
-                          Text(
-                            'SALDO RANAPAY',
-                            style: GoogleFonts.outfit(
-                              color: Colors.white.withOpacity(0.8),
-                              fontSize: 10 * scale,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1,
-                            ),
-                          ),
-                        ],
+          // Greeting row
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$greeting, $firstName 👋',
+                      style: GoogleFonts.outfit(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Rp 1.450.000',
-                        style: GoogleFonts.outfit(
-                          color: Colors.white,
-                          fontSize: 26 * scale,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.5,
-                        ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Saldo RanaPay',
+                      style: GoogleFonts.outfit(
+                        color: Colors.white.withOpacity(0.75),
+                        fontSize: 11,
+                        letterSpacing: 0.5,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                _buildWalletQuickAction(Icons.qr_code_scanner_rounded, 'Bayar', scale),
-                const SizedBox(width: 16),
-                _buildWalletQuickAction(Icons.add_rounded, 'Top Up', scale),
-              ],
+              ),
+              GestureDetector(
+                onTap: () => setState(() => _walletObscure = !_walletObscure),
+                child: Icon(
+                  _walletObscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                  color: Colors.white.withOpacity(0.8),
+                  size: 18,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Balance
+          Text(
+            balanceText,
+            style: GoogleFonts.outfit(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.5,
             ),
           ),
-
-          // Secondary Wallet Info
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            child: Row(
-              children: [
-                _buildWalletInfoItem(
-                  Icons.stars_rounded,
-                  '2.450 Poin',
-                  const Color(0xFFF2CC8F),
-                  scale,
+          const SizedBox(height: 14),
+          // Action buttons
+          Row(
+            children: [
+              _walletActionChip(Icons.qr_code_scanner_rounded, 'Bayar'),
+              const SizedBox(width: 8),
+              _walletActionChip(Icons.add_rounded, 'Top Up'),
+              const SizedBox(width: 8),
+              _walletActionChip(Icons.history_rounded, 'Riwayat'),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                const Spacer(),
-                Container(width: 1, height: 20, color: Colors.grey.shade200),
-                const Spacer(),
-                _buildWalletInfoItem(
-                  Icons.confirmation_num_rounded,
-                  '12 Voucher',
-                  ThemeConfig.colorError,
-                  scale,
+                child: Row(
+                  children: [
+                    const Icon(Icons.stars_rounded, color: Colors.amber, size: 13),
+                    const SizedBox(width: 4),
+                    Text('Poin',
+                        style: GoogleFonts.outfit(
+                            color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                  ],
                 ),
-                const Spacer(),
-                const Icon(Icons.arrow_forward_ios_rounded,
-                    color: Colors.grey, size: 12),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),
-    ).animate().fadeIn().slideY(begin: 0.1);
+    ).animate().fadeIn().slideY(begin: 0.05);
+  }
+
+  Widget _walletActionChip(IconData icon, String label) {
+    return GestureDetector(
+      onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$label segera hadir'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white.withOpacity(0.15)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.white, size: 13),
+            const SizedBox(width: 4),
+            Text(label,
+                style: GoogleFonts.outfit(
+                    color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildWalletQuickAction(IconData icon, String label, double scale) {
@@ -729,129 +1130,76 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
   }
 
   Widget _buildSuperAppGrid() {
-    final scale = ThemeConfig.tabletScale(context, mobile: 1.0);
     final List<Map<String, dynamic>> services = [
-      {'icon': Icons.motorcycle_rounded, 'label': 'RanaRide', 'color': const Color(0xFF00AA13)},
-      {'icon': Icons.directions_car_rounded, 'label': 'RanaCar', 'color': const Color(0xFF00AA13)},
-      {'icon': Icons.restaurant_rounded, 'label': 'RanaFood', 'color': const Color(0xFFEE2737)},
-      {'icon': Icons.local_shipping_rounded, 'label': 'RanaSend', 'color': const Color(0xFF00AED6)},
-      {'icon': Icons.shopping_bag_rounded, 'label': 'RanaMart', 'color': const Color(0xFFF06400)},
-      {'icon': Icons.phone_android_rounded, 'label': 'Pulsa', 'color': const Color(0xFF005EB8)},
-      {'icon': Icons.flash_on_rounded, 'label': 'Tagihan', 'color': const Color(0xFFFFB000)},
-      {'icon': Icons.grid_view_rounded, 'label': 'Lainnya', 'color': Colors.blueGrey.shade600},
+      {'icon': Icons.motorcycle_rounded,    'label': 'RanaRide', 'color': const Color(0xFF00AA13)},
+      {'icon': Icons.restaurant_rounded,    'label': 'RanaFood', 'color': const Color(0xFFEE2737)},
+      {'icon': Icons.local_shipping_rounded,'label': 'RanaSend', 'color': const Color(0xFF00AED6)},
+      {'icon': Icons.shopping_bag_rounded,  'label': 'RanaMart', 'color': const Color(0xFFF06400)},
+      {'icon': Icons.phone_android_rounded, 'label': 'Pulsa',    'color': const Color(0xFF005EB8)},
+      {'icon': Icons.flash_on_rounded,      'label': 'Tagihan',  'color': const Color(0xFFFFB000)},
+      {'icon': Icons.map_rounded,           'label': 'Jelajah',  'color': const Color(0xFF6C63FF)},
+      {'icon': Icons.grid_view_rounded,     'label': 'Lainnya',  'color': Colors.blueGrey},
     ];
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 20),
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          )
+          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4)),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 16, bottom: 16),
-            child: Text(
-              'Layanan Utama',
-              style: GoogleFonts.outfit(
-                fontSize: 16 * scale,
-                fontWeight: FontWeight.w800,
-                color: ThemeConfig.textPrimary,
-              ),
-            ),
-          ),
-          Wrap(
-            spacing: 0,
-            runSpacing: 24 * scale,
-            alignment: WrapAlignment.start,
-            children: services.map((item) {
-              return PressScaleButton(
-                onTap: () {
-                  if (item['label'] == 'RanaRide' ||
-                      item['label'] == 'RanaCar' ||
-                      item['label'] == 'RanaSend') {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => RideBookingScreen(
-                                serviceType: item['label'] == 'RanaCar'
-                                    ? 'CAR'
-                                    : (item['label'] == 'RanaSend'
-                                        ? 'SEND'
-                                        : 'RIDE'))));
-                  } else if (item['label'] == 'Pulsa' ||
-                      item['label'] == 'Tagihan') {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const PpobScreen()));
-                  } else {
-                    PremiumToast.show(
-                      context,
-                      message: 'Layanan ${item['label']} segera hadir! 🚀',
-                      icon: item['icon'] as IconData,
-                      gradient: [item['color'] as Color, (item['color'] as Color).withOpacity(0.6)],
-                    );
-                  }
-                },
-                child: SizedBox(
-                  width: (MediaQuery.of(context).size.width - 48) / 4,
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 56 * scale,
-                        height: 56 * scale,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              (item['color'] as Color).withOpacity(0.18),
-                              (item['color'] as Color).withOpacity(0.06),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: (item['color'] as Color).withOpacity(0.15)),
-                          boxShadow: [BoxShadow(color: (item['color'] as Color).withOpacity(0.15), blurRadius: 8, offset: const Offset(0, 4))],
-                        ),
-                        child: Icon(item['icon'] as IconData,
-                            color: item['color'] as Color, size: 28 * scale),
-                      ).animate(onPlay: (c) => c.repeat(reverse: true)).shimmer(
-                          delay: (100 * services.indexOf(item)).ms,
-                          duration: 2.seconds,
-                          color: (item['color'] as Color).withOpacity(0.2)),
-                      const SizedBox(height: 10),
-                      Text(
-                        item['label'] as String,
-                        style: GoogleFonts.poppins(
-                          fontSize: 11 * scale,
-                          fontWeight: FontWeight.w700,
-                          color: ThemeConfig.textPrimary,
-                          letterSpacing: -0.2,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: services.map((item) {
+          final color = item['color'] as Color;
+          return GestureDetector(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              final label = item['label'] as String;
+              if (label == 'RanaRide') {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const RideBookingScreen(serviceType: 'RIDE')));
+              } else if (label == 'RanaSend') {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const RideBookingScreen(serviceType: 'SEND')));
+              } else if (label == 'Pulsa' || label == 'Tagihan') {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const PpobScreen()));
+              } else if (label == 'Jelajah') {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => MapExploreScreen(
+                  initialLat: _userLat, initialLong: _userLong, initialStores: _nearbyStores)));
+              } else {
+                PremiumToast.show(context, message: '$label segera hadir!',
+                  icon: item['icon'] as IconData,
+                  gradient: [color, color.withOpacity(0.6)]);
+              }
+            },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 44, height: 44,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(item['icon'] as IconData, color: color, size: 22),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  item['label'] as String,
+                  style: GoogleFonts.outfit(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: ThemeConfig.textPrimary,
                   ),
                 ),
-              ).animate().scale(
-                  delay: (30 * services.indexOf(item)).ms,
-                  duration: 400.ms,
-                  curve: Curves.easeOutBack);
-            }).toList(),
-          ),
-        ],
+              ],
+            ),
+          );
+        }).toList(),
       ),
-    );
+    ).animate().fadeIn(duration: 300.ms);
   }
 
   Widget _buildAnnouncements() {
@@ -2240,6 +2588,8 @@ class _HomeAppBarDelegate extends SliverPersistentHeaderDelegate {
   final VoidCallback onNotifTap;
   final VoidCallback onCartTap;
   final VoidCallback onChatTap;
+  final VoidCallback onAvatarTap;
+  final bool isGuest;
 
   _HomeAppBarDelegate({
     required this.topPadding,
@@ -2248,6 +2598,8 @@ class _HomeAppBarDelegate extends SliverPersistentHeaderDelegate {
     required this.onNotifTap,
     required this.onCartTap,
     required this.onChatTap,
+    required this.onAvatarTap,
+    this.isGuest = false,
   });
 
   @override
@@ -2382,11 +2734,33 @@ class _HomeAppBarDelegate extends SliverPersistentHeaderDelegate {
                     _buildTopActionBtn(
                         Icons.notifications_none_rounded, onNotifTap),
                     const SizedBox(width: 10),
-                    const CircleAvatar(
-                      radius: 18,
-                      backgroundColor: Colors.white24,
-                      child: Icon(Icons.person_outline_rounded,
-                          color: Colors.white, size: 20),
+                    GestureDetector(
+                      onTap: onAvatarTap,
+                      child: isGuest
+                          ? Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.25),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                    color: Colors.white.withOpacity(0.4)),
+                              ),
+                              child: Text(
+                                'Masuk',
+                                style: GoogleFonts.outfit(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            )
+                          : const CircleAvatar(
+                              radius: 18,
+                              backgroundColor: Colors.white24,
+                              child: Icon(Icons.person_outline_rounded,
+                                  color: Colors.white, size: 20),
+                            ),
                     ),
                   ],
                 ),

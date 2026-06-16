@@ -25,17 +25,26 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     setState(() => _isLoading = true);
-    final navigator = Navigator.of(context);
 
     try {
       await Provider.of<AuthProvider>(context, listen: false)
-          .login(_emailCtrl.text, _passCtrl.text);
+          .login(_emailCtrl.text.trim(), _passCtrl.text);
       if (!mounted) return;
-      navigator.pop(true);
+      // Jika LoginScreen di-push sebagai overlay (bukan root), pop dengan result true
+      // Jika sebagai root screen, Consumer di main.dart otomatis navigate ke MainScreen
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop(true);
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Login Gagal: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Login Gagal: $e'),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:rana_market/config/theme_config.dart';
-import 'package:rana_market/screens/main_screen.dart'; // [NEW]
+import 'package:rana_market/screens/main_screen.dart';
 import 'package:rana_market/services/notification_service.dart';
 
 import 'package:provider/provider.dart';
@@ -54,11 +54,28 @@ class RanaMarketApp extends StatelessWidget {
         themeMode: ThemeMode.system,
         home: Consumer<AuthProvider>(
           builder: (context, auth, _) {
+            // Tampilkan loading saat sesi sedang dicek
             if (auth.isLoading) {
               return const Scaffold(
-                  body: Center(child: CircularProgressIndicator()));
+                body: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.storefront_rounded,
+                          size: 64, color: ThemeConfig.brandColor),
+                      SizedBox(height: 24),
+                      CircularProgressIndicator(color: ThemeConfig.brandColor),
+                    ],
+                  ),
+                ),
+              );
             }
-            return const SocketManager(child: MainScreen());
+            // Sudah login → MainScreen dengan socket
+            // Belum login → MainScreen tanpa socket (guest mode)
+            if (auth.isAuthenticated) {
+              return const SocketManager(child: MainScreen());
+            }
+            return const MainScreen();
           },
         ),
       ),

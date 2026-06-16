@@ -458,6 +458,94 @@ class MarketApiService {
     }
   }
 
+  /// Ambil saldo RanaPay / wallet buyer berdasarkan token yang sudah di-set
+  Future<Map<String, dynamic>> getBuyerWallet() async {
+    try {
+      final response = await _dio.get('/wallet');
+      if (_isSuccess(response.data)) {
+        return Map<String, dynamic>.from(response.data['data'] ?? {});
+      }
+      return {};
+    } catch (e) {
+      debugPrint('GetBuyerWallet Error: $e');
+      return {};
+    }
+  }
+
+  /// Ambil daftar toko RanaFood (kategori makanan/minuman)
+  Future<List<dynamic>> getFoodStores({
+    double? lat,
+    double? long,
+    String? query,
+    String sort = 'rating_desc', // rating_desc | distance | popular | name_asc
+    int limit = 30,
+    int page = 1,
+  }) async {
+    try {
+      final response = await _dio.get('/market/food-stores', queryParameters: {
+        if (lat != null) 'lat': lat,
+        if (long != null) 'long': long,
+        if (query != null && query.isNotEmpty) 'q': query,
+        'sort': sort,
+        'limit': limit,
+        'page': page,
+      });
+      if (_isSuccess(response.data)) {
+        return response.data['data'] as List<dynamic>? ?? [];
+      }
+      return [];
+    } catch (e) {
+      debugPrint('GetFoodStores Error: $e');
+      return [];
+    }
+  }
+
+  /// Ambil produk food dari searchGlobal dengan filter kategori food
+  Future<List<dynamic>> getFoodProducts({
+    String? query,
+    String sort = 'rating_desc',
+    double? lat,
+    double? long,
+    int limit = 40,
+  }) async {
+    try {
+      // Coba beberapa keyword kategori food
+      final keywords = ['food', 'makanan', 'minuman', 'kuliner'];
+      final allProducts = <dynamic>[];
+      final seenIds = <String>{};
+
+      for (final kw in keywords) {
+        final result = await searchGlobal(
+          query: query,
+          category: kw,
+          sort: sort,
+          lat: lat,
+          long: long,
+          limit: limit ~/ keywords.length,
+        );
+        for (final p in result) {
+          final id = (p as Map)['id']?.toString() ?? '';
+          if (id.isNotEmpty && seenIds.add(id)) {
+            allProducts.add(p);
+          }
+        }
+      }
+
+      // Sort merged result
+      if (sort == 'rating_desc') {
+        allProducts.sort((a, b) {
+          final ra = (a['averageRating'] as num?)?.toDouble() ?? 0;
+          final rb = (b['averageRating'] as num?)?.toDouble() ?? 0;
+          return rb.compareTo(ra);
+        });
+      }
+      return allProducts.take(limit).toList();
+    } catch (e) {
+      debugPrint('GetFoodProducts Error: $e');
+      return [];
+    }
+  }
+
   // --- Chat Features ---
 
   Future<Map<String, dynamic>> getStoreChatUser(String storeId) async {

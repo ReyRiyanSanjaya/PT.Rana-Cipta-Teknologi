@@ -33,11 +33,13 @@ class HomeBannerCarousel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    // Tinggi lebih kompak — 42% lebar layar, clamp 160–240
-    final bannerHeight = (screenWidth * 0.42).clamp(160.0, 240.0);
+    // Perpanjang tinggi banner: 65% lebar, clamp 260-380
+    final bannerHeight = (screenWidth * 0.65).clamp(260.0, 380.0);
+    // Padding top agar tidak terpotong appbar (44 toolbar + status bar)
+    final topPadding = MediaQuery.of(context).padding.top + 44;
 
     if (isLoadingBanners) {
-      return _BannerShimmer(height: bannerHeight);
+      return _BannerShimmer(height: bannerHeight, topPadding: topPadding);
     }
 
     if (homeBanners.isEmpty) {
@@ -53,37 +55,61 @@ class HomeBannerCarousel extends StatelessWidget {
           ),
           child: SizedBox(
             height: bannerHeight,
-            child: PageView.builder(
-              controller: bannerPageController,
-              itemCount: homeBanners.length,
-              onPageChanged: onPageChanged,
-              itemBuilder: (_, index) {
-                final item = homeBanners[index] as Map;
-                final rawUrl = (item['imageUrl'] ?? '').toString();
-                final imageUrl = ApiService().resolveFileUrl(rawUrl);
-                final hasImage = imageUrl.isNotEmpty;
+            child: Stack(
+              children: [
+                PageView.builder(
+                  controller: bannerPageController,
+                  itemCount: homeBanners.length,
+                  onPageChanged: onPageChanged,
+                  itemBuilder: (_, index) {
+                    final item = homeBanners[index] as Map;
+                    final rawUrl = (item['imageUrl'] ?? '').toString();
+                    final imageUrl = ApiService().resolveFileUrl(rawUrl);
+                    final hasImage = imageUrl.isNotEmpty;
 
-                return GestureDetector(
-                  onTap: () {
-                    onPauseAuto(const Duration(seconds: 8));
-                    onBannerTap(item);
+                    return GestureDetector(
+                      onTap: () {
+                        onPauseAuto(const Duration(seconds: 8));
+                        onBannerTap(item);
+                      },
+                      child: hasImage
+                          ? Image.network(
+                              imageUrl,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                              gaplessPlayback: true,
+                              filterQuality: FilterQuality.medium,
+                              loadingBuilder: (_, child, progress) {
+                                if (progress == null) return child;
+                                return _BannerPlaceholder(topPadding: topPadding);
+                              },
+                              errorBuilder: (_, __, ___) => _BannerPlaceholder(topPadding: topPadding),
+                            )
+                          : _BannerContent(item: item, topPadding: topPadding),
+                    );
                   },
-                  child: hasImage
-                      ? Image.network(
-                          imageUrl,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          gaplessPlayback: true,
-                          filterQuality: FilterQuality.medium,
-                          loadingBuilder: (_, child, progress) {
-                            if (progress == null) return child;
-                            return _BannerPlaceholder();
-                          },
-                          errorBuilder: (_, __, ___) => _BannerPlaceholder(),
-                        )
-                      : _BannerContent(item: item),
-                );
-              },
+                ),
+                // Gradient overlay agar teks lebih terbaca jika ada konten di atas
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: topPadding + 20,
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Color(0x99000000), // 60% hitam
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -146,9 +172,11 @@ class HomeBannerCarousel extends StatelessWidget {
 
 // ── Placeholder saat gambar belum/gagal load ──────────────────────────────────
 class _BannerPlaceholder extends StatelessWidget {
+  final double topPadding;
+  const _BannerPlaceholder({this.topPadding = 0});
+
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -161,8 +189,11 @@ class _BannerPlaceholder extends StatelessWidget {
         ),
       ),
       child: Center(
-        child: Icon(Icons.image_outlined,
-            size: 40, color: ThemeConfig.brandColor.withOpacity(0.3)),
+        child: Padding(
+          padding: EdgeInsets.only(top: topPadding / 2),
+          child: Icon(Icons.image_outlined,
+              size: 40, color: ThemeConfig.brandColor.withOpacity(0.3)),
+        ),
       ),
     );
   }
@@ -171,7 +202,8 @@ class _BannerPlaceholder extends StatelessWidget {
 // ── Banner dari title (tanpa gambar) ─────────────────────────────────────────
 class _BannerContent extends StatelessWidget {
   final Map item;
-  const _BannerContent({required this.item});
+  final double topPadding;
+  const _BannerContent({required this.item, this.topPadding = 0});
 
   @override
   Widget build(BuildContext context) {
@@ -187,7 +219,7 @@ class _BannerContent extends StatelessWidget {
           ],
         ),
       ),
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.fromLTRB(24, topPadding + 12, 24, 24),
       child: Align(
         alignment: Alignment.centerLeft,
         child: Text(
@@ -207,7 +239,8 @@ class _BannerContent extends StatelessWidget {
 // ── Shimmer skeleton ─────────────────────────────────────────────────────────
 class _BannerShimmer extends StatelessWidget {
   final double height;
-  const _BannerShimmer({required this.height});
+  final double topPadding;
+  const _BannerShimmer({required this.height, this.topPadding = 0});
 
   @override
   Widget build(BuildContext context) {

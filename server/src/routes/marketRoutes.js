@@ -5,6 +5,7 @@ const marketOrderController = require('../controllers/marketOrderController');
 const systemController = require('../controllers/systemController');
 
 router.get('/nearby', marketController.getNearbyStores);
+router.get('/food-stores', marketController.getFoodStores); // RanaFood
 router.get('/config/payment', systemController.getPaymentInfo);
 router.get('/flashsales', marketController.getActiveFlashSales);
 router.get('/store/:id/catalog', marketController.getStoreCatalog);

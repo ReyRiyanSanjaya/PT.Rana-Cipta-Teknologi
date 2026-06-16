@@ -318,7 +318,6 @@ export default function ProductForm() {
                             min="0"
                             value={tier.price}
                             onChange={(e) => handleTierChange(index, 'price', parseInt(e.target.value) || 0)}
-                            startIcon={<DollarSign className="h-4 w-4 text-slate-400" />}
                           />
                         </td>
                         <td className="p-2 text-center">
@@ -359,7 +358,6 @@ export default function ProductForm() {
                   min="0"
                   value={formData.stockQuantity}
                   onChange={(e) => setFormData({...formData, stockQuantity: parseInt(e.target.value) || 0})}
-                  startIcon={<Package className="h-4 w-4 text-slate-400" />}
                 />
               </div>
               <div>
@@ -369,7 +367,6 @@ export default function ProductForm() {
                   min="1"
                   value={formData.moq}
                   onChange={(e) => setFormData({...formData, moq: parseInt(e.target.value) || 1})}
-                  startIcon={<Layers className="h-4 w-4 text-slate-400" />}
                 />
               </div>
               <div className="flex items-center justify-between pt-2">
@@ -399,7 +396,7 @@ export default function ProductForm() {
                         className="w-full h-full object-cover"
                       />
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <Button type="button" variant="secondary" size="sm" onClick={() => document.getElementById('image-upload')?.click()}>
+                        <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById('image-upload')?.click()}>
                           Change Image
                         </Button>
                       </div>
