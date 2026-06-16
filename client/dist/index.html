@@ -3,18 +3,35 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/rana-logo.png" />
+    <link rel="apple-touch-icon" href="/rana-logo.png" />
     <title>RanaPOS | POS modern untuk UMKM di Indonesia</title>
     <meta name="description" content="RanaPOS adalah sistem kasir modern dengan laporan keuangan otomatis, manajemen stok real-time, dan insight bisnis untuk UMKM di Indonesia." />
-    <meta name="theme-color" content="#0a0b0f" />
+    <meta name="theme-color" content="#1F5FBF" />
     <meta property="og:title" content="RanaPOS | POS modern untuk UMKM di Indonesia" />
     <meta property="og:description" content="Kelola penjualan, stok, dan keuangan bisnis Anda dengan RanaPOS. Sistem kasir berbasis cloud dengan laporan otomatis dan dukungan multi-cabang." />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="id_ID" />
     <meta name="twitter:card" content="summary_large_image" />
-    <script type="module" crossorigin src="/assets/index-KE_3-qke.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-Ch8136V4.css">
+    <script type="module" crossorigin src="/assets/index-QA1NWkMA.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DuijHkS2.css">
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Apply saved or system theme before React mounts (prevents flash of wrong theme)
+      (function () {
+        try {
+          var stored = localStorage.getItem('theme');
+          var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var theme = stored || (prefersDark ? 'dark' : 'light');
+          if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
   </body>
 </html>

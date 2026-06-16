@@ -301,10 +301,10 @@ const AIAssistant = ({ bottomOffset = 24 }) => {
                         initial={{ opacity: 0, y: 20, scale: 0.9 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.9 }}
-                        className="pointer-events-auto bg-[#0f172a]/95 backdrop-blur-xl border border-teal-500/30 rounded-2xl shadow-2xl w-[350px] md:w-[400px] overflow-hidden mb-4"
+                        className="pointer-events-auto bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl w-[350px] md:w-[400px] max-h-[calc(100vh-7rem)] flex flex-col overflow-hidden mb-4"
                     >
                         {/* Header */}
-                        <div className="bg-gradient-to-r from-sky-500 to-teal-500 p-4 flex items-center justify-between">
+                        <div className="shrink-0 bg-gradient-to-r from-blue-600 to-blue-700 p-4 flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="bg-white/20 p-2 rounded-lg">
                                     <Bot size={20} className="text-white" />
@@ -313,7 +313,7 @@ const AIAssistant = ({ bottomOffset = 24 }) => {
                                     <h3 className="font-bold text-white text-sm">Asisten AI Rana</h3>
                                     <div className="flex items-center gap-1.5">
                                         <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                                        <span className="text-xs text-teal-100">Online & Siap</span>
+                                        <span className="text-xs text-blue-100">Online & Siap</span>
                                     </div>
                                 </div>
                             </div>
@@ -326,7 +326,7 @@ const AIAssistant = ({ bottomOffset = 24 }) => {
                         </div>
 
                         {/* Chat Area */}
-                        <div className="h-[400px] overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                        <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 custom-scrollbar">
                             {messages.map((msg, idx) => (
                                 <div
                                     key={idx}
@@ -335,8 +335,8 @@ const AIAssistant = ({ bottomOffset = 24 }) => {
                                     <div
                                         className={`max-w-[80%] p-3 rounded-2xl text-sm leading-relaxed ${
                                             msg.type === 'user'
-                                                ? 'bg-teal-600 text-white rounded-br-none'
-                                                : 'bg-slate-700/50 text-slate-200 rounded-bl-none border border-slate-600/50'
+                                                ? 'bg-blue-600 text-white rounded-br-none'
+                                                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-bl-none border border-slate-200 dark:border-slate-700'
                                         }`}
                                     >
                                         {msg.text}
@@ -347,7 +347,7 @@ const AIAssistant = ({ bottomOffset = 24 }) => {
                                                 <button
                                                     key={sIdx}
                                                     onClick={() => handleSend(suggestion)}
-                                                    className="text-xs bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 border border-teal-500/30 px-3 py-1.5 rounded-full transition-colors text-left"
+                                                    className="text-xs bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-500/30 px-3 py-1.5 rounded-full transition-colors text-left"
                                                 >
                                                     {suggestion}
                                                 </button>
@@ -358,7 +358,7 @@ const AIAssistant = ({ bottomOffset = 24 }) => {
                             ))}
                             {isTyping && (
                                 <div className="flex justify-start">
-                                    <div className="bg-slate-700/50 p-3 rounded-2xl rounded-bl-none border border-slate-600/50 flex gap-1">
+                                    <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded-2xl rounded-bl-none border border-slate-200 dark:border-slate-700 flex gap-1">
                                         <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                                         <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                                         <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
@@ -369,7 +369,7 @@ const AIAssistant = ({ bottomOffset = 24 }) => {
                         </div>
 
                         {/* Input Area */}
-                        <div className="p-4 bg-slate-800/50 border-t border-teal-500/20">
+                        <div className="shrink-0 p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700">
                             <form 
                                 onSubmit={(e) => { e.preventDefault(); handleSend(); }}
                                 className="flex gap-2"
@@ -379,12 +379,12 @@ const AIAssistant = ({ bottomOffset = 24 }) => {
                                     value={input}
                                     onChange={(e) => setInput(e.target.value)}
                                     placeholder="Tanya tentang perkembangan bisnis..."
-                                    className="flex-1 bg-slate-900/50 border border-slate-600 text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-teal-500 transition-colors"
+                                    className="flex-1 bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 transition-colors"
                                 />
                                 <button
                                     type="submit"
                                     disabled={!input.trim() || isTyping}
-                                    className="bg-teal-600 hover:bg-teal-500 text-white p-2.5 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="bg-blue-600 hover:bg-blue-700 text-white p-2.5 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     <Send size={18} />
                                 </button>
@@ -399,10 +399,10 @@ const AIAssistant = ({ bottomOffset = 24 }) => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setIsOpen(!isOpen)}
-                className="pointer-events-auto group relative flex items-center justify-center w-14 h-14 bg-gradient-to-br from-sky-500 to-teal-500 rounded-full shadow-lg hover:shadow-teal-500/25 transition-all duration-300"
+                className="pointer-events-auto group relative flex items-center justify-center w-14 h-14 bg-gradient-to-br from-blue-600 to-blue-700 rounded-full shadow-lg hover:shadow-blue-500/30 transition-all duration-300"
             >
                 {/* Glow Effect */}
-                <div className="absolute inset-0 rounded-full bg-teal-400 opacity-0 group-hover:opacity-20 blur-md transition-opacity duration-300" />
+                <div className="absolute inset-0 rounded-full bg-blue-400 opacity-0 group-hover:opacity-20 blur-md transition-opacity duration-300" />
                 
                 {isOpen ? (
                     <X className="text-white" size={24} />

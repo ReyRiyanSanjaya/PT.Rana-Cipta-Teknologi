@@ -6,24 +6,7 @@ import { Mail, Phone, MapPin, Send, Loader, CheckCircle, AlertTriangle, Globe, S
 import gsap from 'gsap';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Canvas } from '@react-three/fiber';
-import NetworkGlobe from '../components/3d/NetworkGlobe';
 import usePageMeta from '../hooks/usePageMeta';
-
-const ContactCanvas = () => {
-    return (
-        <div className="fixed inset-0 z-0 pointer-events-none" aria-hidden="true">
-            <Canvas camera={{ position: [0, 0, 6], fov: 45 }}>
-                <ambientLight intensity={0.5} />
-                <NetworkGlobe />
-            </Canvas>
-            <div className="absolute inset-0 bg-gradient-to-b from-[#0a0b0f]/80 via-[#0b1020]/50 to-[#0a0b0f]" />
-            {/* Ambient Glows */}
-            <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-indigo-600/20 rounded-full blur-[120px]" />
-            <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-violet-600/10 rounded-full blur-[120px]" />
-        </div>
-    );
-};
 
 const StatCard = ({ icon: Icon, label, value, delay }) => (
     <motion.div 
@@ -31,13 +14,13 @@ const StatCard = ({ icon: Icon, label, value, delay }) => (
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ delay, duration: 0.5 }}
-        className="flex flex-col items-center p-6 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-sm hover:bg-white/10 transition-colors"
+        className="stat-card flex flex-col items-center p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm hover:shadow-md transition-shadow"
     >
-        <div className="p-3 bg-indigo-500/20 rounded-xl mb-4 text-indigo-400">
+        <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-xl mb-4 text-blue-600 dark:text-blue-400">
             <Icon size={24} />
         </div>
-        <h4 className="text-3xl font-bold text-white mb-1">{value}</h4>
-        <p className="text-slate-400 text-sm font-medium uppercase tracking-wider">{label}</p>
+        <h4 className="text-3xl font-bold text-slate-900 dark:text-white mb-1">{value}</h4>
+        <p className="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wider">{label}</p>
     </motion.div>
 );
 
@@ -47,9 +30,9 @@ const InputField = ({ label, name, type = "text", value, onChange, placeholder, 
     return (
         <div className="relative">
             <label className={`absolute left-4 transition-all duration-300 pointer-events-none ${
-                isFocused || value ? '-top-2.5 text-xs bg-[#0b1020] px-2 text-indigo-400' : 'top-4 text-slate-400'
+                isFocused || value ? '-top-2.5 text-xs bg-white dark:bg-slate-900 px-2 text-blue-600' : 'top-4 text-slate-400'
             }`}>
-                {label} {required && <span className="text-red-400">*</span>}
+                {label} {required && <span className="text-red-500">*</span>}
             </label>
             
             {isTextArea ? (
@@ -61,8 +44,8 @@ const InputField = ({ label, name, type = "text", value, onChange, placeholder, 
                     onBlur={() => setIsFocused(false)}
                     required={required}
                     rows="4"
-                    className={`w-full bg-white/5 border rounded-xl p-4 pt-4 outline-none transition-all duration-300 text-white placeholder-transparent ${
-                        isFocused ? 'border-indigo-500 ring-1 ring-indigo-500/50' : 'border-white/10 hover:border-white/20'
+                    className={`w-full bg-white dark:bg-slate-900/50 border rounded-xl p-4 pt-4 outline-none transition-all duration-300 text-slate-800 dark:text-slate-100 placeholder-transparent ${
+                        isFocused ? 'border-blue-500 ring-1 ring-blue-500/40' : 'border-slate-300 dark:border-slate-600 hover:border-slate-400 dark:hover:border-slate-500'
                     }`}
                     placeholder={placeholder}
                 />
@@ -75,8 +58,8 @@ const InputField = ({ label, name, type = "text", value, onChange, placeholder, 
                     onFocus={() => setIsFocused(true)}
                     onBlur={() => setIsFocused(false)}
                     required={required}
-                    className={`w-full bg-white/5 border rounded-xl p-4 outline-none transition-all duration-300 text-white placeholder-transparent ${
-                        isFocused ? 'border-indigo-500 ring-1 ring-indigo-500/50' : 'border-white/10 hover:border-white/20'
+                    className={`w-full bg-white dark:bg-slate-900/50 border rounded-xl p-4 outline-none transition-all duration-300 text-slate-800 dark:text-slate-100 placeholder-transparent ${
+                        isFocused ? 'border-blue-500 ring-1 ring-blue-500/40' : 'border-slate-300 dark:border-slate-600 hover:border-slate-400 dark:hover:border-slate-500'
                     }`}
                     placeholder={placeholder}
                 />
@@ -126,24 +109,29 @@ const Contact = () => {
     }, []);
 
     return (
-        <div className="min-h-screen bg-[#0a0b0f] font-sans text-slate-200 relative overflow-x-hidden selection:bg-indigo-500/30">
-            <ContactCanvas />
+        <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-sans relative overflow-x-hidden transition-colors duration-300">
+            {/* Soft background accents */}
+            <div className="fixed inset-0 z-0 pointer-events-none" aria-hidden="true">
+                <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-blue-100/60 dark:bg-blue-500/10 rounded-full blur-3xl" />
+                <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-green-100/50 dark:bg-green-500/10 rounded-full blur-3xl" />
+            </div>
+
             <Navbar />
             
             <div className="relative z-10 pt-32 pb-20">
                 {/* Hero Section */}
                 <div ref={headerRef} className="text-center px-4 max-w-4xl mx-auto mb-20">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-sm font-medium mb-6">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 text-blue-700 dark:text-blue-300 text-sm font-medium mb-6">
                         <Globe size={16} />
                         <span>Global Enterprise Solutions</span>
                     </div>
-                    <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight">
+                    <h1 className="text-5xl md:text-7xl font-bold text-slate-900 dark:text-white mb-6 tracking-tight">
                         Mari Berkolaborasi untuk <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-violet-400">
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-green-500">
                             Pertumbuhan Bisnis
                         </span>
                     </h1>
-                    <p className="text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
+                    <p className="text-xl text-slate-500 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">
                         Bergabunglah dengan ribuan merchant yang telah mempercayakan operasional bisnis mereka pada infrastruktur RanaPOS yang aman dan skalabel.
                     </p>
                 </div>
@@ -163,8 +151,8 @@ const Contact = () => {
                         {/* Contact Info */}
                         <div ref={infoRef} className="space-y-10">
                             <div>
-                                <h3 className="text-3xl font-bold text-white mb-4">Hubungi Tim Kami</h3>
-                                <p className="text-slate-400 text-lg leading-relaxed">
+                                <h3 className="text-3xl font-bold text-slate-900 dark:text-white mb-4">Hubungi Tim Kami</h3>
+                                <p className="text-slate-500 dark:text-slate-400 text-lg leading-relaxed">
                                     Punya pertanyaan tentang fitur Enterprise? Tim ahli kami siap membantu Anda menemukan solusi terbaik.
                                 </p>
                             </div>
@@ -172,40 +160,40 @@ const Contact = () => {
                             <div className="grid gap-6">
                                 <motion.div 
                                     whileHover={{ x: 10 }}
-                                    className="group flex items-center gap-6 p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-indigo-500/50 transition-all duration-300"
+                                    className="group flex items-center gap-6 p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm hover:border-blue-300 dark:hover:border-blue-500/50 transition-all duration-300"
                                 >
-                                    <div className="w-14 h-14 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 group-hover:bg-indigo-500 group-hover:text-white transition-all">
+                                    <div className="w-14 h-14 rounded-full bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:bg-blue-600 group-hover:text-white transition-all">
                                         <Mail size={24} />
                                     </div>
                                     <div>
-                                        <h4 className="text-lg font-bold text-white mb-1">Email Inquiry</h4>
-                                        <p className="text-slate-400">{cmsContent.CMS_CONTACT_EMAIL || 'enterprise@rana.com'}</p>
+                                        <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Email Inquiry</h4>
+                                        <p className="text-slate-500 dark:text-slate-400">{cmsContent.CMS_CONTACT_EMAIL || 'enterprise@rana.com'}</p>
                                     </div>
                                 </motion.div>
 
                                 <motion.div 
                                     whileHover={{ x: 10 }}
-                                    className="group flex items-center gap-6 p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-indigo-500/50 transition-all duration-300"
+                                    className="group flex items-center gap-6 p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm hover:border-blue-300 dark:hover:border-blue-500/50 transition-all duration-300"
                                 >
-                                    <div className="w-14 h-14 rounded-full bg-violet-500/10 flex items-center justify-center text-violet-400 group-hover:bg-violet-500 group-hover:text-white transition-all">
+                                    <div className="w-14 h-14 rounded-full bg-green-50 dark:bg-green-500/10 flex items-center justify-center text-green-600 dark:text-green-400 group-hover:bg-green-600 group-hover:text-white transition-all">
                                         <Phone size={24} />
                                     </div>
                                     <div>
-                                        <h4 className="text-lg font-bold text-white mb-1">Call Center (24/7)</h4>
-                                        <p className="text-slate-400">{cmsContent.CMS_CONTACT_PHONE || '+62 812 9999 8888'}</p>
+                                        <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Call Center (24/7)</h4>
+                                        <p className="text-slate-500 dark:text-slate-400">{cmsContent.CMS_CONTACT_PHONE || '+62 812 9999 8888'}</p>
                                     </div>
                                 </motion.div>
 
                                 <motion.div 
                                     whileHover={{ x: 10 }}
-                                    className="group flex items-center gap-6 p-6 bg-white/5 border border-white/10 rounded-2xl hover:border-indigo-500/50 transition-all duration-300"
+                                    className="group flex items-center gap-6 p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm hover:border-blue-300 dark:hover:border-blue-500/50 transition-all duration-300"
                                 >
-                                    <div className="w-14 h-14 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-400 group-hover:bg-cyan-500 group-hover:text-white transition-all">
+                                    <div className="w-14 h-14 rounded-full bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:bg-blue-600 group-hover:text-white transition-all">
                                         <MapPin size={24} />
                                     </div>
                                     <div>
-                                        <h4 className="text-lg font-bold text-white mb-1">Headquarters</h4>
-                                        <p className="text-slate-400">Menara Rana, SCBD Lot 8<br/>Jakarta Selatan, Indonesia</p>
+                                        <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Headquarters</h4>
+                                        <p className="text-slate-500 dark:text-slate-400">Menara Rana, SCBD Lot 8<br/>Jakarta Selatan, Indonesia</p>
                                     </div>
                                 </motion.div>
                             </div>
@@ -214,8 +202,8 @@ const Contact = () => {
 
                         {/* Contact Form */}
                         <div ref={formRef} className="relative">
-                            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-violet-500/10 rounded-3xl blur-xl" />
-                            <form onSubmit={handleSubmit} className="relative bg-[#0b1020]/80 backdrop-blur-xl border border-white/10 p-8 md:p-10 rounded-3xl shadow-2xl">
+                            <div className="absolute -inset-4 bg-gradient-to-tr from-blue-200/50 to-green-200/40 dark:from-blue-500/20 dark:to-green-500/15 rounded-[2.5rem] blur-2xl" />
+                            <form onSubmit={handleSubmit} className="relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-8 md:p-10 rounded-3xl shadow-xl shadow-blue-900/5">
                                 <div className="space-y-6">
                                     <div className="grid md:grid-cols-2 gap-6">
                                         <InputField 
@@ -260,7 +248,7 @@ const Contact = () => {
                                         <motion.button 
                                             type="submit" 
                                             disabled={formStatus.status === 'loading'}
-                                            className="w-full py-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold rounded-xl shadow-[0_10px_30px_rgba(79,70,229,0.35)] hover:shadow-[0_15px_40px_rgba(124,58,237,0.45)] transition duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden group"
+                                            className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold rounded-xl shadow-[0_10px_30px_rgba(31,95,191,0.3)] hover:shadow-[0_15px_40px_rgba(31,95,191,0.45)] transition duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden group"
                                             whileHover={{ scale: formStatus.status === 'idle' ? 1.02 : 1 }}
                                             whileTap={{ scale: 0.98 }}
                                         >
@@ -285,7 +273,7 @@ const Contact = () => {
                                                 )}
                                             </AnimatePresence>
                                         </motion.button>
-                                        <p className="text-center text-slate-500 text-xs mt-4">
+                                        <p className="text-center text-slate-400 text-xs mt-4">
                                             Data Anda aman dan terenkripsi. Kami akan membalas dalam waktu 1x24 jam.
                                         </p>
                                     </div>

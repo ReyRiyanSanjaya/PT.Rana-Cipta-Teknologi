@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 
-const SpotlightCard = ({ children, className = "", spotlightColor = "rgba(99, 102, 241, 0.15)" }) => {
+const SpotlightCard = ({ children, className = "", spotlightColor = "rgba(47, 122, 217, 0.15)" }) => {
     const divRef = useRef(null);
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [opacity, setOpacity] = useState(0);
