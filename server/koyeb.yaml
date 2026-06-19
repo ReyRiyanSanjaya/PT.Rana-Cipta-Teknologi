@@ -1,0 +1,19 @@
+name: rana-server
+type: web
+git:
+  repository: github.com/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME
+  branch: main
+  workdir: server
+build:
+  buildpack:
+    build_command: npm install && npx prisma generate && npx prisma migrate deploy
+run_command: npm start
+ports:
+  - port: 8000
+    protocol: http
+env:
+  - key: NODE_ENV
+    value: production
+  - key: PORT
+    value: "8000"
+  # Sisanya di-set manual di Koyeb Dashboard (karena ada secrets)

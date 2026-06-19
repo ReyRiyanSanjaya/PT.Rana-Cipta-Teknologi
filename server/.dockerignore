@@ -1,0 +1,17 @@
+node_modules
+npm-debug.log
+.env
+.env.*
+!.env.production
+*.log
+*.txt
+uploads/*
+tests/
+*.test.js
+supabase_init.sql
+test_supabase.js
+gen_secret.js
+debug_*.js
+diagnose*.js
+fix_*.js
+seed_*.js

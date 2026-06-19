@@ -1,0 +1,28 @@
+# fly.toml — Konfigurasi Fly.io untuk Rana Server
+# Deploy dengan: fly deploy (dari folder server/)
+
+app = "rana-server"
+primary_region = "sin" # Singapore — paling dekat Indonesia
+
+[build]
+  # Fly.io auto-detect Node.js via package.json
+
+[env]
+  NODE_ENV = "production"
+  PORT = "8080"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false   # Jangan sleep
+  auto_start_machines = true
+  min_machines_running = 1     # Selalu ada 1 instance aktif
+
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 100
+    soft_limit = 80
+
+[[vm]]
+  size = "shared-cpu-1x"   # Free tier
+  memory = "256mb"

@@ -39,3 +39,7 @@ android/local.properties
 akun.txt
 .env
 .env.ecosystem
+
+# Production env (contains secrets — set directly in hosting dashboard)
+# Uncomment line below jika file .env.production sudah diisi dengan nilai asli
+# .env.production
