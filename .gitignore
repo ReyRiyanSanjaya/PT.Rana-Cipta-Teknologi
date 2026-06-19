@@ -53,3 +53,8 @@ test_supabase.js
 server/test_supabase.js
 server/supabase_init.sql
 server/uploads/
+
+# Build output — jangan commit
+client/dist/
+admin_client/dist/
+distributor_client/dist/
