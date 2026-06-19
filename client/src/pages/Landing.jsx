@@ -1,17 +1,11 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Canvas } from '@react-three/fiber';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { motion } from 'framer-motion';
-import { ArrowRight, Box, TrendingUp, Users, Smartphone, ShieldCheck, Zap, BarChart3, PieChart, LineChart, Sparkles, Activity, Layers } from 'lucide-react';
-import Experience from '../components/3d/Experience';
+import { ArrowRight, TrendingUp, Users, Smartphone, ShieldCheck, Zap, BarChart3, PieChart, Sparkles, Star, Check, Store, Box, CreditCard, RefreshCw, Cloud, Package } from 'lucide-react';
 import Navbar from '../components/Navbar';
-import LiveDashboardPreview from '../components/LiveDashboardPreview';
 import SpotlightCard from '../components/SpotlightCard';
-import TrustedByLeaders from '../components/TrustedByLeaders';
-import TypewriterText from '../components/TypewriterText';
-import MagneticButton from '../components/MagneticButton';
 import Footer from '../components/Footer';
 import useCms from '../hooks/useCms';
 import usePageMeta from '../hooks/usePageMeta';
@@ -26,17 +20,17 @@ const GrowthSimulator = () => {
     const annualExtra = (projectedSales - monthlySales) * 12;
 
     return (
-        <div className="bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-md">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl p-8 shadow-xl shadow-blue-900/5">
             <div className="mb-8">
-                <h3 className="text-2xl font-bold text-white mb-2">Simulasi Pertumbuhan Bisnis</h3>
-                <p className="text-slate-400">Lihat potensi kenaikan omzet Anda dengan teknologi AI Rana.</p>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Simulasi Pertumbuhan Bisnis</h3>
+                <p className="text-slate-500 dark:text-slate-400">Lihat potensi kenaikan omzet Anda bersama Rana.</p>
             </div>
 
             <div className="space-y-6 mb-8">
                 <div>
-                    <div className="flex justify-between text-slate-300 mb-2">
+                    <div className="flex justify-between text-slate-600 dark:text-slate-300 mb-2">
                         <span>Omzet Bulanan Saat Ini</span>
-                        <span className="font-mono text-indigo-400">Rp {monthlySales.toLocaleString('id-ID')}</span>
+                        <span className="font-mono text-blue-600 dark:text-blue-400 font-semibold">Rp {monthlySales.toLocaleString('id-ID')}</span>
                     </div>
                     <input 
                         type="range" 
@@ -45,28 +39,28 @@ const GrowthSimulator = () => {
                         step="1000000" 
                         value={monthlySales} 
                         onChange={(e) => setMonthlySales(Number(e.target.value))}
-                        className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                        className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
                     />
                 </div>
                 <div>
-                    <div className="flex justify-between text-slate-300 mb-2">
-                        <span>Optimasi AI (Efisiensi & Stok)</span>
-                        <span className="font-mono text-green-400">+{growthRate}%</span>
+                    <div className="flex justify-between text-slate-600 dark:text-slate-300 mb-2">
+                        <span>Optimasi Rana (Efisiensi & Stok)</span>
+                        <span className="font-mono text-green-600 dark:text-green-400 font-semibold">+{growthRate}%</span>
                     </div>
-                    <div className="w-full bg-slate-700 h-2 rounded-lg overflow-hidden">
-                        <div className="bg-gradient-to-r from-indigo-500 to-green-400 h-full transition-all duration-500" style={{ width: `${growthRate}%` }}></div>
+                    <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-lg overflow-hidden">
+                        <div className="bg-gradient-to-r from-blue-600 to-green-500 h-full transition-all duration-500" style={{ width: `${growthRate}%` }}></div>
                     </div>
                 </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-                <div className="bg-indigo-600/20 border border-indigo-500/30 p-4 rounded-xl">
-                    <div className="text-slate-400 text-sm mb-1">Proyeksi Bulan Depan</div>
-                    <div className="text-2xl font-bold text-white">Rp {projectedSales.toLocaleString('id-ID')}</div>
+                <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 p-4 rounded-xl">
+                    <div className="text-slate-500 dark:text-slate-400 text-sm mb-1">Proyeksi Bulan Depan</div>
+                    <div className="text-xl font-bold text-slate-900 dark:text-white">Rp {projectedSales.toLocaleString('id-ID')}</div>
                 </div>
-                <div className="bg-green-600/20 border border-green-500/30 p-4 rounded-xl">
-                    <div className="text-slate-400 text-sm mb-1">Potensi Tambahan / Tahun</div>
-                    <div className="text-2xl font-bold text-green-400">+Rp {annualExtra.toLocaleString('id-ID')}</div>
+                <div className="bg-green-50 dark:bg-green-500/10 border border-green-100 dark:border-green-500/20 p-4 rounded-xl">
+                    <div className="text-slate-500 dark:text-slate-400 text-sm mb-1">Potensi Tambahan / Tahun</div>
+                    <div className="text-xl font-bold text-green-600 dark:text-green-400">+Rp {annualExtra.toLocaleString('id-ID')}</div>
                 </div>
             </div>
         </div>
@@ -145,7 +139,7 @@ const Landing = () => {
         // Hero Animation
         gsap.fromTo(headerRef.current.children,
             { y: 50, opacity: 0 },
-            { y: 0, opacity: 1, stagger: 0.2, duration: 1, ease: 'power3.out', delay: 0.7 }
+            { y: 0, opacity: 1, stagger: 0.2, duration: 1, ease: 'power3.out', delay: 0.3 }
         );
 
         // Core Values Animation
@@ -199,198 +193,338 @@ const Landing = () => {
         return () => clearInterval(interval);
     }, [testimonials.length]);
 
+    const industries = [
+        { emoji: '🍔', title: 'Restoran & Cafe', desc: 'POS + Kitchen Display System' },
+        { emoji: '🛒', title: 'Retail & Toko', desc: 'Smart Inventory Management' },
+        { emoji: '💇', title: 'Salon & Spa', desc: 'Booking & Komisi Staff' },
+        { emoji: '🏪', title: 'Minimarket', desc: 'Barcode Scanner Ready' },
+    ];
+
+    const features = [
+        { icon: BarChart3, title: 'Dashboard Analytics', desc: 'Real-time insights' },
+        { icon: Box, title: 'Inventory Smart', desc: 'Auto tracking' },
+        { icon: PieChart, title: 'Laporan Keuangan', desc: 'Laporan lengkap' },
+        { icon: Users, title: 'Multi-User', desc: 'Manajemen role' },
+        { icon: CreditCard, title: 'Multi Pembayaran', desc: 'Semua metode bayar' },
+        { icon: Store, title: 'Database Pelanggan', desc: 'Program loyalti' },
+        { icon: RefreshCw, title: 'Sync Real-time', desc: 'Antar perangkat' },
+        { icon: Cloud, title: 'Cloud Backup', desc: 'Auto sinkronisasi' },
+    ];
+
     return (
-        <div className="min-h-screen bg-gradient-to-b from-[#0a0b0f] via-[#0b1020] to-[#0a0b0f] text-slate-200 font-sans selection:bg-indigo-400/30 overflow-x-hidden">
+        <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-sans selection:bg-blue-200 selection:text-blue-900 overflow-x-hidden transition-colors duration-300">
             <Navbar />
 
-            {/* 3D Background */}
-            <div className="fixed inset-0 z-0 pointer-events-none opacity-25" aria-hidden="true">
-                <Canvas camera={{ position: [0, 0, 8], fov: 45 }}>
-                    <Experience />
-                </Canvas>
-            </div>
-            <div className="fixed inset-0 z-0 pointer-events-none" aria-hidden="true">
-                <div className="absolute -top-40 -left-40 w-[600px] h-[600px] bg-gradient-to-br from-indigo-600/30 to-violet-600/20 rounded-full blur-3xl" />
-                <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] bg-gradient-to-tr from-cyan-500/20 to-indigo-500/20 rounded-full blur-3xl" />
-            </div>
+            {/* ===== HERO ===== */}
+            <header className="relative overflow-hidden pt-36 pb-24 px-4">
+                {/* Soft background accents */}
+                <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+                    <div className="absolute -top-32 -right-24 w-[600px] h-[600px] bg-blue-100/60 dark:bg-blue-500/10 rounded-full blur-3xl" />
+                    <div className="absolute top-40 -left-32 w-[500px] h-[500px] bg-green-100/50 dark:bg-green-500/10 rounded-full blur-3xl" />
+                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#f1f5f9_1px,transparent_1px),linear-gradient(to_bottom,#f1f5f9_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:64px_64px] opacity-40 [mask-image:radial-gradient(ellipse_at_center,black,transparent_75%)]" />
+                </div>
 
-            <header className="relative z-10 min-h-screen flex items-center justify-center pt-32 pb-32 px-4">
-                <div ref={headerRef} className="max-w-5xl mx-auto text-center">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 mb-8 rounded-full bg-white/5 border border-white/10 backdrop-blur-md shadow-[0_0_15px_rgba(99,102,241,0.3)] group cursor-default transition-all hover:bg-white/10 hover:border-indigo-500/30">
-                        <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-                        </span>
-                        <span className="text-indigo-200 font-medium text-sm tracking-wide uppercase">The Future of Retail Intelligence</span>
-                    </div>
-                    
-                    <h1 className="text-6xl md:text-8xl font-black mb-8 tracking-tighter leading-[1.1] text-white drop-shadow-2xl">
-                        Revolusi Bisnis <br />
-                        <span className="relative inline-block">
-                            <span className="absolute -inset-2 blur-2xl bg-gradient-to-r from-indigo-600/50 via-violet-600/50 to-cyan-500/50 opacity-50"></span>
-                            <span className="relative text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-white to-cyan-300 animate-gradient-x">
-                                Tanpa Batas
+                <div className="relative max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
+                    {/* Left: copy */}
+                    <div ref={headerRef} className="text-center lg:text-left">
+                        <div className="inline-flex items-center gap-2 px-4 py-2 mb-6 rounded-full bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20">
+                            <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
                             </span>
-                        </span>
-                    </h1>
-                    
-                    <p className="text-xl md:text-2xl text-slate-300/90 mb-12 max-w-3xl mx-auto leading-relaxed font-light">
-                        Sistem kasir cerdas dengan <span className="text-white font-semibold">Artificial Intelligence</span>. Kelola ribuan SKU, pantau cabang, dan prediksi tren pasar dalam satu dashboard futuristik.
-                    </p>
-                    
-                    <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
-                        <Link to="/login" className="relative group px-8 py-4 rounded-2xl font-bold text-lg overflow-hidden bg-indigo-600 text-white shadow-[0_0_40px_rgba(79,70,229,0.4)] transition-all hover:scale-105 hover:shadow-[0_0_60px_rgba(79,70,229,0.6)]">
-                            <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-600 opacity-100 group-hover:opacity-90 transition-opacity" />
-                            <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-20" />
-                            <span className="relative flex items-center gap-3">
-                                Mulai Sekarang
+                            <span className="text-blue-700 dark:text-blue-300 font-semibold text-xs tracking-wide uppercase">Solusi Kasir Cerdas untuk UMKM</span>
+                        </div>
+
+                        <h1 className="text-4xl md:text-6xl font-extrabold mb-6 tracking-tight leading-[1.1] text-slate-900 dark:text-white">
+                            Kelola Bisnis Lebih <br className="hidden md:block" />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-green-500">
+                                Mudah & Cerdas
+                            </span>
+                        </h1>
+
+                        <p className="text-lg md:text-xl text-slate-500 dark:text-slate-400 mb-8 max-w-xl mx-auto lg:mx-0 leading-relaxed">
+                            Kelola penjualan, stok, laporan keuangan, dan karyawan dalam satu aplikasi yang powerful dan mudah digunakan.
+                        </p>
+
+                        <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                            <Link to="/register" className="group px-7 py-3.5 rounded-xl font-bold text-base bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-[0_10px_30px_rgba(31,95,191,0.3)] hover:shadow-[0_15px_40px_rgba(31,95,191,0.45)] transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                                Coba Gratis 14 Hari
                                 <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-                            </span>
-                        </Link>
-                        
-                        <Link to="/blog" className="px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-300 bg-white/5 border border-white/10 text-slate-200 hover:bg-white/10 hover:border-white/20 hover:text-white backdrop-blur-sm">
-                            Pelajari Teknologi
-                        </Link>
+                            </Link>
+                            <Link to="/features" className="px-7 py-3.5 rounded-xl font-bold text-base bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-blue-300 hover:text-blue-700 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-700 transition-all">
+                                Lihat Fitur
+                            </Link>
+                        </div>
+
+                        <div className="flex items-center gap-6 justify-center lg:justify-start mt-8">
+                            <div className="flex items-center gap-2">
+                                <div className="flex">
+                                    {[...Array(5)].map((_, i) => (
+                                        <Star key={i} size={16} className="text-amber-400 fill-amber-400" />
+                                    ))}
+                                </div>
+                                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">4.9/5 Rating</span>
+                            </div>
+                            <div className="h-5 w-px bg-slate-200 dark:bg-slate-700" />
+                            <span className="text-sm text-slate-500 dark:text-slate-400"><span className="font-semibold text-slate-700 dark:text-slate-200">10.000+</span> Pengguna</span>
+                        </div>
+                    </div>
+
+                    {/* Right: dashboard mockup card */}
+                    <div className="relative">
+                        <div className="absolute -inset-4 bg-gradient-to-tr from-blue-200/50 to-green-200/40 dark:from-blue-500/20 dark:to-green-500/15 rounded-[2.5rem] blur-2xl" />
+                        <motion.div
+                            initial={{ opacity: 0, y: 30 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.7, delay: 0.3 }}
+                            className="relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-2xl shadow-blue-900/10 overflow-hidden"
+                        >
+                            <img
+                                src="/dashboard_red_theme.png"
+                                alt="Dashboard Rana"
+                                className="w-full h-auto"
+                            />
+                        </motion.div>
+                        {/* Floating stat card */}
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.5, delay: 0.8 }}
+                            className="absolute -bottom-5 -left-3 md:left-6 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 p-4 flex items-center gap-3"
+                        >
+                            <div className="w-11 h-11 rounded-xl bg-green-100 dark:bg-green-500/15 flex items-center justify-center text-green-600 dark:text-green-400">
+                                <TrendingUp size={22} />
+                            </div>
+                            <div>
+                                <div className="text-xs text-slate-400">Penjualan Hari Ini</div>
+                                <div className="text-lg font-bold text-slate-900 dark:text-white">Rp 4.5 Juta</div>
+                                <div className="text-xs text-green-600 dark:text-green-400 font-medium">↑ 12% dari kemarin</div>
+                            </div>
+                        </motion.div>
                     </div>
                 </div>
             </header>
 
-            <section className="relative z-20 -mt-12 px-4 pb-12">
-                <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <SpotlightCard 
-                        spotlightColor="rgba(99, 102, 241, 0.25)"
-                        className="p-6 flex items-center gap-5 group"
-                    >
-                        <div className="w-14 h-14 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 shadow-[0_0_20px_rgba(99,102,241,0.2)] group-hover:scale-110 transition-transform">
-                            <Users size={28} />
+            {/* ===== STATS BAR ===== */}
+            <section className="relative z-10 px-4 -mt-2 pb-8">
+                <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[
+                        { value: '10.000+', label: 'Merchant Aktif' },
+                        { value: '+35%', label: 'Pertumbuhan Omzet' },
+                        { value: '99.99%', label: 'Uptime Terjamin' },
+                        { value: '24/7', label: 'Support Siap Bantu' },
+                    ].map((s, i) => (
+                        <div key={i} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 text-center shadow-sm hover:shadow-md transition-shadow">
+                            <div className="text-2xl md:text-3xl font-extrabold text-blue-700 dark:text-blue-400">{s.value}</div>
+                            <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">{s.label}</div>
                         </div>
-                        <div>
-                            <div className="text-sm text-slate-400 uppercase tracking-wider font-medium mb-1">Merchant Aktif</div>
-                            <div className="text-2xl font-black text-white">10.000+</div>
-                            <div className="text-xs text-slate-500 mt-1">Di seluruh Indonesia</div>
-                        </div>
-                    </SpotlightCard>
-
-                    <SpotlightCard 
-                        spotlightColor="rgba(16, 185, 129, 0.25)"
-                        className="p-6 flex items-center gap-5 group"
-                    >
-                        <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.2)] group-hover:scale-110 transition-transform">
-                            <TrendingUp size={28} />
-                        </div>
-                        <div>
-                            <div className="text-sm text-slate-400 uppercase tracking-wider font-medium mb-1">Pertumbuhan Omzet</div>
-                            <div className="text-2xl font-black text-white">+35%</div>
-                            <div className="text-xs text-slate-500 mt-1">Rata-rata per kuartal</div>
-                        </div>
-                    </SpotlightCard>
-
-                    <SpotlightCard 
-                        spotlightColor="rgba(6, 182, 212, 0.25)"
-                        className="p-6 flex items-center gap-5 group"
-                    >
-                        <div className="w-14 h-14 rounded-2xl bg-cyan-500/20 flex items-center justify-center text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.2)] group-hover:scale-110 transition-transform">
-                            <ShieldCheck size={28} />
-                        </div>
-                        <div>
-                            <div className="text-sm text-slate-400 uppercase tracking-wider font-medium mb-1">Reliability</div>
-                            <div className="text-2xl font-black text-white">99.99%</div>
-                            <div className="text-xs text-slate-500 mt-1">Uptime terjamin</div>
-                        </div>
-                    </SpotlightCard>
+                    ))}
                 </div>
             </section>
 
-            <section className="relative z-20 py-16 px-4 border-y border-white/10 bg-gradient-to-b from-white/[0.02] to-transparent backdrop-blur-sm">
+            {/* ===== FEATURES GRID ===== */}
+            <section className="relative z-10 py-20 px-4">
                 <div className="max-w-7xl mx-auto">
-                    <TrustedByLeaders />
+                    <div className="text-center max-w-2xl mx-auto mb-14">
+                        <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 text-blue-700 dark:text-blue-300 text-sm font-semibold mb-4">
+                            <Sparkles size={15} /> Fitur Powerful & Lengkap
+                        </span>
+                        <h2 className="text-3xl md:text-5xl font-extrabold text-slate-900 dark:text-white mb-4 tracking-tight">
+                            Semua Fitur yang Anda Butuhkan
+                        </h2>
+                        <p className="text-lg text-slate-500 dark:text-slate-400">
+                            Platform kasir all-in-one yang dirancang khusus untuk berbagai jenis bisnis Anda.
+                        </p>
+                    </div>
 
-            {/* Distributor Promotion Section */}
-            <section className="py-24 px-6 relative overflow-hidden">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+                        {features.map((f, i) => (
+                            <motion.div
+                                key={i}
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 0.4, delay: i * 0.05 }}
+                                className="group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 hover:border-blue-300 dark:hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-900/5 transition-all duration-300"
+                            >
+                                <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-4 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                    <f.icon size={24} />
+                                </div>
+                                <h3 className="text-base font-bold text-slate-900 dark:text-white mb-1">{f.title}</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">{f.desc}</p>
+                            </motion.div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* ===== INDUSTRIES ===== */}
+            <section className="relative z-10 py-20 px-4 bg-slate-50 dark:bg-slate-900 border-y border-slate-100 dark:border-slate-800">
                 <div className="max-w-7xl mx-auto">
-                    <div className="bg-gradient-to-br from-indigo-900/40 to-slate-900/40 border border-indigo-500/20 rounded-[3rem] p-8 md:p-16 backdrop-blur-xl relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-[100px] -mr-48 -mt-48" />
-                        
-                        <div className="grid lg:grid-cols-2 gap-12 items-center">
+                    <div className="text-center max-w-2xl mx-auto mb-14">
+                        <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-green-50 dark:bg-green-500/10 border border-green-100 dark:border-green-500/20 text-green-700 dark:text-green-300 text-sm font-semibold mb-4">
+                            <Store size={15} /> Untuk Semua Bisnis
+                        </span>
+                        <h2 className="text-3xl md:text-5xl font-extrabold text-slate-900 dark:text-white mb-4 tracking-tight">
+                            Cocok untuk Berbagai Industri
+                        </h2>
+                        <p className="text-lg text-slate-500 dark:text-slate-400">
+                            Dari cafe, retail, salon, hingga minimarket. Rana dapat disesuaikan dengan kebutuhan bisnis Anda.
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+                        {industries.map((ind, i) => (
+                            <motion.div
+                                key={i}
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 0.4, delay: i * 0.08 }}
+                                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-7 text-center hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+                            >
+                                <div className="text-4xl mb-4">{ind.emoji}</div>
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">{ind.title}</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">{ind.desc}</p>
+                            </motion.div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* ===== DISTRIBUTOR PROMO ===== */}
+            <section className="relative z-10 py-20 px-4">
+                <div className="max-w-7xl mx-auto">
+                    <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-[2.5rem] p-8 md:p-14 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32" />
+                        <div className="absolute bottom-0 left-0 w-72 h-72 bg-green-400/20 rounded-full blur-3xl -ml-20 -mb-20" />
+                        <div className="grid lg:grid-cols-2 gap-10 items-center relative z-10">
                             <div>
-                                <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-sm font-medium mb-6">
-                                    <Box size={16} />
-                                    Baru: Rana for Distributors
+                                <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/15 border border-white/20 text-white text-sm font-medium mb-5">
+                                    <Package size={16} /> Baru: Rana for Distributors
                                 </span>
-                                <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 leading-tight">
-                                    Apakah Anda Seorang <br />
-                                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-blue-400">
-                                        Distributor atau Supplier?
-                                    </span>
+                                <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-5 leading-tight">
+                                    Apakah Anda Distributor atau Supplier?
                                 </h2>
-                                <p className="text-lg text-slate-400 mb-8 leading-relaxed">
-                                    Digitalisasikan bisnis distribusi Anda dengan Rana. Jangkau ribuan merchant UMKM, kelola stok wholesale, dan terima pesanan dalam jumlah besar secara otomatis.
+                                <p className="text-lg text-blue-100 mb-8 leading-relaxed">
+                                    Digitalisasikan bisnis distribusi Anda. Jangkau ribuan merchant UMKM, kelola stok wholesale, dan terima pesanan besar secara otomatis.
                                 </p>
                                 <div className="flex flex-wrap gap-4">
-                                    <Link 
-                                        to="/distributor" 
-                                        className="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-bold transition-all flex items-center gap-2 group"
-                                    >
+                                    <Link to="/distributor" className="px-7 py-3.5 bg-white text-blue-700 rounded-xl font-bold transition-all hover:bg-blue-50 flex items-center gap-2 group">
                                         Pelajari Lebih Lanjut
-                                        <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+                                        <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                                     </Link>
-                                    <a 
-                                        href="/distributor/register" 
-                                        className="px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-2xl font-bold transition-all"
-                                    >
+                                    <a href="/distributor/register" className="px-7 py-3.5 bg-white/10 border border-white/30 text-white rounded-xl font-bold transition-all hover:bg-white/20">
                                         Daftar Distributor
                                     </a>
                                 </div>
                             </div>
                             <div className="relative">
-                                <div className="absolute -inset-4 bg-indigo-500/20 rounded-3xl blur-2xl" />
-                                <div className="relative bg-slate-800/50 border border-white/10 rounded-3xl p-4 shadow-2xl overflow-hidden group">
-                                    <img 
-                                        src="/dashboard_red_theme.png" 
-                                        alt="Distributor Portal Preview" 
-                                        className="rounded-2xl w-full h-auto grayscale-[0.3] group-hover:grayscale-0 transition-all duration-500"
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-60" />
-                                    <div className="absolute bottom-8 left-8 right-8">
-                                        <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md border border-white/10 p-4 rounded-2xl">
-                                            <div className="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center text-white">
-                                                <TrendingUp size={20} />
-                                            </div>
-                                            <div>
-                                                <div className="text-xs text-slate-300 font-medium uppercase tracking-wider">Potensi Jangkauan</div>
-                                                <div className="text-lg font-bold text-white">10.000+ Merchant Aktif</div>
-                                            </div>
-                                        </div>
-                                    </div>
+                                <div className="relative bg-white/10 border border-white/20 rounded-3xl p-3 backdrop-blur-sm overflow-hidden">
+                                    <img src="/dashboard_red_theme.png" alt="Distributor Portal" className="rounded-2xl w-full h-auto" />
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </section>
-                </div>
-            </section>
 
-            <section className="relative z-20 mt-12 mb-12 px-4">
+            {/* ===== CORE VALUES ===== */}
+            <section className="relative z-10 py-20 px-4 bg-slate-50 dark:bg-slate-900 border-y border-slate-100 dark:border-slate-800">
                 <div className="max-w-7xl mx-auto">
-                    <motion.div 
-                        initial={{ opacity: 0, y: 50 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.8 }}
-                        className="relative shadow-2xl rounded-2xl overflow-hidden"
-                    >
-                         <LiveDashboardPreview />
-                    </motion.div>
+                    <div className="text-center max-w-2xl mx-auto mb-14">
+                        <h2 className="text-3xl md:text-5xl font-extrabold text-slate-900 dark:text-white mb-4 tracking-tight">Fondasi Kesuksesan Bisnis Modern</h2>
+                        <p className="text-lg text-slate-500 dark:text-slate-400">Dibangun untuk pertumbuhan jangka panjang bisnis Anda.</p>
+                    </div>
+                    <div ref={coreValuesRef} className="grid md:grid-cols-3 gap-6 text-left">
+                        {(cmsContent.CMS_CORE_VALUES && cmsContent.CMS_CORE_VALUES.length > 0) ? (
+                            cmsContent.CMS_CORE_VALUES.map((val, idx) => (
+                                <div key={idx} className="p-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group">
+                                    <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center mb-6 text-blue-600 dark:text-blue-400 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                        <TrendingUp size={28} />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">{val.title}</h3>
+                                    <p className="text-slate-500 dark:text-slate-400 leading-relaxed">{val.desc}</p>
+                                </div>
+                            ))
+                        ) : (
+                            <>
+                                <div className="p-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group">
+                                    <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center mb-6 text-blue-600 dark:text-blue-400 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                        <ShieldCheck size={28} />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">Keamanan Terjamin</h3>
+                                    <p className="text-slate-500 dark:text-slate-400 leading-relaxed">Data bisnis Anda dilindungi dengan enkripsi tingkat lanjut dan backup otomatis.</p>
+                                </div>
+                                <div className="p-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group">
+                                    <div className="w-14 h-14 rounded-2xl bg-green-50 dark:bg-green-500/10 flex items-center justify-center mb-6 text-green-600 dark:text-green-400 group-hover:bg-green-600 group-hover:text-white transition-colors">
+                                        <TrendingUp size={28} />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">Pertumbuhan Berkelanjutan</h3>
+                                    <p className="text-slate-500 dark:text-slate-400 leading-relaxed">Dari satu gerai kecil hingga waralaba nasional, Rana siap menskalakan bisnis Anda.</p>
+                                </div>
+                                <div className="p-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group">
+                                    <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center mb-6 text-blue-600 dark:text-blue-400 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                        <Users size={28} />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">Customer Centric</h3>
+                                    <p className="text-slate-500 dark:text-slate-400 leading-relaxed">Fitur CRM mendalam membantu Anda memahami dan melayani pelanggan lebih personal.</p>
+                                </div>
+                            </>
+                        )}
+                    </div>
                 </div>
             </section>
 
-            <section className="relative z-10 py-12 px-4">
-                <div className="max-w-6xl mx-auto text-center mb-10">
-                    <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
-                        Cerita sukses merchant bersama Rana
+            {/* ===== AI / GROWTH SIMULATOR ===== */}
+            <section className="relative z-10 py-20 px-4">
+                <div className="max-w-7xl mx-auto">
+                    <div className="flex flex-col lg:flex-row items-center gap-14">
+                        <div className="w-full lg:w-1/2 space-y-7">
+                            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 text-blue-700 dark:text-blue-300 text-sm font-semibold">
+                                <Sparkles size={16} /> Teknologi Rana Intelligence™
+                            </span>
+                            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white leading-tight">
+                                Kembangkan Bisnis dengan Data Cerdas
+                            </h2>
+                            <p className="text-lg text-slate-500 dark:text-slate-400 leading-relaxed">
+                                Jangan hanya mencatat transaksi. Rana menganalisis pola penjualan, memprediksi tren, dan memberikan saran actionable untuk meningkatkan profitabilitas bisnis Anda.
+                            </p>
+                            <div className="space-y-3">
+                                {[
+                                    { icon: BarChart3, title: 'Prediksi Penjualan', desc: 'Forecast omzet harian dengan akurasi tinggi.' },
+                                    { icon: PieChart, title: 'Analisis Pelanggan', desc: 'Pahami preferensi dan kebiasaan belanja pelanggan.' },
+                                    { icon: Zap, title: 'Restock Pintar', desc: 'Notifikasi otomatis saat stok menipis berdasarkan tren.' }
+                                ].map((item, idx) => (
+                                    <div key={idx} className="flex items-start gap-4 p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-500/40 hover:shadow-sm transition-all">
+                                        <div className="bg-blue-50 dark:bg-blue-500/10 p-3 rounded-lg text-blue-600 dark:text-blue-400 shrink-0">
+                                            <item.icon size={22} />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-base font-bold text-slate-900 dark:text-white">{item.title}</h4>
+                                            <p className="text-slate-500 dark:text-slate-400 text-sm">{item.desc}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="w-full lg:w-1/2">
+                            <GrowthSimulator />
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* ===== TESTIMONIALS ===== */}
+            <section className="relative z-10 py-20 px-4 bg-slate-50 dark:bg-slate-900 border-y border-slate-100 dark:border-slate-800">
+                <div className="max-w-6xl mx-auto text-center mb-12">
+                    <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 text-amber-700 dark:text-amber-300 text-sm font-semibold mb-4">
+                        <Star size={15} className="fill-amber-500 text-amber-500" /> Dipercaya 10.000+ Bisnis
+                    </span>
+                    <h2 className="text-3xl md:text-5xl font-extrabold text-slate-900 dark:text-white mb-4 tracking-tight">
+                        Apa Kata Pengguna Rana
                     </h2>
-                    <p className="text-lg text-slate-400 max-w-2xl mx-auto">
+                    <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
                         Dari kedai kopi kecil hingga jaringan minimarket, Rana membantu pemilik usaha mengambil keputusan dengan data yang jelas.
                     </p>
                 </div>
@@ -402,267 +536,69 @@ const Landing = () => {
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.4 }}
-                                className="bg-white/5 border border-white/10 rounded-3xl p-6 md:p-8 flex flex-col gap-4"
+                                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl p-7 flex flex-col gap-4 shadow-sm"
                             >
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-300 font-bold text-xl">
+                                <div className="flex gap-1">
+                                    {[...Array(5)].map((_, i) => (
+                                        <Star key={i} size={16} className="text-amber-400 fill-amber-400" />
+                                    ))}
+                                </div>
+                                <p className="text-slate-600 dark:text-slate-300 text-sm md:text-base leading-relaxed flex-1">
+                                    "{item.quote}"
+                                </p>
+                                <div className="flex items-center gap-3 pt-2 border-t border-slate-100 dark:border-slate-700">
+                                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-600 to-green-500 flex items-center justify-center text-white font-bold">
                                         {item.initial}
                                     </div>
                                     <div className="text-left">
-                                        <div className="font-semibold text-white text-base md:text-lg">
-                                            {item.name}
-                                        </div>
+                                        <div className="font-semibold text-slate-900 dark:text-white text-sm">{item.name}</div>
                                         {item.role ? (
-                                            <div className="text-xs md:text-sm text-slate-400">
-                                                {item.role}
-                                            </div>
+                                            <div className="text-xs text-slate-400">{item.role}</div>
                                         ) : null}
                                     </div>
                                 </div>
-                                <p className="text-slate-300 text-sm md:text-base leading-relaxed">
-                                    {item.quote}
-                                </p>
                             </motion.div>
                         ))}
                     </div>
-                    <div className="flex justify-center gap-2 mt-6">
+                    <div className="flex justify-center gap-2 mt-8">
                         {testimonials.map((item, index) => (
                             <button
                                 key={item.name}
                                 type="button"
                                 onClick={() => setActiveTestimonial(index)}
-                                className={`h-2.5 rounded-full transition-all duration-300 ${index === activeTestimonial ? 'w-6 bg-indigo-400' : 'w-2.5 bg-slate-500/60 hover:bg-slate-300/80'}`}
+                                className={`h-2.5 rounded-full transition-all duration-300 ${index === activeTestimonial ? 'w-6 bg-blue-600' : 'w-2.5 bg-slate-300 dark:bg-slate-600 hover:bg-slate-400'}`}
                             />
                         ))}
                     </div>
                 </div>
             </section>
 
-            <section className="relative z-10 py-12 px-4 overflow-hidden">
-                <div className="absolute top-0 right-0 w-1/2 h-full pointer-events-none translate-x-1/2" />
-
-                <div className="max-w-7xl mx-auto space-y-32">
-
-                    {/* Feature 1: Efficiency (Image Left) */}
-                    <div ref={coreValuesRef} className="flex flex-col md:flex-row items-center gap-10 md:gap-20">
-                        <div className="w-full md:w-1/2 order-2 md:order-1">
-                             <motion.div 
-                                whileHover={{ scale: 1.02, rotate: -1 }}
-                                className="relative rounded-3xl overflow-hidden p-1 bg-gradient-to-br from-indigo-500/30 to-violet-500/30 backdrop-blur-md"
-                            >
-                                <div className="bg-[#0f172a] rounded-[22px] overflow-hidden">
-                                    <div className="h-64 md:h-80 bg-gradient-to-br from-indigo-900/50 to-slate-900 flex items-center justify-center relative overflow-hidden group">
-                                        <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-20"></div>
-                                        <Zap size={80} className="text-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)] group-hover:scale-110 transition-transform duration-500" />
-                                        
-                                        {/* Floating Elements */}
-                                        <motion.div 
-                                            animate={{ y: [0, -10, 0] }}
-                                            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                                            className="absolute top-10 right-10 bg-white/10 backdrop-blur-md border border-white/20 p-3 rounded-xl"
-                                        >
-                                            <Activity className="text-green-400" size={24} />
-                                        </motion.div>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        </div>
-                        <div className="w-full md:w-1/2 text-left space-y-6 order-1 md:order-2">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-bold uppercase tracking-wider">
-                                <Zap size={14} />
-                                <span>Lightning Fast</span>
-                            </div>
-                            <h2 className="text-4xl md:text-5xl font-bold text-white leading-tight">
-                                Manajemen secepat <br />
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-300">Kecepatan Pikiran</span>
-                            </h2>
-                            <p className="text-xl text-slate-300 leading-relaxed">
-                                Tidak ada lagi loading lama. Arsitektur kami dirancang untuk performa instan, memastikan setiap transaksi dan laporan tersaji dalam milidetik.
-                            </p>
-                            <Link to="/features" className="inline-flex items-center text-slate-200 font-bold text-lg hover:text-indigo-400 transition-colors gap-2 group">
-                                Pelajari efisiensi <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+            {/* ===== CTA / DOWNLOAD ===== */}
+            <section className="relative z-10 py-24 px-4">
+                <div ref={downloadRef} className="max-w-5xl mx-auto text-center bg-gradient-to-br from-blue-600 to-blue-800 rounded-[2.5rem] p-10 md:p-16 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-80 h-80 bg-green-400/20 rounded-full blur-3xl -mr-20 -mt-20" />
+                    <div className="absolute bottom-0 left-0 w-80 h-80 bg-white/10 rounded-full blur-3xl -ml-20 -mb-20" />
+                    <div className="relative z-10">
+                        <h2 className="text-3xl md:text-5xl font-extrabold mb-5 text-white">
+                            Siap Tingkatkan Bisnis Anda?
+                        </h2>
+                        <p className="text-lg text-blue-100 mb-10 max-w-2xl mx-auto">
+                            Bergabung dengan 10.000+ pemilik bisnis yang telah merasakan kemudahan mengelola usaha bersama Rana.
+                        </p>
+                        <div className="flex flex-col sm:flex-row justify-center gap-4">
+                            <Link to="/register" className="px-8 py-4 bg-white rounded-xl text-blue-700 font-bold flex items-center justify-center gap-2 hover:bg-blue-50 transition-all hover:-translate-y-0.5">
+                                Coba Gratis 14 Hari
+                                <ArrowRight size={18} />
+                            </Link>
+                            <Link to="/contact" className="px-8 py-4 rounded-xl border border-white/40 text-white font-bold flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 transition-all hover:-translate-y-0.5">
+                                Konsultasi dengan Tim
                             </Link>
                         </div>
-                    </div>
-
-                    {/* Feature 2: Mobile First (Image Right) */}
-                    <div className="flex flex-col md:flex-row-reverse items-center gap-10 md:gap-20">
-                        <div className="w-full md:w-1/2">
-                             <motion.div 
-                                whileHover={{ scale: 1.02, rotate: 1 }}
-                                className="relative rounded-3xl overflow-hidden p-1 bg-gradient-to-br from-violet-500/30 to-pink-500/30 backdrop-blur-md"
-                            >
-                                <div className="bg-[#0f172a] rounded-[22px] overflow-hidden">
-                                    <div className="h-64 md:h-80 bg-gradient-to-bl from-violet-900/50 to-slate-900 flex items-center justify-center relative overflow-hidden group">
-                                        <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-20"></div>
-                                        <Smartphone size={80} className="text-pink-400 drop-shadow-[0_0_15px_rgba(236,72,153,0.5)] group-hover:scale-110 transition-transform duration-500" />
-                                         
-                                         {/* Floating Elements */}
-                                        <motion.div 
-                                            animate={{ y: [0, -15, 0] }}
-                                            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                                            className="absolute bottom-10 left-10 bg-white/10 backdrop-blur-md border border-white/20 p-3 rounded-xl"
-                                        >
-                                            <Layers className="text-violet-400" size={24} />
-                                        </motion.div>
-                                    </div>
-                                </div>
-                            </motion.div>
+                        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-8 text-blue-100 text-sm">
+                            <span className="flex items-center gap-1.5"><Check size={16} className="text-green-300" /> Gratis 14 Hari</span>
+                            <span className="flex items-center gap-1.5"><Check size={16} className="text-green-300" /> Tanpa Kartu Kredit</span>
+                            <span className="flex items-center gap-1.5"><Check size={16} className="text-green-300" /> Support 24/7</span>
                         </div>
-                        <div className="w-full md:w-1/2 text-left space-y-6">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pink-500/10 border border-pink-500/20 text-pink-400 text-xs font-bold uppercase tracking-wider">
-                                <Smartphone size={14} />
-                                <span>Mobile First</span>
-                            </div>
-                            <h2 className="text-4xl md:text-5xl font-bold text-white leading-tight">
-                                Bisnis dalam <br />
-                                <span className="text-slate-200">Genggaman Anda</span>
-                            </h2>
-                            <p className="text-xl text-slate-300 leading-relaxed">
-                                Kontrol penuh dari mana saja. Aplikasi mobile Rana memberikan kekuatan desktop dalam format yang ringkas dan intuitif.
-                            </p>
-                            <Link to="/features" className="inline-flex items-center text-slate-200 font-bold text-lg hover:text-pink-400 transition-colors gap-2 group">
-                                Jelajahi fitur mobile <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-                            </Link>
-                        </div>
-                    </div>
-
-                    {/* Feature 3: Security & Growth (Core Values) */}
-                    <div className="text-center max-w-6xl mx-auto pt-20">
-                        <div className="inline-block mb-4 px-4 py-1.5 rounded-full border border-slate-700 bg-slate-800/50 backdrop-blur text-slate-300 text-sm font-medium">
-                            Our Core Values
-                        </div>
-                        <h2 className="text-3xl md:text-5xl font-bold text-white mb-16">Fondasi Kesuksesan Bisnis Modern</h2>
-                        <div className="grid md:grid-cols-3 gap-6 text-left">
-                            {(cmsContent.CMS_CORE_VALUES && cmsContent.CMS_CORE_VALUES.length > 0) ? (
-                                cmsContent.CMS_CORE_VALUES.map((val, idx) => (
-                                    <motion.div 
-                                        key={idx} 
-                                        whileHover={{ y: -10 }}
-                                        className="p-8 bg-[#1e293b]/40 border border-slate-700/50 rounded-3xl hover:bg-[#1e293b]/60 hover:border-indigo-500/30 transition-all duration-300 group"
-                                    >
-                                        <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 flex items-center justify-center mb-6 group-hover:bg-indigo-500/20 transition-colors">
-                                            <TrendingUp size={28} className="text-indigo-400" />
-                                        </div>
-                                        <h3 className="text-xl font-bold text-white mb-3 group-hover:text-indigo-300 transition-colors">{val.title}</h3>
-                                        <p className="text-slate-400 leading-relaxed">{val.desc}</p>
-                                    </motion.div>
-                                ))
-                            ) : (
-                                <>
-                                    <motion.div 
-                                        whileHover={{ y: -10 }}
-                                        className="p-8 bg-[#1e293b]/40 border border-slate-700/50 rounded-3xl hover:bg-[#1e293b]/60 hover:border-indigo-500/30 transition-all duration-300 group"
-                                    >
-                                        <div className="w-14 h-14 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-6 group-hover:bg-blue-500/20 transition-colors">
-                                            <ShieldCheck size={28} className="text-blue-400" />
-                                        </div>
-                                        <h3 className="text-xl font-bold text-white mb-3 group-hover:text-blue-300 transition-colors">Keamanan Terjamin</h3>
-                                        <p className="text-slate-400 leading-relaxed">Data bisnis Anda adalah aset paling berharga. Kami melindunginya dengan enkripsi tingkat lanjut dan backup otomatis.</p>
-                                    </motion.div>
-
-                                    <motion.div 
-                                        whileHover={{ y: -10 }}
-                                        className="p-8 bg-[#1e293b]/40 border border-slate-700/50 rounded-3xl hover:bg-[#1e293b]/60 hover:border-emerald-500/30 transition-all duration-300 group"
-                                    >
-                                        <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-6 group-hover:bg-emerald-500/20 transition-colors">
-                                            <TrendingUp size={28} className="text-emerald-400" />
-                                        </div>
-                                        <h3 className="text-xl font-bold text-white mb-3 group-hover:text-emerald-300 transition-colors">Pertumbuhan Berkelanjutan</h3>
-                                        <p className="text-slate-400 leading-relaxed">Sistem yang tumbuh bersama Anda. Dari satu gerai kecil hingga waralaba nasional, Rana siap menskalakan bisnis Anda.</p>
-                                    </motion.div>
-
-                                    <motion.div 
-                                        whileHover={{ y: -10 }}
-                                        className="p-8 bg-[#1e293b]/40 border border-slate-700/50 rounded-3xl hover:bg-[#1e293b]/60 hover:border-violet-500/30 transition-all duration-300 group"
-                                    >
-                                        <div className="w-14 h-14 rounded-2xl bg-violet-500/10 flex items-center justify-center mb-6 group-hover:bg-violet-500/20 transition-colors">
-                                            <Users size={28} className="text-violet-400" />
-                                        </div>
-                                        <h3 className="text-xl font-bold text-white mb-3 group-hover:text-violet-300 transition-colors">Customer Centric</h3>
-                                        <p className="text-slate-400 leading-relaxed">Fitur CRM yang mendalam membantu Anda memahami dan melayani pelanggan dengan lebih personal dan efektif.</p>
-                                    </motion.div>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* AI Growth Section */}
-            <section className="relative z-10 py-32 px-4 bg-white/5">
-                <div className="max-w-7xl mx-auto">
-                    <div className="flex flex-col lg:flex-row items-center gap-16">
-                        <div className="w-full lg:w-1/2 space-y-8">
-                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-sm font-semibold">
-                                <Sparkles size={16} />
-                                <span>Teknologi Rana Intelligence™</span>
-                            </div>
-                            <h2 className="text-4xl md:text-5xl font-bold text-white leading-tight">
-                                Kembangkan Bisnis dengan <br />
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">Kecerdasan Buatan</span>
-                            </h2>
-                            <p className="text-xl text-slate-300 leading-relaxed">
-                                Jangan hanya mencatat transaksi. Rana menganalisis pola penjualan, memprediksi tren, dan memberikan saran actionable untuk meningkatkan profitabilitas bisnis Anda secara otomatis.
-                            </p>
-                            
-                            <div className="space-y-4">
-                                {[
-                                    { icon: BarChart3, title: 'Prediksi Penjualan', desc: 'Forecast omzet harian dengan akurasi tinggi.' },
-                                    { icon: PieChart, title: 'Analisis Pelanggan', desc: 'Pahami preferensi dan kebiasaan belanja pelanggan.' },
-                                    { icon: Zap, title: 'Restock Pintar', desc: 'Notifikasi otomatis saat stok menipis berdasarkan tren.' }
-                                ].map((item, idx) => (
-                                    <div key={idx} className="flex items-start gap-4 p-4 rounded-xl hover:bg-white/5 transition-colors">
-                                        <div className="bg-indigo-600/20 p-3 rounded-lg text-indigo-400">
-                                            <item.icon size={24} />
-                                        </div>
-                                        <div>
-                                            <h4 className="text-lg font-bold text-white">{item.title}</h4>
-                                            <p className="text-slate-400 text-sm">{item.desc}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                        
-                        <div className="w-full lg:w-1/2">
-                            <GrowthSimulator />
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Download Section */}
-            <section className="relative z-10 py-32 px-4 text-white">
-                <div ref={downloadRef} className="max-w-5xl mx-auto text-center">
-                    <h2 className="text-4xl md:text-6xl font-black mb-8">
-                        Siap Bertransformasi?
-                    </h2>
-                    <p className="text-xl text-slate-300 mb-12 max-w-2xl mx-auto">
-                        Bergabung dengan ribuan merchant yang membentuk masa depan retail. Unduh aplikasinya sekarang.
-                    </p>
-                    <div className="flex flex-col sm:flex-row justify-center gap-6">
-                        <button className="px-8 py-4 bg-white rounded-2xl text-[#303346] font-bold flex items-center justify-center gap-4 hover:bg-gray-100 transition-all duration-300 transform hover:-translate-y-1">
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Play Store" className="h-8" />
-                            <span className="text-left">
-                                <small className="block text-xs text-gray-500">GET IT ON</small>
-                                Google Play
-                            </span>
-                        </button>
-                        <button className="px-8 py-4 bg-white rounded-2xl text-[#303346] font-bold flex items-center justify-center gap-4 hover:bg-gray-100 transition-all duration-300 transform hover:-translate-y-1">
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" alt="App Store" className="h-8" />
-                            <span className="text-left">
-                                <small className="block text-xs text-gray-500">Download on the</small>
-                                App Store
-                            </span>
-                        </button>
-                        <Link
-                            to="/contact"
-                            className="px-8 py-4 rounded-2xl border border-white/30 text-white font-bold flex items-center justify-center gap-3 bg-white/5 hover:bg-white/10 transition-all duration-300 transform hover:-translate-y-1"
-                        >
-                            <span>Konsultasi dengan tim Rana</span>
-                            <ArrowRight size={18} />
-                        </Link>
                     </div>
                 </div>
             </section>

@@ -1,11 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import useCms from '../hooks/useCms';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { Canvas } from '@react-three/fiber';
 import { Users, TrendingUp, Globe, Award, Target, Zap, Shield, Heart, MapPin, ArrowUpRight, Quote, Linkedin, Twitter } from 'lucide-react';
-import NetworkGlobe from '../components/3d/NetworkGlobe';
 import MerchantGrowthMap from '../components/MerchantGrowthMap';
 import usePageMeta from '../hooks/usePageMeta';
 
@@ -17,8 +15,8 @@ const StatItem = ({ label, value, delay }) => (
         viewport={{ once: true }}
         className="text-center"
     >
-        <div className="text-4xl md:text-5xl font-bold text-white mb-2 tracking-tight">{value}</div>
-        <div className="text-sm text-slate-400 uppercase tracking-widest font-medium">{label}</div>
+        <div className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-2 tracking-tight">{value}</div>
+        <div className="text-sm text-slate-500 dark:text-slate-400 uppercase tracking-widest font-medium">{label}</div>
     </motion.div>
 );
 
@@ -63,38 +61,37 @@ const About = () => {
     const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
 
     return (
-        <div className="min-h-screen bg-[#0a0b0f] font-sans text-slate-200 overflow-hidden">
+        <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-sans overflow-x-hidden transition-colors duration-300">
             <Navbar />
-            
-            {/* 3D Background Layer */}
-            <div className="fixed inset-0 z-0 pointer-events-none opacity-40" aria-hidden="true">
-                <Canvas camera={{ position: [0, 0, 4], fov: 45 }}>
-                    <ambientLight intensity={0.5} />
-                    <NetworkGlobe />
-                </Canvas>
-            </div>
-            
+
             {/* Hero Section */}
-            <section ref={containerRef} className="relative z-10 h-screen flex items-center justify-center px-4">
+            <section ref={containerRef} className="relative overflow-hidden h-screen flex items-center justify-center px-4">
+                {/* Soft background accents */}
+                <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+                    <div className="absolute -top-32 -right-24 w-[600px] h-[600px] bg-blue-100/60 dark:bg-blue-500/10 rounded-full blur-3xl" />
+                    <div className="absolute top-40 -left-32 w-[500px] h-[500px] bg-green-100/50 dark:bg-green-500/10 rounded-full blur-3xl" />
+                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#f1f5f9_1px,transparent_1px),linear-gradient(to_bottom,#f1f5f9_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:64px_64px] opacity-40 [mask-image:radial-gradient(ellipse_at_center,black,transparent_75%)]" />
+                </div>
+
                 <motion.div 
                     style={{ y, opacity }}
-                    className="max-w-5xl mx-auto text-center"
+                    className="relative z-10 max-w-5xl mx-auto text-center"
                 >
                     <motion.div 
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 1 }}
-                        className="inline-block px-4 py-2 mb-8 rounded-full bg-indigo-500/10 border border-indigo-500/20 backdrop-blur-md text-indigo-300 font-semibold text-sm tracking-wide uppercase"
+                        className="inline-block px-4 py-2 mb-8 rounded-full bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 text-blue-700 dark:text-blue-300 font-semibold text-sm tracking-wide uppercase"
                     >
                         Pioneering The Future
                     </motion.div>
-                    <h1 className="text-6xl md:text-8xl font-black text-white mb-8 tracking-tighter leading-[1.1]">
+                    <h1 className="text-6xl md:text-8xl font-black text-slate-900 dark:text-white mb-8 tracking-tighter leading-[1.1]">
                         We Build for the <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-violet-400 to-cyan-300">
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-green-500">
                             Bold & Ambitious
                         </span>
                     </h1>
-                    <p className="text-xl md:text-2xl text-slate-300 max-w-3xl mx-auto leading-relaxed font-light">
+                    <p className="text-xl md:text-2xl text-slate-500 dark:text-slate-400 max-w-3xl mx-auto leading-relaxed font-light">
                         Rana bukan sekadar aplikasi POS. Kami adalah ekosistem teknologi yang memberdayakan jutaan UMKM untuk bersaing di era digital.
                     </p>
                 </motion.div>
@@ -104,15 +101,15 @@ const About = () => {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1, y: [0, 10, 0] }}
                     transition={{ delay: 2, duration: 2, repeat: Infinity }}
-                    className="absolute bottom-10 left-1/2 -translate-x-1/2 text-slate-500 flex flex-col items-center gap-2"
+                    className="absolute bottom-10 left-1/2 -translate-x-1/2 text-slate-400 dark:text-slate-500 flex flex-col items-center gap-2 z-10"
                 >
                     <span className="text-xs uppercase tracking-widest">Explore Our World</span>
-                    <div className="w-px h-12 bg-gradient-to-b from-indigo-500 to-transparent"></div>
+                    <div className="w-px h-12 bg-gradient-to-b from-blue-500 to-transparent"></div>
                 </motion.div>
             </section>
 
             {/* Live Operations Center Section */}
-            <section className="relative z-10 py-32 px-4 bg-gradient-to-b from-[#0a0b0f] via-[#0f172a] to-[#0a0b0f]">
+            <section className="relative z-10 py-24 px-4 bg-slate-50 dark:bg-slate-900 border-y border-slate-100 dark:border-slate-800">
                 <div className="max-w-7xl mx-auto">
                     <div className="grid lg:grid-cols-2 gap-20 items-center">
                         <div>
@@ -121,32 +118,32 @@ const About = () => {
                                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                                   <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
                                 </span>
-                                <span className="text-green-400 font-mono text-sm tracking-wider uppercase">Live Operations Center</span>
+                                <span className="text-green-600 dark:text-green-400 font-mono text-sm tracking-wider uppercase">Live Operations Center</span>
                             </div>
-                            <h2 className="text-4xl md:text-5xl font-bold text-white mb-8 leading-tight">
+                            <h2 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-8 leading-tight">
                                 Melihat Pertumbuhan <br/>
-                                <span className="text-indigo-400">Secara Real-time</span>
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-green-500">Secara Real-time</span>
                             </h2>
-                            <p className="text-lg text-slate-300 mb-10 leading-relaxed">
+                            <p className="text-lg text-slate-500 dark:text-slate-400 mb-10 leading-relaxed">
                                 Teknologi kami memproses jutaan transaksi setiap hari, menghubungkan pedagang dari Sabang sampai Merauke dalam satu jaringan saraf digital yang cerdas.
                             </p>
                             
                             <div className="grid grid-cols-2 gap-8">
-                                <div className="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
-                                    <Globe className="text-indigo-400 mb-4" size={32} />
-                                    <div className="text-3xl font-bold text-white mb-1">34</div>
-                                    <div className="text-sm text-slate-400">Provinsi Terjangkau</div>
+                                <div className="p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+                                    <Globe className="text-blue-600 dark:text-blue-400 mb-4" size={32} />
+                                    <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">34</div>
+                                    <div className="text-sm text-slate-500 dark:text-slate-400">Provinsi Terjangkau</div>
                                 </div>
-                                <div className="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
-                                    <Target className="text-pink-400 mb-4" size={32} />
-                                    <div className="text-3xl font-bold text-white mb-1">99.9%</div>
-                                    <div className="text-sm text-slate-400">Uptime Server</div>
+                                <div className="p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+                                    <Target className="text-green-600 dark:text-green-400 mb-4" size={32} />
+                                    <div className="text-3xl font-bold text-slate-900 dark:text-white mb-1">99.9%</div>
+                                    <div className="text-sm text-slate-500 dark:text-slate-400">Uptime Server</div>
                                 </div>
                             </div>
                         </div>
                         
                         <div className="relative">
-                            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-violet-500 rounded-[2rem] blur opacity-30"></div>
+                            <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/40 to-green-500/30 rounded-[2rem] blur-2xl opacity-60"></div>
                             <MerchantGrowthMap />
                         </div>
                     </div>
@@ -154,7 +151,7 @@ const About = () => {
             </section>
 
             {/* Impact Stats */}
-            <section className="relative z-10 py-20 border-y border-white/5 bg-white/[0.02]">
+            <section className="relative z-10 py-20 bg-white dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800">
                 <div className="max-w-7xl mx-auto px-4">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-10 md:gap-4">
                         <StatItem label="Active Merchants" value="50K+" delay={0.1} />
@@ -165,8 +162,8 @@ const About = () => {
                 </div>
             </section>
 
-            {/* Mission & Vision - Glass Cards */}
-            <section className="relative z-10 py-32 px-4">
+            {/* Mission & Vision - Cards */}
+            <section className="relative z-10 py-24 px-4">
                 <div className="max-w-7xl mx-auto">
                     <motion.div 
                         initial={{ opacity: 0, y: 50 }}
@@ -174,8 +171,8 @@ const About = () => {
                         viewport={{ once: true }}
                         className="text-center mb-20"
                     >
-                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">Driven by Purpose</h2>
-                        <p className="text-xl text-slate-400 max-w-3xl mx-auto">
+                        <h2 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-6">Driven by Purpose</h2>
+                        <p className="text-xl text-slate-500 dark:text-slate-400 max-w-3xl mx-auto">
                             Kami percaya bahwa teknologi canggih seharusnya tidak hanya milik perusahaan besar. 
                             Misi kami adalah mendemokratisasi akses ke alat bisnis kelas enterprise.
                         </p>
@@ -187,25 +184,25 @@ const About = () => {
                                 icon: Zap, 
                                 title: "Inovasi Tanpa Henti", 
                                 desc: "Kami terus mendorong batas apa yang mungkin dilakukan oleh aplikasi web, menghadirkan kecepatan native ke dalam browser.",
-                                color: "text-yellow-400",
-                                bg: "bg-yellow-400/10",
-                                border: "border-yellow-400/20"
+                                color: "text-blue-600 dark:text-blue-400",
+                                bg: "bg-blue-50 dark:bg-blue-500/10",
+                                border: "border-slate-200 dark:border-slate-700"
                             },
                             { 
                                 icon: Heart, 
                                 title: "Obsesi Pelanggan", 
                                 desc: "Setiap fitur yang kami bangun dimulai dari masalah nyata yang dihadapi pengguna kami. Empati adalah kode sumber kami.",
-                                color: "text-pink-400",
-                                bg: "bg-pink-400/10",
-                                border: "border-pink-400/20"
+                                color: "text-green-600 dark:text-green-400",
+                                bg: "bg-green-50 dark:bg-green-500/10",
+                                border: "border-slate-200 dark:border-slate-700"
                             },
                             { 
                                 icon: Shield, 
                                 title: "Integritas & Keamanan", 
                                 desc: "Kepercayaan adalah mata uang kami. Kami menjaga data bisnis Anda dengan standar keamanan perbankan tertinggi.",
-                                color: "text-cyan-400",
-                                bg: "bg-cyan-400/10",
-                                border: "border-cyan-400/20"
+                                color: "text-blue-600 dark:text-blue-400",
+                                bg: "bg-blue-50 dark:bg-blue-500/10",
+                                border: "border-slate-200 dark:border-slate-700"
                             }
                         ].map((item, idx) => (
                             <motion.div
@@ -215,13 +212,13 @@ const About = () => {
                                 transition={{ delay: idx * 0.2 }}
                                 viewport={{ once: true }}
                                 whileHover={{ y: -10 }}
-                                className={`p-10 rounded-3xl bg-white/5 border ${item.border} backdrop-blur-md hover:bg-white/10 transition-all duration-300 group`}
+                                className={`p-10 rounded-3xl bg-white dark:bg-slate-800 border ${item.border} shadow-sm hover:shadow-lg transition-all duration-300 group`}
                             >
                                 <div className={`w-14 h-14 rounded-2xl ${item.bg} flex items-center justify-center mb-8 group-hover:scale-110 transition-transform`}>
                                     <item.icon size={28} className={item.color} />
                                 </div>
-                                <h3 className="text-2xl font-bold text-white mb-4">{item.title}</h3>
-                                <p className="text-slate-400 leading-relaxed">{item.desc}</p>
+                                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">{item.title}</h3>
+                                <p className="text-slate-500 dark:text-slate-400 leading-relaxed">{item.desc}</p>
                             </motion.div>
                         ))}
                     </div>
@@ -229,16 +226,16 @@ const About = () => {
             </section>
 
             {/* Our Story / CMS Content */}
-            <section className="relative z-10 py-32 px-4 bg-[#0f172a]">
+            <section className="relative z-10 py-24 px-4 bg-slate-50 dark:bg-slate-900 border-y border-slate-100 dark:border-slate-800">
                 <div className="max-w-4xl mx-auto">
                     <div className="flex items-center gap-4 mb-12">
-                        <div className="h-px flex-1 bg-gradient-to-r from-transparent to-slate-700"></div>
-                        <h2 className="text-3xl font-bold text-white uppercase tracking-widest">Our Story</h2>
-                        <div className="h-px flex-1 bg-gradient-to-l from-transparent to-slate-700"></div>
+                        <div className="h-px flex-1 bg-gradient-to-r from-transparent to-slate-300 dark:to-slate-700"></div>
+                        <h2 className="text-3xl font-bold text-slate-900 dark:text-white uppercase tracking-widest">Our Story</h2>
+                        <div className="h-px flex-1 bg-gradient-to-l from-transparent to-slate-300 dark:to-slate-700"></div>
                     </div>
                     
                     <div 
-                        className="prose prose-lg prose-invert mx-auto text-slate-300 leading-loose"
+                        className="prose prose-lg dark:prose-invert mx-auto text-slate-600 dark:text-slate-300 leading-loose"
                         dangerouslySetInnerHTML={{ 
                             __html: cmsContent.CMS_ABOUT_US || `
                                 <p>Perjalanan Rana dimulai dari sebuah kedai kopi kecil di Jakarta. Kami melihat betapa sulitnya pemilik usaha mengelola inventaris, karyawan, dan laporan keuangan secara manual.</p>
@@ -251,17 +248,20 @@ const About = () => {
             </section>
 
             {/* Milestones / Journey Section */}
-            <section className="relative z-10 py-32 px-4 bg-[#0f172a] overflow-hidden">
-                 <div className="absolute inset-0 bg-slate-900/50"></div>
+            <section className="relative z-10 py-24 px-4 bg-white dark:bg-slate-950 overflow-hidden">
+                 <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+                    <div className="absolute top-20 -left-24 w-[420px] h-[420px] bg-blue-100/50 dark:bg-blue-500/10 rounded-full blur-3xl" />
+                    <div className="absolute bottom-10 -right-24 w-[420px] h-[420px] bg-green-100/40 dark:bg-green-500/10 rounded-full blur-3xl" />
+                 </div>
                  <div className="max-w-5xl mx-auto relative">
                     <div className="text-center mb-20">
-                        <h2 className="text-3xl font-bold text-white mb-4">Perjalanan Kami</h2>
-                        <div className="w-24 h-1 bg-indigo-500 mx-auto rounded-full"></div>
+                        <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-4">Perjalanan Kami</h2>
+                        <div className="w-24 h-1 bg-blue-600 mx-auto rounded-full"></div>
                     </div>
 
                     <div className="relative">
                         {/* Vertical Line */}
-                        <div className="absolute left-4 md:left-1/2 top-0 bottom-0 w-px bg-slate-700 transform md:-translate-x-1/2"></div>
+                        <div className="absolute left-4 md:left-1/2 top-0 bottom-0 w-px bg-slate-200 dark:bg-slate-700 transform md:-translate-x-1/2"></div>
 
                         <div className="space-y-12">
                             {milestones.map((ms, idx) => (
@@ -275,15 +275,15 @@ const About = () => {
                                 >
                                     {/* Content Card */}
                                     <div className="flex-1 w-full pl-12 md:pl-0">
-                                        <div className={`p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-indigo-500/30 transition-colors ${idx % 2 === 0 ? 'md:text-left' : 'md:text-right'}`}>
-                                            <span className="text-indigo-400 font-mono text-sm font-bold tracking-wider mb-2 block">{ms.year}</span>
-                                            <h3 className="text-xl font-bold text-white mb-2">{ms.title}</h3>
-                                            <p className="text-slate-400 text-sm leading-relaxed">{ms.description}</p>
+                                        <div className={`p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm hover:border-blue-300 dark:hover:border-blue-500/40 hover:shadow-lg transition-all ${idx % 2 === 0 ? 'md:text-left' : 'md:text-right'}`}>
+                                            <span className="text-blue-600 dark:text-blue-400 font-mono text-sm font-bold tracking-wider mb-2 block">{ms.year}</span>
+                                            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{ms.title}</h3>
+                                            <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">{ms.description}</p>
                                         </div>
                                     </div>
 
                                     {/* Timeline Dot */}
-                                    <div className="absolute left-4 md:left-1/2 w-4 h-4 rounded-full bg-indigo-500 border-4 border-[#0f172a] transform -translate-x-1/2 z-10 shadow-[0_0_20px_rgba(99,102,241,0.5)]"></div>
+                                    <div className="absolute left-4 md:left-1/2 w-4 h-4 rounded-full bg-blue-600 border-4 border-white dark:border-slate-950 transform -translate-x-1/2 z-10 shadow-[0_0_20px_rgba(31,95,191,0.4)]"></div>
 
                                     {/* Empty Space for alignment */}
                                     <div className="flex-1 hidden md:block"></div>
@@ -295,8 +295,8 @@ const About = () => {
             </section>
 
             {/* Founder Section */}
-            <section className="relative z-10 py-32 px-4 bg-[#0a0b0f] overflow-hidden">
-                <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-indigo-900/10 to-transparent"></div>
+            <section className="relative z-10 py-24 px-4 bg-slate-50 dark:bg-slate-900 border-y border-slate-100 dark:border-slate-800 overflow-hidden">
+                <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-blue-100/40 dark:from-blue-900/10 to-transparent pointer-events-none"></div>
                 <div className="max-w-7xl mx-auto relative">
                     <div className="grid lg:grid-cols-2 gap-16 items-center">
                         <motion.div 
@@ -305,23 +305,23 @@ const About = () => {
                             viewport={{ once: true }}
                             className="relative"
                         >
-                            <div className="aspect-[3/4] rounded-2xl overflow-hidden bg-slate-800 relative group">
-                                <div className="absolute inset-0 bg-gradient-to-t from-[#0a0b0f] via-transparent to-transparent opacity-60"></div>
+                            <div className="aspect-[3/4] rounded-3xl overflow-hidden bg-slate-200 dark:bg-slate-800 relative group shadow-xl shadow-blue-900/5">
+                                <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-60 z-10"></div>
                                 {/* Placeholder for Founder Image - You can replace src with actual image */}
                                 <img 
                                     src={founder.image} 
                                     alt={founder.name} 
-                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-80 group-hover:opacity-100"
+                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                                 />
-                                <div className="absolute bottom-8 left-8">
+                                <div className="absolute bottom-8 left-8 z-20">
                                     <h3 className="text-3xl font-bold text-white mb-1">{founder.name}</h3>
-                                    <p className="text-indigo-400 font-medium">{founder.role}</p>
+                                    <p className="text-blue-300 font-medium">{founder.role}</p>
                                 </div>
                             </div>
                             
                             {/* Decorative elements */}
-                            <div className="absolute -bottom-10 -right-10 w-40 h-40 border border-indigo-500/20 rounded-full flex items-center justify-center backdrop-blur-md bg-[#0a0b0f]/50">
-                                <div className="w-32 h-32 border border-indigo-500/40 rounded-full"></div>
+                            <div className="absolute -bottom-10 -right-10 w-40 h-40 border border-blue-500/20 rounded-full flex items-center justify-center backdrop-blur-md bg-white/50 dark:bg-slate-900/50">
+                                <div className="w-32 h-32 border border-blue-500/40 rounded-full"></div>
                             </div>
                         </motion.div>
                         
@@ -330,21 +330,21 @@ const About = () => {
                             whileInView={{ opacity: 1, x: 0 }}
                             viewport={{ once: true }}
                         >
-                            <Quote className="text-indigo-500 mb-8 opacity-50" size={64} />
-                            <h2 className="text-4xl md:text-5xl font-bold text-white mb-8 leading-tight">
+                            <Quote className="text-blue-500 mb-8 opacity-50" size={64} />
+                            <h2 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-8 leading-tight">
                                 {founder.quote}
                             </h2>
-                            <div className="space-y-6 text-lg text-slate-300 leading-relaxed whitespace-pre-line">
+                            <div className="space-y-6 text-lg text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">
                                 <p>
                                     {founder.description}
                                 </p>
                             </div>
                             
                             <div className="mt-10 flex gap-4">
-                                <a href={founder.linkedin} className="p-3 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors border border-white/10">
+                                <a href={founder.linkedin} className="p-3 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-300 transition-colors">
                                     <Linkedin size={20} />
                                 </a>
-                                <a href={founder.twitter} className="p-3 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors border border-white/10">
+                                <a href={founder.twitter} className="p-3 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-300 transition-colors">
                                     <Twitter size={20} />
                                 </a>
                             </div>
@@ -354,11 +354,11 @@ const About = () => {
             </section>
 
             {/* Team Section */}
-            <section className="relative z-10 py-32 px-4 bg-[#0f172a]">
+            <section className="relative z-10 py-24 px-4 bg-white dark:bg-slate-950">
                  <div className="max-w-7xl mx-auto">
                     <div className="text-center mb-20">
-                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">Meet The Architects</h2>
-                        <p className="text-xl text-slate-400 max-w-2xl mx-auto">
+                        <h2 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-6">Meet The Architects</h2>
+                        <p className="text-xl text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
                             Orang-orang di balik layar yang bekerja keras mewujudkan visi Rana setiap hari.
                         </p>
                     </div>
@@ -373,16 +373,16 @@ const About = () => {
                                 viewport={{ once: true }}
                                 className="group relative"
                             >
-                                <div className="aspect-square rounded-2xl overflow-hidden bg-slate-800 mb-4 relative">
-                                    <div className="absolute inset-0 bg-indigo-500/0 group-hover:bg-indigo-500/20 transition-colors z-10"></div>
+                                <div className="aspect-square rounded-2xl overflow-hidden bg-slate-200 dark:bg-slate-800 mb-4 relative border border-slate-200 dark:border-slate-700 shadow-sm">
+                                    <div className="absolute inset-0 bg-blue-600/0 group-hover:bg-blue-600/20 transition-colors z-10"></div>
                                     <img 
                                         src={member.image || member.img} 
                                         alt={member.name} 
                                         className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500 transform group-hover:scale-110"
                                     />
                                 </div>
-                                <h3 className="text-xl font-bold text-white">{member.name}</h3>
-                                <p className="text-indigo-400 text-sm font-medium uppercase tracking-wider">{member.role}</p>
+                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">{member.name}</h3>
+                                <p className="text-blue-600 dark:text-blue-400 text-sm font-medium uppercase tracking-wider">{member.role}</p>
                             </motion.div>
                         ))}
                     </div>
@@ -390,34 +390,37 @@ const About = () => {
             </section>
 
             {/* CTA Section */}
-            <section className="relative z-10 py-32 px-4 overflow-hidden">
-                <div className="absolute inset-0 bg-indigo-900/20"></div>
-                <div className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-indigo-600/30 rounded-full blur-[100px]"></div>
-                <div className="absolute -bottom-40 -left-40 w-[600px] h-[600px] bg-violet-600/30 rounded-full blur-[100px]"></div>
-                
-                <div className="relative max-w-5xl mx-auto text-center">
-                    <h2 className="text-5xl md:text-7xl font-black text-white mb-10 tracking-tight">
-                        Siap Bergabung dengan <br/> Revolusi Retail?
-                    </h2>
-                    <p className="text-xl text-indigo-200 mb-12 max-w-2xl mx-auto">
-                        Jadilah bagian dari komunitas pedagang modern yang tumbuh bersama Rana. Mulai perjalanan sukses Anda hari ini.
-                    </p>
-                    <div className="flex flex-col md:flex-row gap-6 justify-center items-center">
-                        <motion.button 
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            className="px-10 py-5 bg-white text-indigo-900 rounded-full font-bold text-lg shadow-[0_20px_50px_rgba(255,255,255,0.2)] hover:shadow-[0_30px_60px_rgba(255,255,255,0.3)] transition-all flex items-center gap-3"
-                        >
-                            Mulai Gratis Sekarang <ArrowUpRight size={24} />
-                        </motion.button>
-                        
-                        <motion.button 
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            className="px-10 py-5 bg-transparent border border-white/20 text-white rounded-full font-bold text-lg hover:bg-white/10 transition-all flex items-center gap-3"
-                        >
-                            Lihat Karir <span className="bg-indigo-500 text-xs px-2 py-1 rounded-full">Hiring</span>
-                        </motion.button>
+            <section className="relative z-10 py-24 px-4">
+                <div className="max-w-5xl mx-auto">
+                    <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 to-blue-800 rounded-[2.5rem] p-10 md:p-16 text-center">
+                        <div className="absolute top-0 right-0 w-80 h-80 bg-green-400/20 rounded-full blur-3xl -mr-20 -mt-20" />
+                        <div className="absolute bottom-0 left-0 w-80 h-80 bg-white/10 rounded-full blur-3xl -ml-20 -mb-20" />
+
+                        <div className="relative z-10">
+                            <h2 className="text-4xl md:text-6xl font-black text-white mb-8 tracking-tight">
+                                Siap Bergabung dengan <br/> Revolusi Retail?
+                            </h2>
+                            <p className="text-xl text-blue-100 mb-12 max-w-2xl mx-auto">
+                                Jadilah bagian dari komunitas pedagang modern yang tumbuh bersama Rana. Mulai perjalanan sukses Anda hari ini.
+                            </p>
+                            <div className="flex flex-col md:flex-row gap-6 justify-center items-center">
+                                <motion.button 
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    className="px-10 py-5 bg-white text-blue-700 rounded-xl font-bold text-lg shadow-lg hover:bg-blue-50 transition-all flex items-center gap-3"
+                                >
+                                    Mulai Gratis Sekarang <ArrowUpRight size={24} />
+                                </motion.button>
+                                
+                                <motion.button 
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    className="px-10 py-5 bg-white/10 border border-white/30 text-white rounded-xl font-bold text-lg hover:bg-white/20 transition-all flex items-center gap-3"
+                                >
+                                    Lihat Karir <span className="bg-white/20 text-xs px-2 py-1 rounded-full">Hiring</span>
+                                </motion.button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
