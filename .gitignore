@@ -43,3 +43,13 @@ akun.txt
 # Production env (contains secrets — set directly in hosting dashboard)
 # Uncomment line below jika file .env.production sudah diisi dengan nilai asli
 # .env.production
+
+# Large files — jangan commit ke git
+cloudflared.exe
+*.exe
+.env.zip
+gen_secret.js
+test_supabase.js
+server/test_supabase.js
+server/supabase_init.sql
+server/uploads/
